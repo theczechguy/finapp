@@ -5,11 +5,23 @@
 <form method="get" class="row g-3 align-items-end mb-3">
     <div class="col-auto">
         <label class="form-label" for="Provider">Provider</label>
-        <select id="Provider" name="Provider" class="form-select" asp-items="Model.ProviderOptions"></select>
+    <select id="Provider" name="Provider" class="form-select" asp-for="Provider" asp-items="Model.ProviderOptions"></select>
     </div>
     <div class="col-auto">
         <label class="form-label" for="InvestmentId">Investment</label>
-        <select id="InvestmentId" name="InvestmentId" class="form-select" asp-items="Model.InvestmentOptions"></select>
+    <select id="InvestmentId" name="InvestmentId" class="form-select" asp-for="InvestmentId" asp-items="Model.InvestmentOptions"></select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="From">From</label>
+        <input type="date" id="From" name="From" class="form-control" value="@Model.From?.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="To">To</label>
+        <input type="date" id="To" name="To" class="form-control" value="@Model.To?.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="PageSize">Page size</label>
+    <input type="number" id="PageSize" name="PageSize" class="form-control" min="1" max="200" value="@Model.PageSize" />
     </div>
     <div class="col-auto">
         <button type="submit" class="btn btn-primary">Apply</button>
@@ -21,16 +33,16 @@
     <thead>
         <tr>
             <th>
-                <a asp-route-sort="Provider" asp-route-dir="@(Model.Sort=="Provider" && Model.Dir=="asc" ? "desc" : "asc")" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId">Provider @(Model.Sort=="Provider" ? (Model.Dir=="asc" ? "▲" : "▼") : "")</a>
+                <a asp-route-sort="Provider" asp-route-dir="@(Model.Sort=="Provider" && Model.Dir=="asc" ? "desc" : "asc")" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId" asp-route-From="@Model.From?.ToString("yyyy-MM-dd")" asp-route-To="@Model.To?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize">Provider @(Model.Sort=="Provider" ? (Model.Dir=="asc" ? "▲" : "▼") : "")</a>
             </th>
             <th>
-                <a asp-route-sort="Investment" asp-route-dir="@(Model.Sort=="Investment" && Model.Dir=="asc" ? "desc" : "asc")" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId">Investment @(Model.Sort=="Investment" ? (Model.Dir=="asc" ? "▲" : "▼") : "")</a>
+                <a asp-route-sort="Investment" asp-route-dir="@(Model.Sort=="Investment" && Model.Dir=="asc" ? "desc" : "asc")" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId" asp-route-From="@Model.From?.ToString("yyyy-MM-dd")" asp-route-To="@Model.To?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize">Investment @(Model.Sort=="Investment" ? (Model.Dir=="asc" ? "▲" : "▼") : "")</a>
             </th>
             <th>
-                <a asp-route-sort="AsOf" asp-route-dir="@(Model.Sort=="AsOf" && Model.Dir=="asc" ? "desc" : "asc")" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId">Date @(Model.Sort=="AsOf" ? (Model.Dir=="asc" ? "▲" : "▼") : "")</a>
+                <a asp-route-sort="AsOf" asp-route-dir="@(Model.Sort=="AsOf" && Model.Dir=="asc" ? "desc" : "asc")" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId" asp-route-From="@Model.From?.ToString("yyyy-MM-dd")" asp-route-To="@Model.To?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize">Date @(Model.Sort=="AsOf" ? (Model.Dir=="asc" ? "▲" : "▼") : "")</a>
             </th>
             <th>
-                <a asp-route-sort="Value" asp-route-dir="@(Model.Sort=="Value" && Model.Dir=="asc" ? "desc" : "asc")" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId">Value @(Model.Sort=="Value" ? (Model.Dir=="asc" ? "▲" : "▼") : "")</a>
+                <a asp-route-sort="Value" asp-route-dir="@(Model.Sort=="Value" && Model.Dir=="asc" ? "desc" : "asc")" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId" asp-route-From="@Model.From?.ToString("yyyy-MM-dd")" asp-route-To="@Model.To?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize">Value @(Model.Sort=="Value" ? (Model.Dir=="asc" ? "▲" : "▼") : "")</a>
             </th>
             <th></th>
         </tr>
@@ -54,3 +66,16 @@
     }
     </tbody>
 </table>
+
+<nav aria-label="Values pagination">
+    <ul class="pagination">
+        <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+            <a class="page-link" asp-route-PageNumber="@(Model.PageNumber - 1)" asp-route-PageSize="@Model.PageSize" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId" asp-route-From="@Model.From?.ToString("yyyy-MM-dd")" asp-route-To="@Model.To?.ToString("yyyy-MM-dd")" asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir">Previous</a>
+        </li>
+        <li class="page-item disabled"><span class="page-link">Page @Model.PageNumber of @Model.TotalPages (@Model.TotalCount items)</span></li>
+        <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+            <a class="page-link" asp-route-PageNumber="@(Model.PageNumber + 1)" asp-route-PageSize="@Model.PageSize" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId" asp-route-From="@Model.From?.ToString("yyyy-MM-dd")" asp-route-To="@Model.To?.ToString("yyyy-MM-dd")" asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir">Next</a>
+        </li>
+    </ul>
+    <div>Showing @(((Model.PageNumber - 1) * Model.PageSize) + Math.Min(1, Model.TotalCount)) - @(Math.Min(Model.PageNumber * Model.PageSize, Model.TotalCount)) of @Model.TotalCount</div>
+</nav>

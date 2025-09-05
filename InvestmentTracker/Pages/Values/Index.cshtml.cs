@@ -19,6 +19,21 @@ public class IndexModel(AppDbContext db) : PageModel
     [BindProperty(SupportsGet = true)]
     public int? InvestmentId { get; set; }
 
+    [BindProperty(SupportsGet = true)]
+    public DateTime? From { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public DateTime? To { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public int PageNumber { get; set; } = 1;
+
+    [BindProperty(SupportsGet = true)]
+    public int PageSize { get; set; } = 25;
+
+    public int TotalCount { get; private set; }
+    public int TotalPages { get; private set; }
+
     public List<SelectListItem> ProviderOptions { get; private set; } = new();
     public List<SelectListItem> InvestmentOptions { get; private set; } = new();
 
@@ -48,6 +63,24 @@ public class IndexModel(AppDbContext db) : PageModel
         {
             query = query.Where(v => v.InvestmentId == invId);
         }
+        if (From.HasValue)
+        {
+            var from = From.Value.Date;
+            query = query.Where(v => v.AsOf >= from);
+        }
+        if (To.HasValue)
+        {
+            // include the whole day
+            var to = To.Value.Date.AddDays(1).AddTicks(-1);
+            query = query.Where(v => v.AsOf <= to);
+        }
+
+        // Count before paging
+        TotalCount = await query.CountAsync();
+        if (PageSize <= 0) PageSize = 25;
+    TotalPages = Math.Max(1, (int)Math.Ceiling((double)TotalCount / PageSize));
+    if (PageNumber < 1) PageNumber = 1;
+    if (PageNumber > TotalPages) PageNumber = TotalPages;
 
         // Apply sorting
         switch (Sort)
@@ -85,6 +118,8 @@ public class IndexModel(AppDbContext db) : PageModel
                 AsOf = v.AsOf,
                 Value = v.Value
             })
+            .Skip((PageNumber - 1) * PageSize)
+            .Take(PageSize)
             .ToListAsync();
 
         // Load filter options
