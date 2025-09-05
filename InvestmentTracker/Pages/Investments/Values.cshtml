@@ -1,0 +1,57 @@
+@page "{id:int}"
+@model InvestmentTracker.Pages.Investments.ValuesModel
+
+<h2>Values - @Model.Investment?.Name</h2>
+<p>
+    <a class="btn btn-secondary" asp-page="Index">Back</a>
+</p>
+
+@if (Model.Investment is not null)
+{
+    <h5>Add Value</h5>
+    <form method="post" class="row g-3">
+        <div class="col-auto">
+            <input type="hidden" asp-for="NewValue.InvestmentId" />
+            <label asp-for="NewValue.AsOf" class="form-label"></label>
+            <input asp-for="NewValue.AsOf" class="form-control" type="date" />
+            <span asp-validation-for="NewValue.AsOf" class="text-danger"></span>
+        </div>
+        <div class="col-auto">
+            <label asp-for="NewValue.Value" class="form-label"></label>
+            <input asp-for="NewValue.Value" class="form-control" />
+            <span asp-validation-for="NewValue.Value" class="text-danger"></span>
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+    </form>
+
+    <h5 class="mt-4">History</h5>
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Value</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var v in Model.Investment.Values)
+        {
+            <tr>
+                <td>@v.AsOf.ToShortDateString()</td>
+                <td>@v.Value.ToString("C")</td>
+                <td>
+                    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Investment.Id" asp-route-valueId="@v.Id">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@section Scripts{
+    <partial name="_ValidationScriptsPartial" />
+}
