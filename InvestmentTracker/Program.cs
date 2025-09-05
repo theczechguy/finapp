@@ -32,11 +32,11 @@ app.UseAuthorization();
 
 app.MapRazorPages();
 
-// Ensure database exists and apply migrations if any (Create if none)
+// Apply EF Core migrations at startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.EnsureCreatedAsync();
+    await db.Database.MigrateAsync();
 }
 
 // Minimal API endpoints for future extensibility
@@ -44,7 +44,7 @@ var api = app.MapGroup("/api");
 
 api.MapGet("/investments", async (AppDbContext db) =>
     await db.Investments
-        .Select(i => new { i.Id, i.Name, i.Type, i.RecurringAmount })
+        .Select(i => new { i.Id, i.Name, i.Provider, i.Type, i.RecurringAmount })
         .ToListAsync());
 
 api.MapGet("/investments/{id:int}", async (int id, AppDbContext db) =>
@@ -65,6 +65,7 @@ api.MapPut("/investments/{id:int}", async (int id, Investment update, AppDbConte
     var existing = await db.Investments.FindAsync(id);
     if (existing is null) return Results.NotFound();
     existing.Name = update.Name;
+    existing.Provider = update.Provider;
     existing.Type = update.Type;
     existing.RecurringAmount = update.RecurringAmount;
     await db.SaveChangesAsync();

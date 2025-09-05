@@ -10,6 +10,7 @@
     <thead>
         <tr>
             <th>Name</th>
+            <th>Provider</th>
             <th>Type</th>
             <th>Recurring Amount</th>
             <th>Latest Value</th>
@@ -22,6 +23,7 @@
     var latest = i.Values.OrderByDescending(v => v.AsOf).FirstOrDefault();
     <tr>
         <td>@i.Name</td>
+        <td>@(string.IsNullOrWhiteSpace(i.Provider) ? "-" : i.Provider)</td>
         <td>@i.Type</td>
         <td>@(i.RecurringAmount?.ToString("C"))</td>
         <td>@(latest is null ? "-" : latest.Value.ToString("C") + " (" + latest.AsOf.ToShortDateString() + ")")</td>

@@ -1,0 +1,34 @@
+@page
+@model InvestmentTracker.Pages.Values.IndexModel
+
+<h2>All Recorded Values</h2>
+<p>
+    <a class="btn btn-secondary" asp-page="/Investments/Index">Back to Investments</a>
+</p>
+<table class="table table-striped table-sm">
+    <thead>
+        <tr>
+            <th>Investment</th>
+            <th>Date</th>
+            <th>Value</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var r in Model.Items)
+    {
+        <tr>
+            <td>
+                <a asp-page="/Investments/Values" asp-route-id="@r.InvestmentId">@r.InvestmentName</a>
+            </td>
+            <td>@r.AsOf.ToShortDateString()</td>
+            <td>@r.Value.ToString("C")</td>
+            <td>
+                <form method="post" asp-page-handler="Delete" asp-route-id="@r.Id">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
