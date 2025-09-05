@@ -45,6 +45,8 @@ public class IndexModel(AppDbContext db) : PageModel
         public string InvestmentName { get; set; } = string.Empty;
         public DateTime AsOf { get; set; }
         public decimal Value { get; set; }
+    public decimal? Invested { get; set; }
+    public decimal? PercentDiff { get; set; }
     }
 
     public async Task OnGetAsync(string? sort, string? dir)
@@ -108,7 +110,7 @@ public class IndexModel(AppDbContext db) : PageModel
                 break;
         }
 
-        Items = await query
+        var pageItems = await query
             .Select(v => new Row
             {
                 Id = v.Id,
@@ -121,6 +123,76 @@ public class IndexModel(AppDbContext db) : PageModel
             .Skip((PageNumber - 1) * PageSize)
             .Take(PageSize)
             .ToListAsync();
+
+        // Compute Invested and PercentDiff per row
+        var invIds = pageItems.Select(i => i.InvestmentId).Distinct().ToList();
+        var invMeta = await db.Investments
+            .Where(i => invIds.Contains(i.Id))
+            .Select(i => new
+            {
+                i.Id,
+                i.Type,
+                i.RecurringAmount,
+                i.RecurringStartDate
+            })
+            .ToDictionaryAsync(x => x.Id);
+
+        // Fetch earliest recorded value per investment (initial principal for one-time or fallback start)
+        var firstValues = new Dictionary<int, (DateTime date, decimal value)>();
+        foreach (var id in invIds)
+        {
+            var fv = await db.InvestmentValues
+                .Where(v => v.InvestmentId == id)
+                .OrderBy(v => v.AsOf)
+                .Select(v => new { v.AsOf, v.Value })
+                .FirstOrDefaultAsync();
+            if (fv != null)
+            {
+                firstValues[id] = (fv.AsOf, fv.Value);
+            }
+        }
+
+        foreach (var r in pageItems)
+        {
+            if (!invMeta.TryGetValue(r.InvestmentId, out var meta)) continue;
+
+            if (meta.Type == InvestmentType.Recurring)
+            {
+                var start = meta.RecurringStartDate ?? (firstValues.TryGetValue(r.InvestmentId, out var fv) ? fv.date : (DateTime?)null);
+                var amount = meta.RecurringAmount ?? 0m;
+                if (start.HasValue && amount > 0m && r.AsOf.Date >= start.Value.Date)
+                {
+                    int months = MonthsContributed(start.Value.Date, r.AsOf.Date);
+                    r.Invested = months * amount;
+                }
+                else
+                {
+                    r.Invested = 0m;
+                }
+            }
+            else // OneTime
+            {
+                if (firstValues.TryGetValue(r.InvestmentId, out var fv))
+                {
+                    r.Invested = fv.value;
+                }
+                else
+                {
+                    r.Invested = 0m;
+                }
+            }
+
+            if (r.Invested.HasValue && r.Invested.Value > 0m)
+            {
+                r.PercentDiff = (r.Value - r.Invested.Value) / r.Invested.Value;
+            }
+            else
+            {
+                r.PercentDiff = null;
+            }
+        }
+
+        Items = pageItems;
 
         // Load filter options
         ProviderOptions = await db.Investments
@@ -137,6 +209,18 @@ public class IndexModel(AppDbContext db) : PageModel
             .Select(i => new SelectListItem { Text = i.Name, Value = i.Id.ToString() })
             .ToListAsync();
         InvestmentOptions.Insert(0, new SelectListItem { Text = "All Investments", Value = "" });
+    }
+
+    private static int MonthsContributed(DateTime startDate, DateTime asOfDate)
+    {
+        if (asOfDate < startDate) return 0;
+        int months = (asOfDate.Year - startDate.Year) * 12 + (asOfDate.Month - startDate.Month);
+        // Count a contribution in the asOf month if day has passed or equals
+        int startDay = startDate.Day;
+        int asOfMonthDays = DateTime.DaysInMonth(asOfDate.Year, asOfDate.Month);
+        int effectiveDay = Math.Min(startDay, asOfMonthDays);
+        if (asOfDate.Day >= effectiveDay) months += 1;
+        return months;
     }
 
     public async Task<IActionResult> OnPostDeleteAsync(int id)

@@ -36,6 +36,13 @@
         <span asp-validation-for="Investment.RecurringAmount" class="text-danger"></span>
     </div>
 
+    <div class="mb-3">
+        <label asp-for="Investment.RecurringStartDate" class="form-label"></label>
+        <input asp-for="Investment.RecurringStartDate" class="form-control" type="date" />
+        <small class="form-text">Start date for recurring contributions (optional).</small>
+        <span asp-validation-for="Investment.RecurringStartDate" class="text-danger"></span>
+    </div>
+
     <button type="submit" class="btn btn-primary">Save</button>
     <a class="btn btn-secondary" asp-page="Index">Cancel</a>
 </form>

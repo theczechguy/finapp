@@ -24,5 +24,8 @@ public class Investment
     [Column(TypeName = "decimal(18,2)")]
     public decimal? RecurringAmount { get; set; }
 
+    [DataType(DataType.Date)]
+    public DateTime? RecurringStartDate { get; set; }
+
     public ICollection<InvestmentValue> Values { get; set; } = new List<InvestmentValue>();
 }

@@ -44,6 +44,8 @@
             <th>
                 <a asp-route-sort="Value" asp-route-dir="@(Model.Sort=="Value" && Model.Dir=="asc" ? "desc" : "asc")" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId" asp-route-From="@Model.From?.ToString("yyyy-MM-dd")" asp-route-To="@Model.To?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize">Value @(Model.Sort=="Value" ? (Model.Dir=="asc" ? "▲" : "▼") : "")</a>
             </th>
+            <th>Invested</th>
+            <th>% Difference</th>
             <th></th>
         </tr>
     </thead>
@@ -57,6 +59,18 @@
             </td>
             <td>@r.AsOf.ToShortDateString()</td>
             <td>@r.Value.ToString("C")</td>
+            <td>@(r.Invested.HasValue ? r.Invested.Value.ToString("C") : "—")</td>
+            <td>
+                @if (r.Invested.HasValue && r.Invested.Value > 0 && r.PercentDiff.HasValue)
+                {
+                    var cls = r.PercentDiff.Value >= 0 ? "text-success" : "text-danger";
+                    <span class="@cls">@r.PercentDiff.Value.ToString("P2")</span>
+                }
+                else
+                {
+                    <span>—</span>
+                }
+            </td>
             <td>
                 <form method="post" asp-page-handler="Delete" asp-route-id="@r.Id">
                     <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
