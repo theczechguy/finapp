@@ -17,6 +17,9 @@ public class Investment
     [Required]
     public InvestmentType Type { get; set; }
 
+    [Required]
+    public Currency Currency { get; set; }
+
     [Range(0, double.MaxValue)]
     [Column(TypeName = "decimal(18,2)")]
     public decimal? RecurringAmount { get; set; }

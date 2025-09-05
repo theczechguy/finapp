@@ -59,7 +59,7 @@ var api = app.MapGroup("/api");
 
 api.MapGet("/investments", async (AppDbContext db) =>
     await db.Investments
-        .Select(i => new { i.Id, i.Name, i.Provider, i.Type, i.RecurringAmount })
+    .Select(i => new { i.Id, i.Name, i.Provider, i.Type, i.Currency, i.RecurringAmount })
         .ToListAsync());
 
 api.MapGet("/investments/{id:int}", async (int id, AppDbContext db) =>
@@ -82,6 +82,7 @@ api.MapPut("/investments/{id:int}", async (int id, Investment update, AppDbConte
     existing.Name = update.Name;
     existing.Provider = update.Provider;
     existing.Type = update.Type;
+    existing.Currency = update.Currency;
     existing.RecurringAmount = update.RecurringAmount;
     await db.SaveChangesAsync();
     return Results.NoContent();

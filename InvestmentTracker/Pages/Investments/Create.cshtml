@@ -23,6 +23,11 @@
     </div>
 
     <div class="mb-3">
+        <label asp-for="Investment.Currency" class="form-label"></label>
+        <select asp-for="Investment.Currency" class="form-select" asp-items="Html.GetEnumSelectList<Currency>()"></select>
+    </div>
+
+    <div class="mb-3">
         <label asp-for="Investment.RecurringAmount" class="form-label"></label>
         <input asp-for="Investment.RecurringAmount" class="form-control" inputmode="decimal" step="0.01" />
         <small class="form-text">Required for recurring investments; ignored for one-time.</small>
