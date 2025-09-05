@@ -2,23 +2,35 @@
 @model InvestmentTracker.Pages.Values.IndexModel
 
 <h2>All Recorded Values</h2>
-<p>
-    <a class="btn btn-secondary" asp-page="/Investments/Index">Back to Investments</a>
-</p>
+<form method="get" class="row g-3 align-items-end mb-3">
+    <div class="col-auto">
+        <label class="form-label" for="Provider">Provider</label>
+        <select id="Provider" name="Provider" class="form-select" asp-items="Model.ProviderOptions"></select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="InvestmentId">Investment</label>
+        <select id="InvestmentId" name="InvestmentId" class="form-select" asp-items="Model.InvestmentOptions"></select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Apply</button>
+        <a class="btn btn-outline-secondary" asp-page="/Values/Index">Reset</a>
+        <a class="btn btn-secondary" asp-page="/Investments/Index">Back to Investments</a>
+    </div>
+</form>
 <table class="table table-striped table-sm">
     <thead>
         <tr>
             <th>
-                <a asp-route-sort="Provider" asp-route-dir="@(Model.Sort=="Provider" && Model.Dir=="asc" ? "desc" : "asc")">Provider</a>
+                <a asp-route-sort="Provider" asp-route-dir="@(Model.Sort=="Provider" && Model.Dir=="asc" ? "desc" : "asc")" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId">Provider @(Model.Sort=="Provider" ? (Model.Dir=="asc" ? "▲" : "▼") : "")</a>
             </th>
             <th>
-                <a asp-route-sort="Investment" asp-route-dir="@(Model.Sort=="Investment" && Model.Dir=="asc" ? "desc" : "asc")">Investment</a>
+                <a asp-route-sort="Investment" asp-route-dir="@(Model.Sort=="Investment" && Model.Dir=="asc" ? "desc" : "asc")" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId">Investment @(Model.Sort=="Investment" ? (Model.Dir=="asc" ? "▲" : "▼") : "")</a>
             </th>
             <th>
-                <a asp-route-sort="AsOf" asp-route-dir="@(Model.Sort=="AsOf" && Model.Dir=="asc" ? "desc" : "asc")">Date</a>
+                <a asp-route-sort="AsOf" asp-route-dir="@(Model.Sort=="AsOf" && Model.Dir=="asc" ? "desc" : "asc")" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId">Date @(Model.Sort=="AsOf" ? (Model.Dir=="asc" ? "▲" : "▼") : "")</a>
             </th>
             <th>
-                <a asp-route-sort="Value" asp-route-dir="@(Model.Sort=="Value" && Model.Dir=="asc" ? "desc" : "asc")">Value</a>
+                <a asp-route-sort="Value" asp-route-dir="@(Model.Sort=="Value" && Model.Dir=="asc" ? "desc" : "asc")" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId">Value @(Model.Sort=="Value" ? (Model.Dir=="asc" ? "▲" : "▼") : "")</a>
             </th>
             <th></th>
         </tr>
