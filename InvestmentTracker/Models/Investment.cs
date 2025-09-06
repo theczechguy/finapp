@@ -20,6 +20,9 @@ public class Investment
     [Required]
     public Currency Currency { get; set; }
 
+    [Range(0, 100000000)]
+    public decimal ChargeAmount { get; set; } = 0m;
+
     public ICollection<InvestmentValue> Values { get; set; } = new List<InvestmentValue>();
 
     public ICollection<ContributionSchedule> Schedules { get; set; } = new List<ContributionSchedule>();

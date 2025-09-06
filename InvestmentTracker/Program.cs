@@ -59,11 +59,11 @@ var api = app.MapGroup("/api");
 
 api.MapGet("/investments", async (AppDbContext db) =>
     await db.Investments
-        .Select(i => new { i.Id, i.Name, i.Provider, i.Type, i.Currency })
+    .Select(i => new { i.Id, i.Name, i.Provider, i.Type, i.Currency, i.ChargeAmount })
         .ToListAsync());
 
 api.MapGet("/investments/{id:int}", async (int id, AppDbContext db) =>
-    await db.Investments.Include(i => i.Values).FirstOrDefaultAsync(i => i.Id == id)
+    await db.Investments.Include(i => i.Values).Include(i => i.Schedules).FirstOrDefaultAsync(i => i.Id == id)
         is { } inv
         ? Results.Ok(inv)
         : Results.NotFound());
@@ -83,6 +83,7 @@ api.MapPut("/investments/{id:int}", async (int id, Investment update, AppDbConte
     existing.Provider = update.Provider;
     existing.Type = update.Type;
     existing.Currency = update.Currency;
+    existing.ChargeAmount = update.ChargeAmount;
     await db.SaveChangesAsync();
     return Results.NoContent();
 });

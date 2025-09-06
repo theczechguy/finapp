@@ -11,6 +11,7 @@
     <div class="card mb-3">
         <div class="card-body">
             <h5 class="card-title">Contribution Schedules</h5>
+            <div class="mb-2 text-muted">One-time charge: @(Model.Investment.ChargeAmount == 0 ? "-" : Model.Investment.ChargeAmount.ToString("C"))</div>
             @if (Model.Investment.Schedules?.Any() == true)
             {
                 <ul class="mb-2">

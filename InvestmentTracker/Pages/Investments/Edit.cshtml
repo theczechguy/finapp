@@ -29,6 +29,12 @@
         <select asp-for="Investment.Currency" class="form-select" asp-items="Html.GetEnumSelectList<Currency>()"></select>
     </div>
 
+    <div class="mb-3">
+        <label asp-for="Investment.ChargeAmount" class="form-label">One-time Charge</label>
+        <input asp-for="Investment.ChargeAmount" class="form-control" inputmode="decimal" step="0.01" min="0" />
+        <span asp-validation-for="Investment.ChargeAmount" class="text-danger"></span>
+    </div>
+
     <div class="mt-4">
         <button type="submit" class="btn btn-primary">Save</button>
         <a class="btn btn-secondary" asp-page="Index">Cancel</a>

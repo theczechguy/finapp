@@ -57,6 +57,7 @@ public class EditModel(AppDbContext db) : PageModel
     existing.Provider = Investment.Provider;
     existing.Type = Investment.Type;
     existing.Currency = Investment.Currency;
+    existing.ChargeAmount = Investment.ChargeAmount;
 
         await db.SaveChangesAsync();
         return RedirectToPage("Index");

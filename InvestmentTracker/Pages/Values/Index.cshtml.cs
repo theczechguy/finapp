@@ -128,7 +128,7 @@ public class IndexModel(AppDbContext db) : PageModel
         var invIds = pageItems.Select(i => i.InvestmentId).Distinct().ToList();
         var invMeta = await db.Investments
             .Where(i => invIds.Contains(i.Id))
-            .Select(i => new { i.Id, i.Type })
+            .Select(i => new { i.Id, i.Type, i.ChargeAmount })
             .ToDictionaryAsync(x => x.Id);
 
         // Fetch schedules per investment for invested calc
@@ -173,13 +173,22 @@ public class IndexModel(AppDbContext db) : PageModel
                         }
                     }
                 }
+                if (meta.ChargeAmount > 0 && total > 0)
+                {
+                    total -= meta.ChargeAmount;
+                }
                 r.Invested = total;
             }
             else // OneTime
             {
                 if (firstValues.TryGetValue(r.InvestmentId, out var fv))
                 {
-                    r.Invested = fv.value;
+                    var invested = fv.value;
+                    if (invMeta.TryGetValue(r.InvestmentId, out var m) && m.ChargeAmount > 0)
+                    {
+                        invested -= m.ChargeAmount;
+                    }
+                    r.Invested = invested;
                 }
                 else
                 {

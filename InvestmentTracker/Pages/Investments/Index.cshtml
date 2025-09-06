@@ -13,6 +13,7 @@
             <th>Provider</th>
             <th>Type</th>
             <th>Currency</th>
+            <th>One-time Charge</th>
             <th>Latest Value</th>
             <th></th>
         </tr>
@@ -26,6 +27,7 @@
         <td>@(string.IsNullOrWhiteSpace(i.Provider) ? "-" : i.Provider)</td>
         <td>@i.Type</td>
     <td>@i.Currency</td>
+        <td>@(i.ChargeAmount == 0 ? "-" : i.ChargeAmount.ToString("C"))</td>
         <td>@(latest is null ? "-" : latest.Value.ToString("C") + " (" + latest.AsOf.ToShortDateString() + ")")</td>
         <td>
             <a class="btn btn-sm btn-outline-secondary" asp-page="Values" asp-route-id="@i.Id">Values</a>

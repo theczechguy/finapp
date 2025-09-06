@@ -27,6 +27,13 @@
         <select asp-for="Investment.Currency" class="form-select" asp-items="Html.GetEnumSelectList<Currency>()"></select>
     </div>
 
+    <div class="mb-3">
+        <label asp-for="Investment.ChargeAmount" class="form-label">One-time Charge</label>
+        <input asp-for="Investment.ChargeAmount" class="form-control" inputmode="decimal" step="0.01" min="0" />
+        <div class="form-text">A single charge deducted from invested total.</div>
+        <span asp-validation-for="Investment.ChargeAmount" class="text-danger"></span>
+    </div>
+
     <!-- Contribution schedules are managed on Edit after creation -->
 
     <button type="submit" class="btn btn-primary">Save</button>
