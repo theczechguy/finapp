@@ -1,6 +1,7 @@
 @page
-@model InvestmentTracker.Pages.Investments.ListModel
+@using System.Globalization
 @using InvestmentTracker.Models
+@model InvestmentTracker.Pages.Investments.ListModel
 
 <h2>Investments</h2>
 <p>
@@ -22,13 +23,14 @@
 @foreach (var i in Model.Investments)
 {
     var latest = i.Values.OrderByDescending(v => v.AsOf).FirstOrDefault();
+    var culture = CultureInfo.CreateSpecificCulture(i.Currency.ToCultureCode());
     <tr>
         <td>@i.Name</td>
         <td>@(string.IsNullOrWhiteSpace(i.Provider) ? "-" : i.Provider)</td>
         <td>@i.Type</td>
-    <td>@i.Currency</td>
-        <td>@(i.ChargeAmount == 0 ? "-" : i.ChargeAmount.ToString("C"))</td>
-        <td>@(latest is null ? "-" : latest.Value.ToString("C") + " (" + latest.AsOf.ToShortDateString() + ")")</td>
+        <td>@i.Currency</td>
+        <td>@(i.ChargeAmount == 0 ? "-" : i.ChargeAmount.ToString("C", culture))</td>
+        <td>@(latest is null ? "-" : latest.Value.ToString("C", culture) + " (" + latest.AsOf.ToShortDateString() + ")")</td>
         <td>
             <a class="btn btn-sm btn-outline-secondary" asp-page="Values" asp-route-id="@i.Id">Values</a>
             <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@i.Id">Edit</a>

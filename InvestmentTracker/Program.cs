@@ -45,7 +45,7 @@ app.UseAuthorization();
 app.MapRazorPages();
 
 // Redirect root to Investments
-app.MapGet("/", () => Results.Redirect("/Investments"));
+app.MapGet("/", () => Results.Redirect("/Index"));
 
 // Fallback for 404s
 app.MapFallbackToPage("/NotFound");

@@ -1,24 +1,27 @@
 @page "{id:int}"
+@using System.Globalization
+@using InvestmentTracker.Models
 @model InvestmentTracker.Pages.Investments.ValuesModel
 
 <h2>Values - @Model.Investment?.Name</h2>
 <p>
-    <a class="btn btn-secondary" asp-page="Index">Back</a>
+    <a class="btn btn-secondary" asp-page="List">Back</a>
 </p>
 
 @if (Model.Investment is not null)
 {
+    var culture = CultureInfo.CreateSpecificCulture(Model.Investment.Currency.ToCultureCode());
     <div class="card mb-3">
         <div class="card-body">
             <h5 class="card-title">Contribution Schedules</h5>
-            <div class="mb-2 text-muted">One-time charge: @(Model.Investment.ChargeAmount == 0 ? "-" : Model.Investment.ChargeAmount.ToString("C"))</div>
+            <div class="mb-2 text-muted">One-time charge: @(Model.Investment.ChargeAmount == 0 ? "-" : Model.Investment.ChargeAmount.ToString("C", culture))</div>
             @if (Model.Investment.Schedules?.Any() == true)
             {
                 <ul class="mb-2">
                 @foreach (var s in Model.Investment.Schedules.OrderBy(s=>s.StartDate))
                 {
                     <li>
-                        <strong>@s.Amount.ToString("C")</strong> on day @(s.DayOfMonth?.ToString() ?? s.StartDate.Day.ToString()) from @s.StartDate.ToShortDateString() to @(s.EndDate?.ToShortDateString() ?? "open")
+                        <strong>@s.Amount.ToString("C", culture)</strong> on day @(s.DayOfMonth?.ToString() ?? s.StartDate.Day.ToString()) from @s.StartDate.ToShortDateString() to @(s.EndDate?.ToShortDateString() ?? "open")
                     </li>
                 }
                 </ul>
@@ -89,7 +92,7 @@
             {
                 <tr>
                     <td>@c.Date.ToShortDateString()</td>
-                    <td>@c.Amount.ToString("C")</td>
+                    <td>@c.Amount.ToString("C", culture)</td>
                     <td>
                         <form method="post" asp-page-handler="DeleteContribution" asp-route-id="@Model.Investment.Id" asp-route-contributionId="@c.Id" data-confirm="Delete this one-time contribution?">
                             <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
@@ -115,7 +118,7 @@
         {
             <tr>
                 <td>@v.AsOf.ToShortDateString()</td>
-                <td>@v.Value.ToString("C")</td>
+                <td>@v.Value.ToString("C", culture)</td>
                 <td>
                     <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Investment.Id" asp-route-valueId="@v.Id" data-confirm="Delete this value record?">
                         <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>

@@ -43,10 +43,11 @@ public class IndexModel(AppDbContext db) : PageModel
         public int InvestmentId { get; set; }
         public string Provider { get; set; } = string.Empty;
         public string InvestmentName { get; set; } = string.Empty;
+        public Currency Currency { get; set; }
         public DateTime AsOf { get; set; }
         public decimal Value { get; set; }
-    public decimal? Invested { get; set; }
-    public decimal? PercentDiff { get; set; }
+        public decimal? Invested { get; set; }
+        public decimal? PercentDiff { get; set; }
     }
 
     public async Task OnGetAsync(string? sort, string? dir)
@@ -117,6 +118,7 @@ public class IndexModel(AppDbContext db) : PageModel
                 InvestmentId = v.InvestmentId,
                 Provider = v.Investment!.Provider ?? string.Empty,
                 InvestmentName = v.Investment!.Name,
+                Currency = v.Investment!.Currency,
                 AsOf = v.AsOf,
                 Value = v.Value
             })

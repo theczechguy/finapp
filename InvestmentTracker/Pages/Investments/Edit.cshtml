@@ -1,6 +1,7 @@
 @page "{id:int}"
-@model InvestmentTracker.Pages.Investments.EditModel
+@using System.Globalization
 @using InvestmentTracker.Models
+@model InvestmentTracker.Pages.Investments.EditModel
 
 <h2>Edit Investment</h2>
 
@@ -45,6 +46,7 @@
     <h5>Contribution Schedules</h5>
     @if (Model.Investment.Type == InvestmentType.Recurring)
         {
+            var culture = CultureInfo.CreateSpecificCulture(Model.Investment.Currency.ToCultureCode());
             @if (Model.Schedules?.Any() == true)
             {
                 <table class="table table-sm align-middle w-auto schedules-table">
@@ -72,7 +74,7 @@
                                 <input class="form-control form-control-sm w-auto" type="number" name="dayOfMonth" min="1" max="31" value="@(s.DayOfMonth ?? s.StartDate.Day)" form="@formId" />
                             </td>
                             <td>
-                                <input class="form-control form-control-sm w-auto" type="text" inputmode="decimal" name="amount" value="@s.Amount" form="@formId" required />
+                                <input class="form-control form-control-sm w-auto" type="text" inputmode="decimal" name="amount" value="@s.Amount.ToString("F2", CultureInfo.InvariantCulture)" form="@formId" required />
                             </td>
                             <td>
                                 <form method="post" asp-page-handler="DeleteSchedule" asp-route-id="@Model.Investment.Id" asp-route-scheduleId="@s.Id" class="d-inline">
@@ -141,7 +143,7 @@
                         {
                             <tr>
                                 <td>@c.Date.ToShortDateString()</td>
-                                <td>@c.Amount.ToString("C")</td>
+                                <td>@c.Amount.ToString("C", culture)</td>
                                 <td>
                                     <form method="post" asp-page-handler="DeleteContribution" asp-route-id="@Model.Investment.Id" asp-route-contributionId="@c.Id" class="d-inline" data-confirm="Delete this one-time contribution?">
                                         <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>

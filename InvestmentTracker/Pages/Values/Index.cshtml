@@ -1,4 +1,6 @@
 @page
+@using System.Globalization
+@using InvestmentTracker.Models
 @model InvestmentTracker.Pages.Values.IndexModel
 
 <h2>All Recorded Values</h2>
@@ -58,8 +60,8 @@
                 <a asp-page="/Investments/Values" asp-route-id="@r.InvestmentId">@r.InvestmentName</a>
             </td>
             <td>@r.AsOf.ToShortDateString()</td>
-            <td>@r.Value.ToString("C")</td>
-            <td>@(r.Invested.HasValue ? r.Invested.Value.ToString("C") : "—")</td>
+            <td>@r.Value.ToString("C", CultureInfo.CreateSpecificCulture(r.Currency.ToCultureCode()))</td>
+            <td>@(r.Invested.HasValue ? r.Invested.Value.ToString("C", CultureInfo.CreateSpecificCulture(r.Currency.ToCultureCode())) : "—")</td>
             <td>
                 @if (r.Invested.HasValue && r.Invested.Value > 0 && r.PercentDiff.HasValue)
                 {
