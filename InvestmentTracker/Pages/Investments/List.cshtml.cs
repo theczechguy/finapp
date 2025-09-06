@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace InvestmentTracker.Pages.Investments;
 
-public class IndexModel(IInvestmentService investmentService) : PageModel
+public class ListModel(IInvestmentService investmentService) : PageModel
 {
     public IList<Investment> Investments { get;set; } = default!;
 

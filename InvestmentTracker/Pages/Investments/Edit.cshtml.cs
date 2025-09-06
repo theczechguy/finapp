@@ -34,7 +34,7 @@ public class EditModel(IInvestmentService investmentService) : PageModel
     public async Task<IActionResult> OnGetAsync(int id)
     {
         var entity = await investmentService.GetInvestmentAsync(id);
-        if (entity is null) return RedirectToPage("Index");
+        if (entity is null) return RedirectToPage("./List");
         Investment = entity;
         Schedules = entity.Schedules.OrderBy(s => s.StartDate).ToList();
         Contributions = entity.OneTimeContributions.OrderByDescending(c => c.Date).ToList();
@@ -49,7 +49,7 @@ public class EditModel(IInvestmentService investmentService) : PageModel
         }
 
         await investmentService.UpdateInvestmentAsync(Investment.Id, Investment);
-        return RedirectToPage("Index");
+        return RedirectToPage("./List");
     }
 
     public async Task<IActionResult> OnPostAddScheduleAsync(int id)

@@ -23,6 +23,6 @@ public class CreateModel(IInvestmentService investmentService) : PageModel
         }
 
         await investmentService.AddInvestmentAsync(Investment);
-        return RedirectToPage("Index");
+        return RedirectToPage("./List");
     }
 }

@@ -1,0 +1,31 @@
+@page
+@model InvestmentTracker.Pages.IndexModel
+@{
+    ViewData["Title"] = "Fin App Dashboard";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome to Fin App</h1>
+    <p>Your personal finance dashboard.</p>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Investment Portfolio</h5>
+                <p class="card-text">View and manage your investments.</p>
+                <a asp-page="/Investments/List" class="btn btn-primary">Go to Investments</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Expense Tracking</h5>
+                <p class="card-text">Track your expenses (coming soon).</p>
+                <a href="#" class="btn btn-secondary disabled">Go to Expenses</a>
+            </div>
+        </div>
+    </div>
+</div>

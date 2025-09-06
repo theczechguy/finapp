@@ -18,7 +18,7 @@ public class ValuesModel(IInvestmentService investmentService) : PageModel
     public async Task<IActionResult> OnGetAsync(int id)
     {
         Investment = await investmentService.GetInvestmentAsync(id);
-        if (Investment is null) return RedirectToPage("Index");
+        if (Investment is null) return RedirectToPage("./List");
         NewValue.InvestmentId = id;
         Investment.Values = Investment.Values.OrderByDescending(v => v.AsOf).ToList();
         return Page();
