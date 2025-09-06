@@ -21,8 +21,11 @@
                 <ul class="navbar-nav flex-grow-1">
                     @{
                         var path = ViewContext.HttpContext.Request.Path;
-                        if (path.StartsWithSegments("/Investments") || path.StartsWithSegments("/Values"))
+                        if (path.StartsWithSegments("/Investments") || path.StartsWithSegments("/Values") || path.StartsWithSegments("/Portfolio"))
                         {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-page="/Portfolio/Index">Portfolio</a>
+                            </li>
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-area="" asp-page="/Investments/List">Investments</a>
                             </li>
