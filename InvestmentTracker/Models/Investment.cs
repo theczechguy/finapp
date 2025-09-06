@@ -26,4 +26,6 @@ public class Investment
     public ICollection<InvestmentValue> Values { get; set; } = new List<InvestmentValue>();
 
     public ICollection<ContributionSchedule> Schedules { get; set; } = new List<ContributionSchedule>();
+
+    public ICollection<OneTimeContribution> OneTimeContributions { get; set; } = new List<OneTimeContribution>();
 }

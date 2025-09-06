@@ -15,8 +15,13 @@ public class EditModel(AppDbContext db) : PageModel
 
     public List<ContributionSchedule> Schedules { get; set; } = new();
 
+    public List<OneTimeContribution> Contributions { get; set; } = new();
+
     [BindProperty]
     public ScheduleInput NewSchedule { get; set; } = new();
+
+    [BindProperty]
+    public OneTimeContribution NewContribution { get; set; } = new() { Date = DateTime.Today };
 
     public class ScheduleInput
     {
@@ -29,10 +34,14 @@ public class EditModel(AppDbContext db) : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id)
     {
-        var entity = await db.Investments.Include(i => i.Schedules.OrderBy(s => s.StartDate)).FirstOrDefaultAsync(i => i.Id == id);
+        var entity = await db.Investments
+            .Include(i => i.Schedules.OrderBy(s => s.StartDate))
+            .Include(i => i.OneTimeContributions)
+            .FirstOrDefaultAsync(i => i.Id == id);
         if (entity is null) return RedirectToPage("Index");
         Investment = entity;
         Schedules = entity.Schedules.OrderBy(s => s.StartDate).ToList();
+        Contributions = entity.OneTimeContributions.OrderByDescending(c => c.Date).ToList();
         return Page();
     }
 
@@ -41,11 +50,15 @@ public class EditModel(AppDbContext db) : PageModel
         ModelState.Clear();
         if (!TryValidateModel(Investment, nameof(Investment)))
         {
-            var reloaded = await db.Investments.Include(i => i.Schedules).FirstOrDefaultAsync(i => i.Id == Investment.Id);
+            var reloaded = await db.Investments
+                .Include(i => i.Schedules)
+                .Include(i => i.OneTimeContributions)
+                .FirstOrDefaultAsync(i => i.Id == Investment.Id);
             if (reloaded is not null)
             {
                 Investment = reloaded;
                 Schedules = reloaded.Schedules.OrderBy(s => s.StartDate).ToList();
+                Contributions = reloaded.OneTimeContributions.OrderByDescending(c => c.Date).ToList();
             }
             return Page();
         }
@@ -65,7 +78,7 @@ public class EditModel(AppDbContext db) : PageModel
 
     public async Task<IActionResult> OnPostAddScheduleAsync(int id)
     {
-        var inv = await db.Investments.Include(i => i.Schedules).FirstOrDefaultAsync(i => i.Id == id);
+    var inv = await db.Investments.Include(i => i.Schedules).FirstOrDefaultAsync(i => i.Id == id);
         if (inv is null) return RedirectToPage("Index");
 
     // Clear any unrelated model state (e.g., Investment.Name required)
@@ -119,8 +132,9 @@ public class EditModel(AppDbContext db) : PageModel
         }
 
         // Reload page data on validation errors
-        Investment = inv;
-        Schedules = inv.Schedules.OrderBy(s => s.StartDate).ToList();
+    Investment = inv;
+    Schedules = inv.Schedules.OrderBy(s => s.StartDate).ToList();
+    Contributions = await db.OneTimeContributions.Where(c => c.InvestmentId == inv.Id).OrderByDescending(c => c.Date).ToListAsync();
         return Page();
     }
 
@@ -137,7 +151,7 @@ public class EditModel(AppDbContext db) : PageModel
 
     public async Task<IActionResult> OnPostUpdateScheduleAsync(int id, int scheduleId, DateTime startDate, DateTime? endDate, int? dayOfMonth, decimal amount)
     {
-        var inv = await db.Investments.Include(i => i.Schedules).FirstOrDefaultAsync(i => i.Id == id);
+    var inv = await db.Investments.Include(i => i.Schedules).FirstOrDefaultAsync(i => i.Id == id);
         if (inv is null) return RedirectToPage("Index");
         var sched = inv.Schedules.FirstOrDefault(s => s.Id == scheduleId);
         if (sched is null) return RedirectToPage(new { id });
@@ -165,6 +179,7 @@ public class EditModel(AppDbContext db) : PageModel
         {
             Investment = inv;
             Schedules = inv.Schedules.OrderBy(s => s.StartDate).ToList();
+            Contributions = await db.OneTimeContributions.Where(c => c.InvestmentId == inv.Id).OrderByDescending(c => c.Date).ToListAsync();
             return Page();
         }
 
@@ -173,6 +188,37 @@ public class EditModel(AppDbContext db) : PageModel
         sched.DayOfMonth = dayOfMonth ?? startDate.Day;
         sched.Amount = amount;
         await db.SaveChangesAsync();
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostAddContributionAsync(int id)
+    {
+        // Avoid unrelated Investment validation
+        ModelState.Clear();
+        ModelState.Remove(nameof(Investment));
+
+        if (NewContribution.Amount <= 0)
+        {
+            ModelState.AddModelError("NewContribution.Amount", "Amount must be greater than 0.");
+        }
+        if (!ModelState.IsValid)
+        {
+            return await OnGetAsync(id);
+        }
+        NewContribution.InvestmentId = id;
+        db.OneTimeContributions.Add(NewContribution);
+        await db.SaveChangesAsync();
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostDeleteContributionAsync(int id, int contributionId)
+    {
+        var c = await db.OneTimeContributions.FirstOrDefaultAsync(x => x.Id == contributionId && x.InvestmentId == id);
+        if (c is not null)
+        {
+            db.OneTimeContributions.Remove(c);
+            await db.SaveChangesAsync();
+        }
         return RedirectToPage(new { id });
     }
 }

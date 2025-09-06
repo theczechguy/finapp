@@ -138,6 +138,13 @@ public class IndexModel(AppDbContext db) : PageModel
             .GroupBy(s => s.InvestmentId)
             .ToDictionaryAsync(g => g.Key, g => g.ToList());
 
+        // Fetch one-time contributions per investment
+        var oneTimes = await db.OneTimeContributions
+            .Where(c => invIds.Contains(c.InvestmentId))
+            .OrderBy(c => c.Date)
+            .GroupBy(c => c.InvestmentId)
+            .ToDictionaryAsync(g => g.Key, g => g.ToList());
+
         // Fetch earliest recorded value per investment (initial principal for one-time)
         var firstValues = new Dictionary<int, (DateTime date, decimal value)>();
         foreach (var id in invIds)
@@ -171,6 +178,14 @@ public class IndexModel(AppDbContext db) : PageModel
                         {
                             total += months * s.Amount;
                         }
+                    }
+                }
+                if (oneTimes.TryGetValue(r.InvestmentId, out var lumps))
+                {
+                    foreach (var c in lumps)
+                    {
+                        if (c.Date.Date <= r.AsOf.Date)
+                            total += c.Amount;
                     }
                 }
                 if (meta.ChargeAmount > 0 && total > 0)

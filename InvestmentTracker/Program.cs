@@ -63,10 +63,37 @@ api.MapGet("/investments", async (AppDbContext db) =>
         .ToListAsync());
 
 api.MapGet("/investments/{id:int}", async (int id, AppDbContext db) =>
-    await db.Investments.Include(i => i.Values).Include(i => i.Schedules).FirstOrDefaultAsync(i => i.Id == id)
+    await db.Investments.Include(i => i.Values).Include(i => i.Schedules).Include(i => i.OneTimeContributions).FirstOrDefaultAsync(i => i.Id == id)
         is { } inv
         ? Results.Ok(inv)
         : Results.NotFound());
+
+api.MapGet("/investments/{id:int}/contributions", async (int id, AppDbContext db) =>
+{
+    var list = await db.OneTimeContributions
+        .Where(c => c.InvestmentId == id)
+        .OrderBy(c => c.Date)
+        .Select(c => new { c.Id, c.Date, c.Amount })
+        .ToListAsync();
+    return Results.Ok(list);
+});
+
+api.MapPost("/investments/{id:int}/contributions", async (int id, OneTimeContribution input, AppDbContext db) =>
+{
+    if (id != input.InvestmentId) return Results.BadRequest("Mismatched InvestmentId");
+    db.OneTimeContributions.Add(input);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/investments/{id}/contributions/{input.Id}", new { input.Id });
+});
+
+api.MapDelete("/investments/{id:int}/contributions/{contributionId:int}", async (int id, int contributionId, AppDbContext db) =>
+{
+    var c = await db.OneTimeContributions.FirstOrDefaultAsync(x => x.Id == contributionId && x.InvestmentId == id);
+    if (c is null) return Results.NotFound();
+    db.OneTimeContributions.Remove(c);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+});
 
 api.MapPost("/investments", async (Investment input, AppDbContext db) =>
 {

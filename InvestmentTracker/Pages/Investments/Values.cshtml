@@ -49,6 +49,44 @@
         </div>
     </form>
 
+    <h5 class="mt-4">One-time Contributions</h5>
+    <form method="post" asp-page-handler="AddContribution" asp-route-id="@Model.Investment.Id" class="row g-3">
+        <div class="col-auto">
+            <label asp-for="NewContribution.Date" class="form-label">Date</label>
+            <input asp-for="NewContribution.Date" type="date" class="form-control" />
+            <span asp-validation-for="NewContribution.Date" class="text-danger"></span>
+        </div>
+        <div class="col-auto">
+            <label asp-for="NewContribution.Amount" class="form-label">Amount</label>
+            <input asp-for="NewContribution.Amount" class="form-control" inputmode="decimal" step="0.01" />
+            <span asp-validation-for="NewContribution.Amount" class="text-danger"></span>
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="submit" class="btn btn-outline-primary">Add Contribution</button>
+        </div>
+    </form>
+
+    @if (Model.Investment.OneTimeContributions?.Any() == true)
+    {
+        <table class="table table-sm mt-2">
+            <thead><tr><th>Date</th><th>Amount</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var c in Model.Investment.OneTimeContributions.OrderByDescending(c=>c.Date))
+            {
+                <tr>
+                    <td>@c.Date.ToShortDateString()</td>
+                    <td>@c.Amount.ToString("C")</td>
+                    <td>
+                        <form method="post" asp-page-handler="DeleteContribution" asp-route-id="@Model.Investment.Id" asp-route-contributionId="@c.Id" data-confirm="Delete this one-time contribution?">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+
     <h5 class="mt-4">History</h5>
     <table class="table table-sm">
         <thead>
