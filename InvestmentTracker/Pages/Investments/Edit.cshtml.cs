@@ -2,6 +2,7 @@ using InvestmentTracker.Data;
 using InvestmentTracker.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.EntityFrameworkCore;
 
 namespace InvestmentTracker.Pages.Investments;
@@ -9,6 +10,7 @@ namespace InvestmentTracker.Pages.Investments;
 public class EditModel(AppDbContext db) : PageModel
 {
     [BindProperty]
+    [ValidateNever]
     public Investment Investment { get; set; } = new();
 
     public List<ContributionSchedule> Schedules { get; set; } = new();
@@ -36,17 +38,24 @@ public class EditModel(AppDbContext db) : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!ModelState.IsValid)
+        ModelState.Clear();
+        if (!TryValidateModel(Investment, nameof(Investment)))
         {
+            var reloaded = await db.Investments.Include(i => i.Schedules).FirstOrDefaultAsync(i => i.Id == Investment.Id);
+            if (reloaded is not null)
+            {
+                Investment = reloaded;
+                Schedules = reloaded.Schedules.OrderBy(s => s.StartDate).ToList();
+            }
             return Page();
         }
 
         var existing = await db.Investments.FirstOrDefaultAsync(i => i.Id == Investment.Id);
         if (existing is null) return RedirectToPage("Index");
 
-        existing.Name = Investment.Name;
-        existing.Provider = Investment.Provider;
-        existing.Type = Investment.Type;
+    existing.Name = Investment.Name;
+    existing.Provider = Investment.Provider;
+    existing.Type = Investment.Type;
     existing.Currency = Investment.Currency;
 
         await db.SaveChangesAsync();
@@ -57,6 +66,16 @@ public class EditModel(AppDbContext db) : PageModel
     {
         var inv = await db.Investments.Include(i => i.Schedules).FirstOrDefaultAsync(i => i.Id == id);
         if (inv is null) return RedirectToPage("Index");
+
+    // Clear any unrelated model state (e.g., Investment.Name required)
+    ModelState.Clear();
+
+    // Ignore unrelated Investment validation during schedule add
+    ModelState.Remove("Investment");
+    ModelState.Remove("Investment.Name");
+    ModelState.Remove("Investment.Type");
+    ModelState.Remove("Investment.Currency");
+    ModelState.Remove("Investment.Provider");
 
         // Basic validation
         if (!NewSchedule.StartDate.HasValue)
@@ -69,7 +88,7 @@ public class EditModel(AppDbContext db) : PageModel
             ModelState.AddModelError("NewSchedule.DayOfMonth", "Day of month must be between 1 and 31.");
 
         // Overlap validation
-        if (ModelState.IsValid)
+    if (ModelState.IsValid)
         {
             var ns = new ContributionSchedule
             {
@@ -121,6 +140,16 @@ public class EditModel(AppDbContext db) : PageModel
         if (inv is null) return RedirectToPage("Index");
         var sched = inv.Schedules.FirstOrDefault(s => s.Id == scheduleId);
         if (sched is null) return RedirectToPage(new { id });
+
+    // Clear any unrelated model state (e.g., Investment.Name required)
+    ModelState.Clear();
+
+    // Ignore unrelated Investment validation during schedule update
+    ModelState.Remove("Investment");
+    ModelState.Remove("Investment.Name");
+    ModelState.Remove("Investment.Type");
+    ModelState.Remove("Investment.Currency");
+    ModelState.Remove("Investment.Provider");
 
         if (amount <= 0) ModelState.AddModelError(string.Empty, "Amount must be > 0");
         if (dayOfMonth.HasValue && (dayOfMonth < 1 || dayOfMonth > 31)) ModelState.AddModelError(string.Empty, "Day must be 1-31");

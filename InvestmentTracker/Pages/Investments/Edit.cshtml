@@ -29,8 +29,14 @@
         <select asp-for="Investment.Currency" class="form-select" asp-items="Html.GetEnumSelectList<Currency>()"></select>
     </div>
 
-    <div class="mb-3">
-        <h5>Contribution Schedules</h5>
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a class="btn btn-secondary" asp-page="Index">Cancel</a>
+    </div>
+</form>
+
+<div class="mb-3 mt-4">
+    <h5>Contribution Schedules</h5>
         @if (Model.Investment.Type == InvestmentType.Recurring)
         {
             @if (Model.Schedules?.Any() == true)
@@ -158,8 +164,4 @@
     </script>
 }
 
-    <button type="submit" class="btn btn-primary">Save</button>
-    <a class="btn btn-secondary" asp-page="Index">Cancel</a>
-</form>
 
- 
