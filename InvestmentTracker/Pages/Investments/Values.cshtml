@@ -65,7 +65,7 @@
                 <td>@v.AsOf.ToShortDateString()</td>
                 <td>@v.Value.ToString("C")</td>
                 <td>
-                    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Investment.Id" asp-route-valueId="@v.Id">
+                    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Investment.Id" asp-route-valueId="@v.Id" data-confirm="Delete this value record?">
                         <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
                     </form>
                 </td>

@@ -24,3 +24,35 @@
 		return defaultRange.call(this, value, element, param);
 	};
 })(jQuery);
+
+// Bootstrap confirm modal helper for delete forms
+(function(){
+	const modalEl = document.getElementById('confirmModal');
+	if (!modalEl) return;
+	const modal = new bootstrap.Modal(modalEl);
+	const msgEl = document.getElementById('confirmModalMessage');
+	const okBtn = document.getElementById('confirmModalOk');
+	let pendingForm = null;
+
+	document.addEventListener('submit', function(e){
+		const form = e.target;
+		if (form instanceof HTMLFormElement && form.dataset.confirm) {
+			e.preventDefault();
+			pendingForm = form;
+			if (msgEl) msgEl.textContent = form.dataset.confirm;
+			modal.show();
+		}
+	}, true);
+
+	if (okBtn) {
+		okBtn.addEventListener('click', function(){
+			if (pendingForm) {
+				const f = pendingForm;
+				pendingForm = null;
+				modal.hide();
+				// submit after closing to avoid re-trigger
+				setTimeout(()=>f.submit(), 0);
+			}
+		});
+	}
+})();

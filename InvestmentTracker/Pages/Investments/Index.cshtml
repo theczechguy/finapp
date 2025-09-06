@@ -32,6 +32,9 @@
         <td>
             <a class="btn btn-sm btn-outline-secondary" asp-page="Values" asp-route-id="@i.Id">Values</a>
             <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@i.Id">Edit</a>
+            <form method="post" asp-page-handler="Delete" asp-route-id="@i.Id" class="d-inline" data-confirm="Delete this investment? All its values and schedules will be removed.">
+                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+            </form>
         </td>
     </tr>
 }

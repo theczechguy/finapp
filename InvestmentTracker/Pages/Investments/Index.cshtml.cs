@@ -16,4 +16,15 @@ public class IndexModel(AppDbContext db) : PageModel
             .OrderBy(i => i.Name)
             .ToListAsync();
     }
+
+    public async Task OnPostDeleteAsync(int id)
+    {
+        var inv = await db.Investments.FirstOrDefaultAsync(i => i.Id == id);
+        if (inv is not null)
+        {
+            db.Investments.Remove(inv);
+            await db.SaveChangesAsync();
+        }
+        await OnGetAsync();
+    }
 }
