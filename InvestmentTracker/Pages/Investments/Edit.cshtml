@@ -41,7 +41,7 @@
         {
             @if (Model.Schedules?.Any() == true)
             {
-                <table class="table table-sm">
+                <table class="table table-sm align-middle w-auto schedules-table">
                     <thead>
                         <tr>
                             <th>Start</th>
@@ -54,22 +54,29 @@
                     <tbody>
                     @foreach (var s in Model.Schedules)
                     {
+                        var formId = $"updateForm-{s.Id}";
                         <tr>
-                            <td colspan="5">
-                                <div class="d-flex flex-wrap align-items-center gap-2">
-                                    <form method="post" asp-page-handler="UpdateSchedule" class="d-flex flex-wrap align-items-center gap-2" data-schedule-id="@s.Id">
-                                        <input type="hidden" name="id" value="@Model.Investment.Id" />
-                                        <input type="hidden" name="scheduleId" value="@s.Id" />
-                                        <input class="form-control form-control-sm" type="date" name="startDate" value="@s.StartDate.ToString("yyyy-MM-dd")" required />
-                                        <input class="form-control form-control-sm" type="date" name="endDate" value="@(s.EndDate?.ToString("yyyy-MM-dd"))" />
-                                        <input class="form-control form-control-sm" type="number" name="dayOfMonth" min="1" max="31" value="@(s.DayOfMonth ?? s.StartDate.Day)" />
-                                        <input class="form-control form-control-sm" type="number" step="0.01" inputmode="decimal" name="amount" value="@s.Amount" required />
-                                        <button type="submit" class="btn btn-sm btn-outline-primary">Update</button>
-                                    </form>
-                                    <form method="post" asp-page-handler="DeleteSchedule" asp-route-id="@Model.Investment.Id" asp-route-scheduleId="@s.Id">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                                    </form>
-                                </div>
+                            <td>
+                                <input class="form-control form-control-sm w-auto" type="date" name="startDate" value="@s.StartDate.ToString("yyyy-MM-dd")" form="@formId" required />
+                            </td>
+                            <td>
+                                <input class="form-control form-control-sm w-auto" type="date" name="endDate" value="@(s.EndDate?.ToString("yyyy-MM-dd"))" form="@formId" />
+                            </td>
+                            <td>
+                                <input class="form-control form-control-sm w-auto" type="number" name="dayOfMonth" min="1" max="31" value="@(s.DayOfMonth ?? s.StartDate.Day)" form="@formId" />
+                            </td>
+                            <td>
+                                <input class="form-control form-control-sm w-auto" type="number" step="0.01" inputmode="decimal" name="amount" value="@s.Amount" form="@formId" required />
+                            </td>
+                            <td>
+                                <form id="@formId" method="post" asp-page-handler="UpdateSchedule" class="update-schedule-form d-inline" data-schedule-id="@s.Id">
+                                    <input type="hidden" name="id" value="@Model.Investment.Id" />
+                                    <input type="hidden" name="scheduleId" value="@s.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Update</button>
+                                </form>
+                                <form method="post" asp-page-handler="DeleteSchedule" asp-route-id="@Model.Investment.Id" asp-route-scheduleId="@s.Id" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
                             </td>
                         </tr>
                     }
@@ -146,7 +153,7 @@
                 });
             }
 
-            document.querySelectorAll('form[asp-page-handler="UpdateSchedule"]').forEach(function(form){
+            document.querySelectorAll('form.update-schedule-form').forEach(function(form){
                 form.addEventListener('submit', function(e){
                     const start = parseDate(form.querySelector('[name="startDate"]').value);
                     const endVal = form.querySelector('[name="endDate"]').value;

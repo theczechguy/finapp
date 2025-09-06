@@ -20,3 +20,22 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+/* Compact schedules table spacing */
+.schedules-table {
+  white-space: nowrap;
+  width: auto;
+}
+.schedules-table th,
+.schedules-table td {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+.schedules-table input.form-control.form-control-sm.w-auto {
+  max-width: 12ch;
+}
+.schedules-table input[type="date"].form-control.form-control-sm.w-auto {
+  max-width: 18ch;
+}
