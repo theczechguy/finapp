@@ -1,12 +1,11 @@
-using InvestmentTracker.Data;
 using InvestmentTracker.Models;
+using InvestmentTracker.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
 
 namespace InvestmentTracker.Pages.Investments;
 
-public class ValuesModel(AppDbContext db) : PageModel
+public class ValuesModel(IInvestmentService investmentService) : PageModel
 {
     public Investment? Investment { get; private set; }
 
@@ -18,11 +17,7 @@ public class ValuesModel(AppDbContext db) : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id)
     {
-        Investment = await db.Investments
-            .Include(i => i.Values)
-            .Include(i => i.Schedules)
-            .Include(i => i.OneTimeContributions)
-            .FirstOrDefaultAsync(i => i.Id == id);
+        Investment = await investmentService.GetInvestmentAsync(id);
         if (Investment is null) return RedirectToPage("Index");
         NewValue.InvestmentId = id;
         Investment.Values = Investment.Values.OrderByDescending(v => v.AsOf).ToList();
@@ -35,19 +30,13 @@ public class ValuesModel(AppDbContext db) : PageModel
     if (!TryValidateModel(NewValue, nameof(NewValue)))
         {
             // reload investment list for view
-            Investment = await db.Investments
-                .Include(i => i.Values)
-                .Include(i => i.Schedules)
-                .Include(i => i.OneTimeContributions)
-                .FirstOrDefaultAsync(i => i.Id == id);
+            Investment = await investmentService.GetInvestmentAsync(id);
             if (Investment is not null)
                 Investment.Values = Investment.Values.OrderByDescending(v => v.AsOf).ToList();
             return Page();
         }
 
-    NewValue.InvestmentId = id;
-        db.InvestmentValues.Add(NewValue);
-        await db.SaveChangesAsync();
+        await investmentService.AddInvestmentValueAsync(id, NewValue);
         return RedirectToPage(new { id });
     }
 
@@ -55,33 +44,26 @@ public class ValuesModel(AppDbContext db) : PageModel
     {
         if (!ModelState.IsValid)
         {
-            return await OnGetAsync(id);
+            Investment = await investmentService.GetInvestmentAsync(id);
+            if (Investment is not null)
+            {
+                Investment.Values = Investment.Values.OrderByDescending(v => v.AsOf).ToList();
+            }
+            return Page();
         }
-        NewContribution.InvestmentId = id;
-        db.OneTimeContributions.Add(NewContribution);
-        await db.SaveChangesAsync();
+        await investmentService.AddOneTimeContributionAsync(id, NewContribution);
         return RedirectToPage(new { id });
     }
 
     public async Task<IActionResult> OnPostDeleteContributionAsync(int id, int contributionId)
     {
-        var c = await db.OneTimeContributions.FirstOrDefaultAsync(x => x.Id == contributionId && x.InvestmentId == id);
-        if (c is not null)
-        {
-            db.OneTimeContributions.Remove(c);
-            await db.SaveChangesAsync();
-        }
+        await investmentService.DeleteOneTimeContributionAsync(id, contributionId);
         return RedirectToPage(new { id });
     }
 
     public async Task<IActionResult> OnPostDeleteAsync(int id, int valueId)
     {
-        var value = await db.InvestmentValues.FirstOrDefaultAsync(v => v.Id == valueId && v.InvestmentId == id);
-        if (value is not null)
-        {
-            db.InvestmentValues.Remove(value);
-            await db.SaveChangesAsync();
-        }
+        await investmentService.DeleteInvestmentValueAsync(id, valueId);
         return RedirectToPage(new { id });
     }
 }

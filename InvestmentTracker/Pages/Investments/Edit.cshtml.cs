@@ -1,20 +1,19 @@
-using InvestmentTracker.Data;
 using InvestmentTracker.Models;
+using InvestmentTracker.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
-using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace InvestmentTracker.Pages.Investments;
 
-public class EditModel(AppDbContext db) : PageModel
+public class EditModel(IInvestmentService investmentService) : PageModel
 {
     [BindProperty]
-    [ValidateNever]
     public Investment Investment { get; set; } = new();
 
     public List<ContributionSchedule> Schedules { get; set; } = new();
-
     public List<OneTimeContribution> Contributions { get; set; } = new();
 
     [BindProperty]
@@ -34,10 +33,7 @@ public class EditModel(AppDbContext db) : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id)
     {
-        var entity = await db.Investments
-            .Include(i => i.Schedules.OrderBy(s => s.StartDate))
-            .Include(i => i.OneTimeContributions)
-            .FirstOrDefaultAsync(i => i.Id == id);
+        var entity = await investmentService.GetInvestmentAsync(id);
         if (entity is null) return RedirectToPage("Index");
         Investment = entity;
         Schedules = entity.Schedules.OrderBy(s => s.StartDate).ToList();
@@ -47,51 +43,27 @@ public class EditModel(AppDbContext db) : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        ModelState.Clear();
-        if (!TryValidateModel(Investment, nameof(Investment)))
+        if (!ModelState.IsValid)
         {
-            var reloaded = await db.Investments
-                .Include(i => i.Schedules)
-                .Include(i => i.OneTimeContributions)
-                .FirstOrDefaultAsync(i => i.Id == Investment.Id);
-            if (reloaded is not null)
-            {
-                Investment = reloaded;
-                Schedules = reloaded.Schedules.OrderBy(s => s.StartDate).ToList();
-                Contributions = reloaded.OneTimeContributions.OrderByDescending(c => c.Date).ToList();
-            }
             return Page();
         }
 
-        var existing = await db.Investments.FirstOrDefaultAsync(i => i.Id == Investment.Id);
-        if (existing is null) return RedirectToPage("Index");
-
-    existing.Name = Investment.Name;
-    existing.Provider = Investment.Provider;
-    existing.Type = Investment.Type;
-    existing.Currency = Investment.Currency;
-    existing.ChargeAmount = Investment.ChargeAmount;
-
-        await db.SaveChangesAsync();
+        await investmentService.UpdateInvestmentAsync(Investment.Id, Investment);
         return RedirectToPage("Index");
     }
 
     public async Task<IActionResult> OnPostAddScheduleAsync(int id)
     {
-    var inv = await db.Investments.Include(i => i.Schedules).FirstOrDefaultAsync(i => i.Id == id);
+        var inv = await investmentService.GetInvestmentAsync(id);
         if (inv is null) return RedirectToPage("Index");
 
-    // Clear any unrelated model state (e.g., Investment.Name required)
-    ModelState.Clear();
+        ModelState.Clear();
+        ModelState.Remove("Investment");
+        ModelState.Remove("Investment.Name");
+        ModelState.Remove("Investment.Type");
+        ModelState.Remove("Investment.Currency");
+        ModelState.Remove("Investment.Provider");
 
-    // Ignore unrelated Investment validation during schedule add
-    ModelState.Remove("Investment");
-    ModelState.Remove("Investment.Name");
-    ModelState.Remove("Investment.Type");
-    ModelState.Remove("Investment.Currency");
-    ModelState.Remove("Investment.Provider");
-
-        // Basic validation
         if (!NewSchedule.StartDate.HasValue)
             ModelState.AddModelError("NewSchedule.StartDate", "Start date is required.");
         if (!NewSchedule.Amount.HasValue || NewSchedule.Amount.Value <= 0)
@@ -101,8 +73,7 @@ public class EditModel(AppDbContext db) : PageModel
         if (NewSchedule.DayOfMonth.HasValue && (NewSchedule.DayOfMonth < 1 || NewSchedule.DayOfMonth > 31))
             ModelState.AddModelError("NewSchedule.DayOfMonth", "Day of month must be between 1 and 31.");
 
-        // Overlap validation
-    if (ModelState.IsValid)
+        if (ModelState.IsValid)
         {
             var ns = new ContributionSchedule
             {
@@ -114,86 +85,32 @@ public class EditModel(AppDbContext db) : PageModel
                 DayOfMonth = NewSchedule.DayOfMonth ?? NewSchedule.StartDate!.Value.Day
             };
 
-            var newStart = ns.StartDate;
-            var newEnd = ns.EndDate ?? DateTime.MaxValue.Date;
+            var (schedule, error) = await investmentService.AddContributionScheduleAsync(id, ns);
 
-            bool overlaps = inv.Schedules.Any(s =>
-                newStart <= (s.EndDate?.Date ?? DateTime.MaxValue.Date) && s.StartDate.Date <= newEnd);
-            if (overlaps)
+            if (error is not null)
             {
-                ModelState.AddModelError(string.Empty, "New schedule overlaps an existing schedule.");
+                ModelState.AddModelError(string.Empty, error);
             }
             else
             {
-                db.ContributionSchedules.Add(ns);
-                await db.SaveChangesAsync();
                 return RedirectToPage(new { id });
             }
         }
 
-        // Reload page data on validation errors
-    Investment = inv;
-    Schedules = inv.Schedules.OrderBy(s => s.StartDate).ToList();
-    Contributions = await db.OneTimeContributions.Where(c => c.InvestmentId == inv.Id).OrderByDescending(c => c.Date).ToListAsync();
+        Investment = inv;
+        Schedules = inv.Schedules.OrderBy(s => s.StartDate).ToList();
+        Contributions = inv.OneTimeContributions.OrderByDescending(c => c.Date).ToList();
         return Page();
     }
 
     public async Task<IActionResult> OnPostDeleteScheduleAsync(int id, int scheduleId)
     {
-        var sched = await db.ContributionSchedules.FirstOrDefaultAsync(s => s.Id == scheduleId && s.InvestmentId == id);
-        if (sched is not null)
-        {
-            db.ContributionSchedules.Remove(sched);
-            await db.SaveChangesAsync();
-        }
-        return RedirectToPage(new { id });
-    }
-
-    public async Task<IActionResult> OnPostUpdateScheduleAsync(int id, int scheduleId, DateTime startDate, DateTime? endDate, int? dayOfMonth, decimal amount)
-    {
-    var inv = await db.Investments.Include(i => i.Schedules).FirstOrDefaultAsync(i => i.Id == id);
-        if (inv is null) return RedirectToPage("Index");
-        var sched = inv.Schedules.FirstOrDefault(s => s.Id == scheduleId);
-        if (sched is null) return RedirectToPage(new { id });
-
-    // Clear any unrelated model state (e.g., Investment.Name required)
-    ModelState.Clear();
-
-    // Ignore unrelated Investment validation during schedule update
-    ModelState.Remove("Investment");
-    ModelState.Remove("Investment.Name");
-    ModelState.Remove("Investment.Type");
-    ModelState.Remove("Investment.Currency");
-    ModelState.Remove("Investment.Provider");
-
-        if (amount <= 0) ModelState.AddModelError(string.Empty, "Amount must be > 0");
-        if (dayOfMonth.HasValue && (dayOfMonth < 1 || dayOfMonth > 31)) ModelState.AddModelError(string.Empty, "Day must be 1-31");
-        if (endDate.HasValue && endDate.Value.Date < startDate.Date) ModelState.AddModelError(string.Empty, "End before Start");
-
-        var newStart = startDate.Date;
-        var newEnd = endDate?.Date ?? DateTime.MaxValue.Date;
-        bool overlaps = inv.Schedules.Any(s => s.Id != scheduleId && newStart <= (s.EndDate?.Date ?? DateTime.MaxValue.Date) && s.StartDate.Date <= newEnd);
-        if (overlaps) ModelState.AddModelError(string.Empty, "Overlaps another schedule");
-
-        if (!ModelState.IsValid)
-        {
-            Investment = inv;
-            Schedules = inv.Schedules.OrderBy(s => s.StartDate).ToList();
-            Contributions = await db.OneTimeContributions.Where(c => c.InvestmentId == inv.Id).OrderByDescending(c => c.Date).ToListAsync();
-            return Page();
-        }
-
-        sched.StartDate = newStart;
-        sched.EndDate = endDate?.Date;
-        sched.DayOfMonth = dayOfMonth ?? startDate.Day;
-        sched.Amount = amount;
-        await db.SaveChangesAsync();
+        await investmentService.DeleteContributionScheduleAsync(id, scheduleId);
         return RedirectToPage(new { id });
     }
 
     public async Task<IActionResult> OnPostAddContributionAsync(int id)
     {
-        // Avoid unrelated Investment validation
         ModelState.Clear();
         ModelState.Remove(nameof(Investment));
 
@@ -205,20 +122,14 @@ public class EditModel(AppDbContext db) : PageModel
         {
             return await OnGetAsync(id);
         }
-        NewContribution.InvestmentId = id;
-        db.OneTimeContributions.Add(NewContribution);
-        await db.SaveChangesAsync();
+        
+        await investmentService.AddOneTimeContributionAsync(id, NewContribution);
         return RedirectToPage(new { id });
     }
 
     public async Task<IActionResult> OnPostDeleteContributionAsync(int id, int contributionId)
     {
-        var c = await db.OneTimeContributions.FirstOrDefaultAsync(x => x.Id == contributionId && x.InvestmentId == id);
-        if (c is not null)
-        {
-            db.OneTimeContributions.Remove(c);
-            await db.SaveChangesAsync();
-        }
+        await investmentService.DeleteOneTimeContributionAsync(id, contributionId);
         return RedirectToPage(new { id });
     }
 }

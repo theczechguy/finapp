@@ -1,30 +1,26 @@
-using InvestmentTracker.Data;
 using InvestmentTracker.Models;
+using InvestmentTracker.Services;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
 
 namespace InvestmentTracker.Pages.Investments;
 
-public class IndexModel(AppDbContext db) : PageModel
+public class IndexModel(IInvestmentService investmentService) : PageModel
 {
-    public List<Investment> Items { get; private set; } = new();
+    public IList<Investment> Investments { get;set; } = default!;
 
     public async Task OnGetAsync()
     {
-        Items = await db.Investments
-            .Include(i => i.Values)
-            .OrderBy(i => i.Name)
-            .ToListAsync();
+        var investments = await investmentService.GetAllInvestmentsAsync();
+        Investments = investments.ToList();
     }
 
-    public async Task OnPostDeleteAsync(int id)
+    public async Task<IActionResult> OnPostDeleteAsync(int id)
     {
-        var inv = await db.Investments.FirstOrDefaultAsync(i => i.Id == id);
-        if (inv is not null)
-        {
-            db.Investments.Remove(inv);
-            await db.SaveChangesAsync();
-        }
-        await OnGetAsync();
+        await investmentService.DeleteInvestmentAsync(id);
+        return RedirectToPage();
     }
 }

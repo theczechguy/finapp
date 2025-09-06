@@ -19,7 +19,7 @@
         </tr>
     </thead>
     <tbody>
-@foreach (var i in Model.Items)
+@foreach (var i in Model.Investments)
 {
     var latest = i.Values.OrderByDescending(v => v.AsOf).FirstOrDefault();
     <tr>

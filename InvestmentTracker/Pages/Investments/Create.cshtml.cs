@@ -1,11 +1,12 @@
-using InvestmentTracker.Data;
 using InvestmentTracker.Models;
+using InvestmentTracker.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.Threading.Tasks;
 
 namespace InvestmentTracker.Pages.Investments;
 
-public class CreateModel(AppDbContext db) : PageModel
+public class CreateModel(IInvestmentService investmentService) : PageModel
 {
     [BindProperty]
     public Investment Investment { get; set; } = new();
@@ -21,10 +22,7 @@ public class CreateModel(AppDbContext db) : PageModel
             return Page();
         }
 
-    // No legacy recurring fields; schedules managed separately
-
-        db.Investments.Add(Investment);
-        await db.SaveChangesAsync();
+        await investmentService.AddInvestmentAsync(Investment);
         return RedirectToPage("Index");
     }
 }

@@ -75,11 +75,6 @@
                                 <input class="form-control form-control-sm w-auto" type="text" inputmode="decimal" name="amount" value="@s.Amount" form="@formId" required />
                             </td>
                             <td>
-                                <form id="@formId" method="post" asp-page-handler="UpdateSchedule" class="update-schedule-form d-inline" data-schedule-id="@s.Id">
-                                    <input type="hidden" name="id" value="@Model.Investment.Id" />
-                                    <input type="hidden" name="scheduleId" value="@s.Id" />
-                                    <button type="submit" class="btn btn-sm btn-outline-primary">Update</button>
-                                </form>
                                 <form method="post" asp-page-handler="DeleteSchedule" asp-route-id="@Model.Investment.Id" asp-route-scheduleId="@s.Id" class="d-inline">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
                                 </form>
@@ -181,52 +176,6 @@
 
 @section Scripts{
     <partial name="_ValidationScriptsPartial" />
-    <script>
-        (function(){
-            function parseDate(val) { return val ? new Date(val + 'T00:00:00') : null; }
-            function showError(msg){ alert(msg); }
-
-            const addForm = document.getElementById('addScheduleForm');
-            if (addForm) {
-                addForm.addEventListener('submit', function(e){
-                    const start = parseDate(addForm.querySelector('[name="NewSchedule.StartDate"]').value);
-                    const end = parseDate(addForm.querySelector('[name="NewSchedule.EndDate"]').value);
-                    const amount = parseFloat(addForm.querySelector('[name="NewSchedule.Amount"]').value.replace(',', '.'));
-                    const domInput = addForm.querySelector('[name="NewSchedule.DayOfMonth"]').value;
-                    const dom = domInput ? parseInt(domInput, 10) : null;
-                    if (!start) { e.preventDefault(); return showError('Start date is required.'); }
-                    if (end && end < start) { e.preventDefault(); return showError('End date must be on or after Start date.'); }
-                    if (isNaN(amount) || amount <= 0) { e.preventDefault(); return showError('Amount must be greater than 0.'); }
-                    if (dom !== null && (dom < 1 || dom > 31)) { e.preventDefault(); return showError('Day of month must be between 1 and 31.'); }
-                });
-            }
-
-            document.querySelectorAll('form.update-schedule-form').forEach(function(form){
-                form.addEventListener('submit', function(e){
-                    const start = parseDate(form.querySelector('[name="startDate"]').value);
-                    const endVal = form.querySelector('[name="endDate"]').value;
-                    const end = parseDate(endVal);
-                    const amount = parseFloat(form.querySelector('[name="amount"]').value.replace(',', '.'));
-                    const domInput = form.querySelector('[name="dayOfMonth"]').value;
-                    const dom = domInput ? parseInt(domInput, 10) : null;
-                    if (!start) { e.preventDefault(); return showError('Start date is required.'); }
-                    if (end && end < start) { e.preventDefault(); return showError('End date must be on or after Start date.'); }
-                    if (isNaN(amount) || amount <= 0) { e.preventDefault(); return showError('Amount must be greater than 0.'); }
-                    if (dom !== null && (dom < 1 || dom > 31)) { e.preventDefault(); return showError('Day of month must be between 1 and 31.'); }
-                });
-            });
-
-            const addContributionForm = document.getElementById('addContributionForm');
-            if (addContributionForm) {
-                addContributionForm.addEventListener('submit', function(e){
-                    const date = parseDate(addContributionForm.querySelector('[name="NewContribution.Date"]').value);
-                    const amount = parseFloat(addContributionForm.querySelector('[name="NewContribution.Amount"]').value.replace(',', '.'));
-                    if (!date) { e.preventDefault(); return showError('Date is required.'); }
-                    if (isNaN(amount) || amount <= 0) { e.preventDefault(); return showError('Amount must be greater than 0.'); }
-                });
-            }
-        })();
-    </script>
 }
 
 

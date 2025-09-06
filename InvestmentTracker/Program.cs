@@ -1,6 +1,7 @@
 using InvestmentTracker.Data;
 using InvestmentTracker.Models;
 using InvestmentTracker.Infrastructure;
+using InvestmentTracker.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +19,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
                            ?? "Data Source=investmenttracker.db";
     options.UseSqlite(connectionString);
 });
+
+builder.Services.AddScoped<IInvestmentService, InvestmentService>();
 
 var app = builder.Build();
 
@@ -57,126 +60,90 @@ using (var scope = app.Services.CreateScope())
 // Minimal API endpoints for future extensibility
 var api = app.MapGroup("/api");
 
-api.MapGet("/investments", async (AppDbContext db) =>
-    await db.Investments
-    .Select(i => new { i.Id, i.Name, i.Provider, i.Type, i.Currency, i.ChargeAmount })
-        .ToListAsync());
+api.MapGet("/investments", async (IInvestmentService service) =>
+    Results.Ok(await service.GetAllInvestmentsAsync()));
 
-api.MapGet("/investments/{id:int}", async (int id, AppDbContext db) =>
-    await db.Investments.Include(i => i.Values).Include(i => i.Schedules).Include(i => i.OneTimeContributions).FirstOrDefaultAsync(i => i.Id == id)
+api.MapGet("/investments/{id:int}", async (int id, IInvestmentService service) =>
+    await service.GetInvestmentAsync(id)
         is { } inv
         ? Results.Ok(inv)
         : Results.NotFound());
 
-api.MapGet("/investments/{id:int}/contributions", async (int id, AppDbContext db) =>
+api.MapGet("/investments/{id:int}/contributions", async (int id, IInvestmentService service) =>
 {
-    var list = await db.OneTimeContributions
-        .Where(c => c.InvestmentId == id)
-        .OrderBy(c => c.Date)
-        .Select(c => new { c.Id, c.Date, c.Amount })
-        .ToListAsync();
+    var list = await service.GetOneTimeContributionsAsync(id);
     return Results.Ok(list);
 });
 
-api.MapPost("/investments/{id:int}/contributions", async (int id, OneTimeContribution input, AppDbContext db) =>
+api.MapPost("/investments/{id:int}/contributions", async (int id, OneTimeContribution input, IInvestmentService service) =>
 {
     if (id != input.InvestmentId) return Results.BadRequest("Mismatched InvestmentId");
-    db.OneTimeContributions.Add(input);
-    await db.SaveChangesAsync();
+    await service.AddOneTimeContributionAsync(id, input);
     return Results.Created($"/api/investments/{id}/contributions/{input.Id}", new { input.Id });
 });
 
-api.MapDelete("/investments/{id:int}/contributions/{contributionId:int}", async (int id, int contributionId, AppDbContext db) =>
+api.MapDelete("/investments/{id:int}/contributions/{contributionId:int}", async (int id, int contributionId, IInvestmentService service) =>
 {
-    var c = await db.OneTimeContributions.FirstOrDefaultAsync(x => x.Id == contributionId && x.InvestmentId == id);
-    if (c is null) return Results.NotFound();
-    db.OneTimeContributions.Remove(c);
-    await db.SaveChangesAsync();
+    await service.DeleteOneTimeContributionAsync(id, contributionId);
     return Results.NoContent();
 });
 
-api.MapPost("/investments", async (Investment input, AppDbContext db) =>
+api.MapPost("/investments", async (Investment input, IInvestmentService service) =>
 {
-    db.Investments.Add(input);
-    await db.SaveChangesAsync();
-    return Results.Created($"/api/investments/{input.Id}", new { input.Id });
+    var investment = await service.AddInvestmentAsync(input);
+    return Results.Created($"/api/investments/{investment.Id}", new { investment.Id });
 });
 
-api.MapPut("/investments/{id:int}", async (int id, Investment update, AppDbContext db) =>
+api.MapPut("/investments/{id:int}", async (int id, Investment update, IInvestmentService service) =>
 {
-    var existing = await db.Investments.FindAsync(id);
-    if (existing is null) return Results.NotFound();
-    existing.Name = update.Name;
-    existing.Provider = update.Provider;
-    existing.Type = update.Type;
-    existing.Currency = update.Currency;
-    existing.ChargeAmount = update.ChargeAmount;
-    await db.SaveChangesAsync();
-    return Results.NoContent();
+    var success = await service.UpdateInvestmentAsync(id, update);
+    return success ? Results.NoContent() : Results.NotFound();
 });
 
-api.MapDelete("/investments/{id:int}", async (int id, AppDbContext db) =>
+api.MapDelete("/investments/{id:int}", async (int id, IInvestmentService service) =>
 {
-    var existing = await db.Investments.FindAsync(id);
-    if (existing is null) return Results.NotFound();
-    db.Remove(existing);
-    await db.SaveChangesAsync();
-    return Results.NoContent();
+    var success = await service.DeleteInvestmentAsync(id);
+    return success ? Results.NoContent() : Results.NotFound();
 });
 
-api.MapGet("/investments/{id:int}/values", async (int id, AppDbContext db) =>
+api.MapGet("/investments/{id:int}/values", async (int id, IInvestmentService service) =>
 {
-    var values = await db.InvestmentValues
-        .Where(v => v.InvestmentId == id)
-        .OrderBy(v => v.AsOf)
-        .Select(v => new { v.Id, v.AsOf, v.Value })
-        .ToListAsync();
+    var values = await service.GetInvestmentValuesAsync(id);
     return Results.Ok(values);
 });
 
-api.MapPost("/investments/{id:int}/values", async (int id, InvestmentValue input, AppDbContext db) =>
+api.MapPost("/investments/{id:int}/values", async (int id, InvestmentValue input, IInvestmentService service) =>
 {
     if (id != input.InvestmentId) return Results.BadRequest("Mismatched InvestmentId");
-    db.InvestmentValues.Add(input);
-    await db.SaveChangesAsync();
+    await service.AddInvestmentValueAsync(id, input);
     return Results.Created($"/api/investments/{id}/values/{input.Id}", new { input.Id });
 });
 
 // Contribution Schedules APIs
-api.MapGet("/investments/{id:int}/schedules", async (int id, AppDbContext db) =>
+api.MapGet("/investments/{id:int}/schedules", async (int id, IInvestmentService service) =>
 {
-    var list = await db.ContributionSchedules
-        .Where(s => s.InvestmentId == id)
-        .OrderBy(s => s.StartDate)
-        .Select(s => new { s.Id, s.StartDate, s.EndDate, s.Amount, s.Frequency, s.DayOfMonth })
-        .ToListAsync();
+    var list = await service.GetContributionSchedulesAsync(id);
     return Results.Ok(list);
 });
 
-api.MapPost("/investments/{id:int}/schedules", async (int id, ContributionSchedule input, AppDbContext db) =>
+api.MapPost("/investments/{id:int}/schedules", async (int id, ContributionSchedule input, IInvestmentService service) =>
 {
     if (id != input.InvestmentId) return Results.BadRequest("Mismatched InvestmentId");
-    // basic overlap check
-    var newStart = input.StartDate.Date;
-    var newEnd = (input.EndDate?.Date) ?? DateTime.MaxValue.Date;
-    var overlaps = await db.ContributionSchedules.AnyAsync(s => s.InvestmentId == id &&
-        newStart <= (s.EndDate == null ? DateTime.MaxValue.Date : s.EndDate.Value.Date) && s.StartDate.Date <= newEnd);
-    if (overlaps) return Results.BadRequest("Overlaps existing schedule.");
-    input.Frequency = ContributionFrequency.Monthly;
-    if (input.DayOfMonth is null || input.DayOfMonth < 1 || input.DayOfMonth > 31)
-        input.DayOfMonth = input.StartDate.Day;
-    db.ContributionSchedules.Add(input);
-    await db.SaveChangesAsync();
-    return Results.Created($"/api/investments/{id}/schedules/{input.Id}", new { input.Id });
+    
+    var (schedule, error) = await service.AddContributionScheduleAsync(id, input);
+
+    if (error is not null) return Results.BadRequest(error);
+    
+    return Results.Created($"/api/investments/{id}/schedules/{schedule!.Id}", new { schedule.Id });
 });
 
-api.MapDelete("/investments/{id:int}/schedules/{scheduleId:int}", async (int id, int scheduleId, AppDbContext db) =>
+api.MapDelete("/investments/{id:int}/schedules/{scheduleId:int}", async (int id, int scheduleId, IInvestmentService service) =>
 {
-    var sched = await db.ContributionSchedules.FirstOrDefaultAsync(s => s.Id == scheduleId && s.InvestmentId == id);
-    if (sched is null) return Results.NotFound();
-    db.ContributionSchedules.Remove(sched);
-    await db.SaveChangesAsync();
-    return Results.NoContent();
+    var success = await service.DeleteContributionScheduleAsync(id, scheduleId);
+    return success ? Results.NoContent() : Results.NotFound();
 });
+
+app.Run();
+
 
 app.Run();
