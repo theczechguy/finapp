@@ -21,10 +21,7 @@ public class CreateModel(AppDbContext db) : PageModel
             return Page();
         }
 
-        if (Investment.Type == InvestmentType.OneTime)
-        {
-            Investment.RecurringAmount = null;
-        }
+    // No legacy recurring fields; schedules managed separately
 
         db.Investments.Add(Investment);
         await db.SaveChangesAsync();

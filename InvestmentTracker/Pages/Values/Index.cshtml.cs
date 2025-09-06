@@ -128,16 +128,17 @@ public class IndexModel(AppDbContext db) : PageModel
         var invIds = pageItems.Select(i => i.InvestmentId).Distinct().ToList();
         var invMeta = await db.Investments
             .Where(i => invIds.Contains(i.Id))
-            .Select(i => new
-            {
-                i.Id,
-                i.Type,
-                i.RecurringAmount,
-                i.RecurringStartDate
-            })
+            .Select(i => new { i.Id, i.Type })
             .ToDictionaryAsync(x => x.Id);
 
-        // Fetch earliest recorded value per investment (initial principal for one-time or fallback start)
+        // Fetch schedules per investment for invested calc
+        var schedules = await db.ContributionSchedules
+            .Where(s => invIds.Contains(s.InvestmentId))
+            .OrderBy(s => s.StartDate)
+            .GroupBy(s => s.InvestmentId)
+            .ToDictionaryAsync(g => g.Key, g => g.ToList());
+
+        // Fetch earliest recorded value per investment (initial principal for one-time)
         var firstValues = new Dictionary<int, (DateTime date, decimal value)>();
         foreach (var id in invIds)
         {
@@ -158,17 +159,21 @@ public class IndexModel(AppDbContext db) : PageModel
 
             if (meta.Type == InvestmentType.Recurring)
             {
-                var start = meta.RecurringStartDate ?? (firstValues.TryGetValue(r.InvestmentId, out var fv) ? fv.date : (DateTime?)null);
-                var amount = meta.RecurringAmount ?? 0m;
-                if (start.HasValue && amount > 0m && r.AsOf.Date >= start.Value.Date)
+                decimal total = 0m;
+                if (schedules.TryGetValue(r.InvestmentId, out var scheds))
                 {
-                    int months = MonthsContributed(start.Value.Date, r.AsOf.Date);
-                    r.Invested = months * amount;
+                    foreach (var s in scheds)
+                    {
+                        var end = s.EndDate.HasValue && s.EndDate.Value.Date < r.AsOf.Date ? s.EndDate.Value.Date : r.AsOf.Date;
+                        if (end < s.StartDate.Date) continue;
+                        int months = MonthsContributedWithDom(s.StartDate.Date, end, s.DayOfMonth ?? s.StartDate.Day);
+                        if (months > 0 && s.Amount > 0)
+                        {
+                            total += months * s.Amount;
+                        }
+                    }
                 }
-                else
-                {
-                    r.Invested = 0m;
-                }
+                r.Invested = total;
             }
             else // OneTime
             {
@@ -195,7 +200,7 @@ public class IndexModel(AppDbContext db) : PageModel
         Items = pageItems;
 
         // Load filter options
-        ProviderOptions = await db.Investments
+    ProviderOptions = await db.Investments
             .Select(i => i.Provider!)
             .Where(p => p != null && p != "")
             .Distinct()
@@ -221,6 +226,15 @@ public class IndexModel(AppDbContext db) : PageModel
         int effectiveDay = Math.Min(startDay, asOfMonthDays);
         if (asOfDate.Day >= effectiveDay) months += 1;
         return months;
+    }
+
+    private static int MonthsContributedWithDom(DateTime startDate, DateTime endDateInclusive, int dayOfMonth)
+    {
+        if (endDateInclusive < startDate) return 0;
+        int months = (endDateInclusive.Year - startDate.Year) * 12 + (endDateInclusive.Month - startDate.Month);
+        int effectiveDayEnd = Math.Min(dayOfMonth, DateTime.DaysInMonth(endDateInclusive.Year, endDateInclusive.Month));
+        if (endDateInclusive.Day >= effectiveDayEnd) months += 1;
+        return Math.Max(0, months);
     }
 
     public async Task<IActionResult> OnPostDeleteAsync(int id)

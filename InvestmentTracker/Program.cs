@@ -59,7 +59,7 @@ var api = app.MapGroup("/api");
 
 api.MapGet("/investments", async (AppDbContext db) =>
     await db.Investments
-    .Select(i => new { i.Id, i.Name, i.Provider, i.Type, i.Currency, i.RecurringAmount })
+        .Select(i => new { i.Id, i.Name, i.Provider, i.Type, i.Currency })
         .ToListAsync());
 
 api.MapGet("/investments/{id:int}", async (int id, AppDbContext db) =>
@@ -83,7 +83,6 @@ api.MapPut("/investments/{id:int}", async (int id, Investment update, AppDbConte
     existing.Provider = update.Provider;
     existing.Type = update.Type;
     existing.Currency = update.Currency;
-    existing.RecurringAmount = update.RecurringAmount;
     await db.SaveChangesAsync();
     return Results.NoContent();
 });
@@ -113,6 +112,43 @@ api.MapPost("/investments/{id:int}/values", async (int id, InvestmentValue input
     db.InvestmentValues.Add(input);
     await db.SaveChangesAsync();
     return Results.Created($"/api/investments/{id}/values/{input.Id}", new { input.Id });
+});
+
+// Contribution Schedules APIs
+api.MapGet("/investments/{id:int}/schedules", async (int id, AppDbContext db) =>
+{
+    var list = await db.ContributionSchedules
+        .Where(s => s.InvestmentId == id)
+        .OrderBy(s => s.StartDate)
+        .Select(s => new { s.Id, s.StartDate, s.EndDate, s.Amount, s.Frequency, s.DayOfMonth })
+        .ToListAsync();
+    return Results.Ok(list);
+});
+
+api.MapPost("/investments/{id:int}/schedules", async (int id, ContributionSchedule input, AppDbContext db) =>
+{
+    if (id != input.InvestmentId) return Results.BadRequest("Mismatched InvestmentId");
+    // basic overlap check
+    var newStart = input.StartDate.Date;
+    var newEnd = (input.EndDate?.Date) ?? DateTime.MaxValue.Date;
+    var overlaps = await db.ContributionSchedules.AnyAsync(s => s.InvestmentId == id &&
+        newStart <= (s.EndDate == null ? DateTime.MaxValue.Date : s.EndDate.Value.Date) && s.StartDate.Date <= newEnd);
+    if (overlaps) return Results.BadRequest("Overlaps existing schedule.");
+    input.Frequency = ContributionFrequency.Monthly;
+    if (input.DayOfMonth is null || input.DayOfMonth < 1 || input.DayOfMonth > 31)
+        input.DayOfMonth = input.StartDate.Day;
+    db.ContributionSchedules.Add(input);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/investments/{id}/schedules/{input.Id}", new { input.Id });
+});
+
+api.MapDelete("/investments/{id:int}/schedules/{scheduleId:int}", async (int id, int scheduleId, AppDbContext db) =>
+{
+    var sched = await db.ContributionSchedules.FirstOrDefaultAsync(s => s.Id == scheduleId && s.InvestmentId == id);
+    if (sched is null) return Results.NotFound();
+    db.ContributionSchedules.Remove(sched);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
 });
 
 app.Run();

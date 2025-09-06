@@ -15,7 +15,9 @@ public class ValuesModel(AppDbContext db) : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id)
     {
-        Investment = await db.Investments.Include(i => i.Values)
+        Investment = await db.Investments
+            .Include(i => i.Values)
+            .Include(i => i.Schedules)
             .FirstOrDefaultAsync(i => i.Id == id);
         if (Investment is null) return RedirectToPage("Index");
         NewValue.InvestmentId = id;
@@ -28,7 +30,9 @@ public class ValuesModel(AppDbContext db) : PageModel
         if (!ModelState.IsValid)
         {
             // reload investment list for view
-            Investment = await db.Investments.Include(i => i.Values)
+            Investment = await db.Investments
+                .Include(i => i.Values)
+                .Include(i => i.Schedules)
                 .FirstOrDefaultAsync(i => i.Id == NewValue.InvestmentId);
             if (Investment is not null)
                 Investment.Values = Investment.Values.OrderByDescending(v => v.AsOf).ToList();

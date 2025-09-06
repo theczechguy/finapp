@@ -20,12 +20,7 @@ public class Investment
     [Required]
     public Currency Currency { get; set; }
 
-    [Range(0, double.MaxValue)]
-    [Column(TypeName = "decimal(18,2)")]
-    public decimal? RecurringAmount { get; set; }
-
-    [DataType(DataType.Date)]
-    public DateTime? RecurringStartDate { get; set; }
-
     public ICollection<InvestmentValue> Values { get; set; } = new List<InvestmentValue>();
+
+    public ICollection<ContributionSchedule> Schedules { get; set; } = new List<ContributionSchedule>();
 }

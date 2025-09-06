@@ -8,6 +8,28 @@
 
 @if (Model.Investment is not null)
 {
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Contribution Schedules</h5>
+            @if (Model.Investment.Schedules?.Any() == true)
+            {
+                <ul class="mb-2">
+                @foreach (var s in Model.Investment.Schedules.OrderBy(s=>s.StartDate))
+                {
+                    <li>
+                        <strong>@s.Amount.ToString("C")</strong> on day @(s.DayOfMonth?.ToString() ?? s.StartDate.Day.ToString()) from @s.StartDate.ToShortDateString() to @(s.EndDate?.ToShortDateString() ?? "open")
+                    </li>
+                }
+                </ul>
+            }
+            else
+            {
+                <p class="text-muted mb-2">No schedules.</p>
+            }
+            <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@Model.Investment.Id">Edit Schedules</a>
+        </div>
+    </div>
+
     <h5>Add Value</h5>
     <form method="post" class="row g-3">
         <div class="col-auto">

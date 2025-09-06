@@ -11,14 +11,45 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InvestmentTracker.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250905221914_AddRecurringStartDate")]
-    partial class AddRecurringStartDate
+    [Migration("20250906073713_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.8");
+
+            modelBuilder.Entity("InvestmentTracker.Models.ContributionSchedule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("DayOfMonth")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Frequency")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("InvestmentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvestmentId", "StartDate");
+
+                    b.ToTable("ContributionSchedules");
+                });
 
             modelBuilder.Entity("InvestmentTracker.Models.Investment", b =>
                 {
@@ -36,12 +67,6 @@ namespace InvestmentTracker.Data.Migrations
 
                     b.Property<string>("Provider")
                         .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal?>("RecurringAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("RecurringStartDate")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Type")
@@ -75,6 +100,17 @@ namespace InvestmentTracker.Data.Migrations
                     b.ToTable("InvestmentValues");
                 });
 
+            modelBuilder.Entity("InvestmentTracker.Models.ContributionSchedule", b =>
+                {
+                    b.HasOne("InvestmentTracker.Models.Investment", "Investment")
+                        .WithMany("Schedules")
+                        .HasForeignKey("InvestmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Investment");
+                });
+
             modelBuilder.Entity("InvestmentTracker.Models.InvestmentValue", b =>
                 {
                     b.HasOne("InvestmentTracker.Models.Investment", "Investment")
@@ -88,6 +124,8 @@ namespace InvestmentTracker.Data.Migrations
 
             modelBuilder.Entity("InvestmentTracker.Models.Investment", b =>
                 {
+                    b.Navigation("Schedules");
+
                     b.Navigation("Values");
                 });
 #pragma warning restore 612, 618
