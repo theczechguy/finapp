@@ -29,24 +29,26 @@ public class ValuesModel(AppDbContext db) : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAddValueAsync(int id)
     {
-        if (!ModelState.IsValid)
+    ModelState.Clear();
+    if (!TryValidateModel(NewValue, nameof(NewValue)))
         {
             // reload investment list for view
             Investment = await db.Investments
                 .Include(i => i.Values)
                 .Include(i => i.Schedules)
                 .Include(i => i.OneTimeContributions)
-                .FirstOrDefaultAsync(i => i.Id == NewValue.InvestmentId);
+                .FirstOrDefaultAsync(i => i.Id == id);
             if (Investment is not null)
                 Investment.Values = Investment.Values.OrderByDescending(v => v.AsOf).ToList();
             return Page();
         }
 
+    NewValue.InvestmentId = id;
         db.InvestmentValues.Add(NewValue);
         await db.SaveChangesAsync();
-        return RedirectToPage(new { id = NewValue.InvestmentId });
+        return RedirectToPage(new { id });
     }
 
     public async Task<IActionResult> OnPostAddContributionAsync(int id)

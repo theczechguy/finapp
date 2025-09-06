@@ -31,7 +31,7 @@
 
     <div class="mb-3">
         <label asp-for="Investment.ChargeAmount" class="form-label">One-time Charge</label>
-        <input asp-for="Investment.ChargeAmount" class="form-control" inputmode="decimal" step="0.01" min="0" />
+        <input asp-for="Investment.ChargeAmount" type="text" inputmode="decimal" class="form-control" value="" placeholder="0.00" autocomplete="off" />
         <span asp-validation-for="Investment.ChargeAmount" class="text-danger"></span>
     </div>
 
@@ -72,7 +72,7 @@
                                 <input class="form-control form-control-sm w-auto" type="number" name="dayOfMonth" min="1" max="31" value="@(s.DayOfMonth ?? s.StartDate.Day)" form="@formId" />
                             </td>
                             <td>
-                                <input class="form-control form-control-sm w-auto" type="number" step="0.01" inputmode="decimal" name="amount" value="@s.Amount" form="@formId" required />
+                                <input class="form-control form-control-sm w-auto" type="text" inputmode="decimal" name="amount" value="@s.Amount" form="@formId" required />
                             </td>
                             <td>
                                 <form id="@formId" method="post" asp-page-handler="UpdateSchedule" class="update-schedule-form d-inline" data-schedule-id="@s.Id">
@@ -113,7 +113,7 @@
                 </div>
                 <div class="col-auto">
                     <label class="form-label" asp-for="NewSchedule.Amount">Amount</label>
-                    <input class="form-control" asp-for="NewSchedule.Amount" inputmode="decimal" step="0.01" required />
+                    <input class="form-control" asp-for="NewSchedule.Amount" type="text" inputmode="decimal" value="" placeholder="0.00" required />
                     <span class="text-danger" asp-validation-for="NewSchedule.Amount"></span>
                 </div>
                 <div class="col-auto">
@@ -130,7 +130,7 @@
                     </div>
                     <div class="col-auto">
                         <label class="form-label" for="NewContribution_Amount">Amount</label>
-                        <input class="form-control" inputmode="decimal" step="0.01" name="NewContribution.Amount" id="NewContribution_Amount" required />
+                        <input class="form-control" type="text" inputmode="decimal" name="NewContribution.Amount" id="NewContribution_Amount" value="" placeholder="0.00" required />
                     </div>
                     <div class="col-auto">
                         <button type="submit" class="btn btn-outline-primary">Add Contribution</button>
