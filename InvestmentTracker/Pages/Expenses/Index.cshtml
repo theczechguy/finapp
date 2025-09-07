@@ -1,0 +1,79 @@
+@page
+@model InvestmentTracker.Pages.Expenses.IndexModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Monthly Expenses";
+}
+
+<h2>Monthly Expense Overview</h2>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title">Total Income</h5>
+                <p class="card-text fs-4">@Model.ViewModel.TotalIncome.ToString("C")</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-danger">
+            <div class="card-body">
+                <h5 class="card-title">Total Expenses</h5>
+                <p class="card-text fs-4">@Model.ViewModel.TotalExpenses.ToString("C")</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white @(Model.ViewModel.NetBalance >= 0 ? "bg-primary" : "bg-warning")">
+            <div class="card-body">
+                <h5 class="card-title">Net Balance</h5>
+                <p class="card-text fs-4">@Model.ViewModel.NetBalance.ToString("C")</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                Expense Breakdown
+            </div>
+            <div class="card-body">
+                <canvas id="expenseChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            const expenseData = @Html.Raw(JsonSerializer.Serialize(Model.ViewModel.ExpensesByCategory));
+
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(expenseData),
+                    datasets: [{
+                        data: Object.values(expenseData),
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                            '#FF9F40', '#C9CBCF', '#E7E9ED', '#77DD77', '#FDFD96'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+}
