@@ -127,6 +127,50 @@ namespace InvestmentTracker.Pages.Expenses
             return RedirectToPage(new { Year, Month });
         }
 
+        public async Task<IActionResult> OnPostAddOneTimeIncomeAsync(string name, decimal amount, DateTime date, string currency, int? incomeSourceId)
+        {
+            var income = new OneTimeIncome
+            {
+                Name = name,
+                Amount = amount,
+                Date = date,
+                Currency = Enum.Parse<Currency>(currency),
+                IncomeSourceId = incomeSourceId
+            };
+
+            await _expenseService.AddOneTimeIncomeAsync(income);
+            return RedirectToPage(new { Year, Month });
+        }
+
+        public async Task<IActionResult> OnPostUpdateOneTimeIncomeAsync(int id, string name, decimal amount, DateTime date, string currency, int? incomeSourceId)
+        {
+            var existingIncome = await _expenseService.GetOneTimeIncomeAsync(id);
+            if (existingIncome == null)
+            {
+                return NotFound();
+            }
+
+            existingIncome.Name = name;
+            existingIncome.Amount = amount;
+            existingIncome.Date = date;
+            existingIncome.Currency = Enum.Parse<Currency>(currency);
+            existingIncome.IncomeSourceId = incomeSourceId;
+
+            await _expenseService.UpdateOneTimeIncomeAsync(existingIncome);
+            return RedirectToPage(new { Year, Month });
+        }
+
+        public async Task<IActionResult> OnPostDeleteOneTimeIncomeAsync(int incomeId)
+        {
+            await _expenseService.DeleteOneTimeIncomeAsync(incomeId);
+            return RedirectToPage(new { Year, Month });
+        }
+
+        public async Task<IEnumerable<IncomeSource>> GetIncomeSourcesAsync()
+        {
+            return await _expenseService.GetAllIncomeSourcesAsync();
+        }
+
         public async Task<IEnumerable<RegularExpense>> GetAllRegularExpensesAsync()
         {
             return await _expenseService.GetAllRegularExpensesAsync();

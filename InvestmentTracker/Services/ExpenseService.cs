@@ -44,6 +44,11 @@ namespace InvestmentTracker.Services
             
             var totalIncome = incomeViewModels.Sum(i => i.ActualAmount);
 
+            // One-time Incomes
+            var oneTimeIncomes = await GetOneTimeIncomesForMonthAsync(year, month);
+            var totalOneTimeIncome = oneTimeIncomes.Sum(oti => oti.Amount);
+            totalIncome += totalOneTimeIncome;
+
             // Regular Expenses - now with month-based logic
             var regularExpenses = await _context.RegularExpenses
                 .Include(e => e.Category)
@@ -116,6 +121,7 @@ namespace InvestmentTracker.Services
                 TotalIncome = totalIncome,
                 TotalExpenses = totalExpenses,
                 Incomes = incomeViewModels,
+                OneTimeIncomes = oneTimeIncomes.ToList(),
                 RegularExpenses = applicableRegularExpenses,
                 IrregularExpenses = irregularExpenses,
                 ExpensesByCategory = expensesByCategory
@@ -156,6 +162,43 @@ namespace InvestmentTracker.Services
                 _context.Add(newMonthlyIncome);
             }
             await _context.SaveChangesAsync();
+        }
+
+        public Task AddOneTimeIncomeAsync(OneTimeIncome income)
+        {
+            _context.Add(income);
+            return _context.SaveChangesAsync();
+        }
+
+        public async Task<OneTimeIncome?> GetOneTimeIncomeAsync(int id)
+        {
+            return await _context.OneTimeIncomes
+                .Include(oti => oti.IncomeSource)
+                .FirstOrDefaultAsync(oti => oti.Id == id);
+        }
+
+        public Task UpdateOneTimeIncomeAsync(OneTimeIncome income)
+        {
+            _context.Update(income);
+            return _context.SaveChangesAsync();
+        }
+
+        public Task DeleteOneTimeIncomeAsync(int incomeId)
+        {
+            var income = new OneTimeIncome { Id = incomeId };
+            _context.Remove(income);
+            return _context.SaveChangesAsync();
+        }
+
+        public async Task<IEnumerable<OneTimeIncome>> GetOneTimeIncomesForMonthAsync(int year, int month)
+        {
+            var startDate = new DateTime(year, month, 1);
+            var endDate = startDate.AddMonths(1).AddDays(-1);
+            
+            return await _context.OneTimeIncomes
+                .Include(oti => oti.IncomeSource)
+                .Where(oti => oti.Date >= startDate && oti.Date <= endDate)
+                .ToListAsync();
         }
 
         public async Task<IEnumerable<ExpenseCategory>> GetExpenseCategoriesAsync()

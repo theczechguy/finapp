@@ -73,10 +73,10 @@
 </div>
 
 <div class="row mt-4">
-    <div class="col-12">
+    <div class="col-md-6">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                Incomes
+                Regular Incomes
                 <a asp-page="./IncomeSources" class="btn btn-sm btn-outline-primary">Manage Sources</a>
             </div>
             <div class="card-body">
@@ -106,6 +106,51 @@
                                         <button type="submit" class="btn btn-sm btn-primary">Update</button>
                                     </td>
                                 </form>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                One-Time Incomes
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addOneTimeIncomeModal">Add Income</button>
+            </div>
+            <div class="card-body">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Name</th>
+                            <th>Source</th>
+                            <th>Amount</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.ViewModel.OneTimeIncomes.Any())
+                        {
+                            @foreach (var income in Model.ViewModel.OneTimeIncomes)
+                            {
+                                <tr>
+                                    <td>@income.Date.ToString("dd/MM/yyyy")</td>
+                                    <td>@income.Name</td>
+                                    <td>@(income.IncomeSource?.Name ?? "Other")</td>
+                                    <td>@income.Amount.ToString("C", new System.Globalization.CultureInfo(income.Currency.ToCultureCode()))</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-secondary me-1" onclick="editOneTimeIncome(@income.Id)">Edit</button>
+                                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteOneTimeIncome(@income.Id)">Delete</button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No one-time incomes found. <a href="#" data-bs-toggle="modal" data-bs-target="#addOneTimeIncomeModal">Add your first income</a></td>
                             </tr>
                         }
                     </tbody>
@@ -489,6 +534,106 @@
     <input type="hidden" name="expenseId" id="deleteExpenseId" />
 </form>
 
+<!-- Hidden form for delete one-time income operations -->
+<form id="deleteOneTimeIncomeForm" method="post" asp-page-handler="DeleteOneTimeIncome" style="display: none;">
+    <input type="hidden" name="incomeId" id="deleteOneTimeIncomeId" />
+</form>
+
+<!-- Add One-Time Income Modal -->
+<div class="modal fade" id="addOneTimeIncomeModal" tabindex="-1" aria-labelledby="addOneTimeIncomeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addOneTimeIncomeModalLabel">Add One-Time Income</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" asp-page-handler="AddOneTimeIncome">
+                    <div class="mb-3">
+                        <label for="oneTimeIncomeName" class="form-label">Name</label>
+                        <input type="text" id="oneTimeIncomeName" name="name" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="oneTimeIncomeAmount" class="form-label">Amount</label>
+                        <input type="number" id="oneTimeIncomeAmount" name="amount" step="0.01" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="oneTimeIncomeSource" class="form-label">Income Source (Optional)</label>
+                        <select id="oneTimeIncomeSource" name="incomeSourceId" class="form-control">
+                            <option value="">Select Source (Optional)</option>
+                            @foreach (var source in await Model.GetIncomeSourcesAsync())
+                            {
+                                <option value="@source.Id">@source.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="oneTimeIncomeCurrency" class="form-label">Currency</label>
+                        <select id="oneTimeIncomeCurrency" name="currency" class="form-control" required>
+                            <option value="CZK" selected>CZK</option>
+                            <option value="EUR">EUR</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="oneTimeIncomeDate" class="form-label">Date</label>
+                        <input type="date" id="oneTimeIncomeDate" name="date" class="form-control" required value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Income</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit One-Time Income Modal -->
+<div class="modal fade" id="editOneTimeIncomeModal" tabindex="-1" aria-labelledby="editOneTimeIncomeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editOneTimeIncomeModalLabel">Edit One-Time Income</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" asp-page-handler="UpdateOneTimeIncome">
+                    <input type="hidden" id="editOneTimeIncomeId" name="id" />
+                    <div class="mb-3">
+                        <label for="editOneTimeIncomeName" class="form-label">Name</label>
+                        <input type="text" id="editOneTimeIncomeName" name="name" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="editOneTimeIncomeAmount" class="form-label">Amount</label>
+                        <input type="number" id="editOneTimeIncomeAmount" name="amount" step="0.01" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="editOneTimeIncomeSource" class="form-label">Income Source (Optional)</label>
+                        <select id="editOneTimeIncomeSource" name="incomeSourceId" class="form-control">
+                            <option value="">Select Source (Optional)</option>
+                            @foreach (var source in await Model.GetIncomeSourcesAsync())
+                            {
+                                <option value="@source.Id">@source.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editOneTimeIncomeCurrency" class="form-label">Currency</label>
+                        <select id="editOneTimeIncomeCurrency" name="currency" class="form-control" required>
+                            <option value="CZK">CZK</option>
+                            <option value="EUR">EUR</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editOneTimeIncomeDate" class="form-label">Date</label>
+                        <input type="date" id="editOneTimeIncomeDate" name="date" class="form-control" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Income</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         // Create expense data objects
@@ -552,6 +697,23 @@
                         </text>
                     }
                 ]
+            },
+                </text>
+            }
+        ];
+
+        // One-time incomes data
+        const oneTimeIncomesData = [
+            @foreach (var income in Model.ViewModel.OneTimeIncomes)
+            {
+                <text>
+            {
+                id: @income.Id,
+                name: '@Html.Raw(income.Name.Replace("'", "\\'"))',
+                amount: @income.Amount,
+                incomeSourceId: @(income.IncomeSourceId?.ToString() ?? "null"),
+                currency: '@income.Currency',
+                date: '@income.Date.ToString("yyyy-MM-dd")'
             },
                 </text>
             }
@@ -706,6 +868,40 @@
             // Navigate to the new month
             const url = `?year=${newYear}&month=${newMonth}`;
             window.location.href = url;
+        };
+
+        // One-time income functions
+        window.editOneTimeIncome = function(incomeId) {
+            console.log('editOneTimeIncome called with ID:', incomeId);
+
+            // Find the income data
+            const income = oneTimeIncomesData.find(i => i.id == incomeId);
+            if (income) {
+                console.log('Found income:', income.name);
+                document.getElementById('editOneTimeIncomeId').value = income.id;
+                document.getElementById('editOneTimeIncomeName').value = income.name;
+                document.getElementById('editOneTimeIncomeAmount').value = income.amount;
+                document.getElementById('editOneTimeIncomeSource').value = income.incomeSourceId || '';
+                document.getElementById('editOneTimeIncomeCurrency').value = income.currency;
+                document.getElementById('editOneTimeIncomeDate').value = income.date;
+            }
+
+            // Show the modal
+            const modalElement = document.getElementById('editOneTimeIncomeModal');
+            if (modalElement) {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            }
+        };
+
+        window.deleteOneTimeIncome = function(incomeId) {
+            if (confirm('Are you sure you want to delete this one-time income? This action cannot be undone.')) {
+                // Use the hidden form
+                const form = document.getElementById('deleteOneTimeIncomeForm');
+                const incomeIdInput = document.getElementById('deleteOneTimeIncomeId');
+                incomeIdInput.value = incomeId;
+                form.submit();
+            }
         };
     </script>
 }

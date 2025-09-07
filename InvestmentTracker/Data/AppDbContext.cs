@@ -13,6 +13,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
     public DbSet<IncomeSource> IncomeSources => Set<IncomeSource>();
     public DbSet<MonthlyIncome> MonthlyIncomes => Set<MonthlyIncome>();
+    public DbSet<OneTimeIncome> OneTimeIncomes => Set<OneTimeIncome>();
     public DbSet<RegularExpense> RegularExpenses => Set<RegularExpense>();
     public DbSet<IrregularExpense> IrregularExpenses => Set<IrregularExpense>();
     public DbSet<ExpenseSchedule> ExpenseSchedules => Set<ExpenseSchedule>();
@@ -56,6 +57,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<MonthlyIncome>()
             .HasIndex(mi => new { mi.IncomeSourceId, mi.Month })
             .IsUnique();
+
+        modelBuilder.Entity<OneTimeIncome>()
+            .HasOne(oti => oti.IncomeSource)
+            .WithMany()
+            .HasForeignKey(oti => oti.IncomeSourceId);
+
+        modelBuilder.Entity<OneTimeIncome>()
+            .HasIndex(oti => oti.Date);
 
         modelBuilder.Entity<RegularExpense>()
             .HasOne(re => re.Category)
