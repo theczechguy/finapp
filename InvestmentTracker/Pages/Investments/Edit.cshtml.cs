@@ -16,10 +16,8 @@ public class EditModel(IInvestmentService investmentService) : PageModel
     public List<ContributionSchedule> Schedules { get; set; } = new();
     public List<OneTimeContribution> Contributions { get; set; } = new();
 
-    [BindProperty]
     public ScheduleInput NewSchedule { get; set; } = new();
 
-    [BindProperty]
     public OneTimeContribution NewContribution { get; set; } = new() { Date = DateTime.Today };
 
     public class ScheduleInput
@@ -44,6 +42,7 @@ public class EditModel(IInvestmentService investmentService) : PageModel
     public async Task<IActionResult> OnPostAsync(int id)
     {
         ModelState.Remove("NewContribution.Amount");
+        ModelState.Remove("NewContribution.Date");
         ModelState.Remove("NewSchedule.Amount");
         ModelState.Remove("NewSchedule.StartDate");
         ModelState.Remove("NewSchedule.DayOfMonth");
@@ -80,6 +79,8 @@ public class EditModel(IInvestmentService investmentService) : PageModel
         ModelState.Remove("Investment.Type");
         ModelState.Remove("Investment.Currency");
         ModelState.Remove("Investment.Provider");
+
+        await TryUpdateModelAsync<ScheduleInput>(NewSchedule, "NewSchedule");
 
         if (!NewSchedule.StartDate.HasValue)
             ModelState.AddModelError("NewSchedule.StartDate", "Start date is required.");
@@ -129,7 +130,13 @@ public class EditModel(IInvestmentService investmentService) : PageModel
     public async Task<IActionResult> OnPostAddContributionAsync(int id)
     {
         ModelState.Clear();
-        ModelState.Remove(nameof(Investment));
+        ModelState.Remove("Investment");
+        ModelState.Remove("Investment.Name");
+        ModelState.Remove("Investment.Type");
+        ModelState.Remove("Investment.Currency");
+        ModelState.Remove("Investment.Provider");
+
+        await TryUpdateModelAsync<OneTimeContribution>(NewContribution, "NewContribution");
 
         if (NewContribution.Amount <= 0)
         {
