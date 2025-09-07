@@ -27,7 +27,7 @@
                         <td>@source.Currency</td>
                         <td>
                             <a asp-page="./EditIncomeSource" asp-route-id="@source.Id" class="btn btn-sm btn-secondary">Edit</a>
-                            <form method="post" asp-page-handler="Delete" asp-route-id="@source.Id" style="display:inline;">
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@source.Id" class="d-inline" data-confirm="Delete this income source? This will also remove all associated monthly income records.">
                                 <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                             </form>
                         </td>
