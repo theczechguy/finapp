@@ -142,7 +142,9 @@
                                     <td>@income.Amount.ToString("C", new System.Globalization.CultureInfo(income.Currency.ToCultureCode()))</td>
                                     <td>
                                         <button type="button" class="btn btn-sm btn-secondary me-1" onclick="editOneTimeIncome(@income.Id)">Edit</button>
-                                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteOneTimeIncome(@income.Id)">Delete</button>
+                                        <form method="post" asp-page-handler="DeleteOneTimeIncome" asp-route-incomeId="@income.Id" class="d-inline" data-confirm="Delete this one-time income? This action cannot be undone.">
+                                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                        </form>
                                     </td>
                                 </tr>
                             }
@@ -238,7 +240,9 @@
                                     <td>@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
                                     <td>
                                         <button type="button" class="btn btn-sm btn-secondary me-1" onclick="editIrregularExpense(@expense.Id)">Edit</button>
-                                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteIrregularExpense(@expense.Id)">Delete</button>
+                                        <form method="post" asp-page-handler="DeleteIrregularExpense" asp-route-expenseId="@expense.Id" class="d-inline" data-confirm="Delete this irregular expense? This action cannot be undone.">
+                                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                        </form>
                                     </td>
                                 </tr>
                             }
@@ -529,16 +533,6 @@
     </div>
 </div>
 
-<!-- Hidden form for delete operations -->
-<form id="deleteIrregularExpenseForm" method="post" asp-page-handler="DeleteIrregularExpense" style="display: none;">
-    <input type="hidden" name="expenseId" id="deleteExpenseId" />
-</form>
-
-<!-- Hidden form for delete one-time income operations -->
-<form id="deleteOneTimeIncomeForm" method="post" asp-page-handler="DeleteOneTimeIncome" style="display: none;">
-    <input type="hidden" name="incomeId" id="deleteOneTimeIncomeId" />
-</form>
-
 <!-- Add One-Time Income Modal -->
 <div class="modal fade" id="addOneTimeIncomeModal" tabindex="-1" aria-labelledby="addOneTimeIncomeModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -808,16 +802,6 @@
                 console.log('Modal shown successfully');
             } else {
                 console.error('Modal element not found!');
-            }
-        };
-
-        window.deleteIrregularExpense = function(expenseId) {
-            if (confirm('Are you sure you want to delete this irregular expense? This action cannot be undone.')) {
-                // Use the hidden form
-                const form = document.getElementById('deleteIrregularExpenseForm');
-                const expenseIdInput = document.getElementById('deleteExpenseId');
-                expenseIdInput.value = expenseId;
-                form.submit();
             }
         };
 
