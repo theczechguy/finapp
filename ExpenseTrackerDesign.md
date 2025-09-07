@@ -18,6 +18,7 @@ This document outlines the design and requirements for a new Expense Tracker fea
 -   **Service-Oriented:** All business logic will be encapsulated within a dedicated service layer (`IExpenseService` and `ExpenseService`), following the pattern already established by the `InvestmentService`.
 -   **Razor Pages:** The user interface will be a single Razor Page, which will interact directly with the `IExpenseService`.
 -   **No API Layer (Initial Version):** For simplicity, a separate web API will not be created in the initial version. The Razor Page will handle all user interactions.
+-   **Minimize Dependencies:** The project will prioritize using built-in .NET libraries (`System.Text.Json`, etc.) and avoid introducing third-party packages unless there is a clear and significant benefit.
 
 ## 4. Data Models
 
