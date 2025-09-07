@@ -3,6 +3,7 @@ using System;
 using InvestmentTracker.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InvestmentTracker.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250907124043_AddCurrencyToIncomeSource")]
+    partial class AddCurrencyToIncomeSource
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.8");
@@ -146,15 +149,12 @@ namespace InvestmentTracker.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<int>("Currency")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("Date")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("ExpenseCategoryId")
+                    b.Property<int>("ExpenseCategoryId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
@@ -220,15 +220,12 @@ namespace InvestmentTracker.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<int>("Currency")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("ExpenseCategoryId")
+                    b.Property<int>("ExpenseCategoryId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
@@ -274,7 +271,9 @@ namespace InvestmentTracker.Data.Migrations
                 {
                     b.HasOne("InvestmentTracker.Models.ExpenseCategory", "Category")
                         .WithMany()
-                        .HasForeignKey("ExpenseCategoryId");
+                        .HasForeignKey("ExpenseCategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Category");
                 });
@@ -305,7 +304,9 @@ namespace InvestmentTracker.Data.Migrations
                 {
                     b.HasOne("InvestmentTracker.Models.ExpenseCategory", "Category")
                         .WithMany()
-                        .HasForeignKey("ExpenseCategoryId");
+                        .HasForeignKey("ExpenseCategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Category");
                 });

@@ -11,7 +11,7 @@ namespace InvestmentTracker.ViewModels
         public decimal TotalExpenses { get; set; }
         public decimal NetBalance => TotalIncome - TotalExpenses;
 
-        public List<MonthlyIncome> Incomes { get; set; } = new();
+        public List<IncomeViewModel> Incomes { get; set; } = new();
         public List<RegularExpense> RegularExpenses { get; set; } = new();
         public List<IrregularExpense> IrregularExpenses { get; set; } = new();
         public Dictionary<string, decimal> ExpensesByCategory { get; set; } = new();

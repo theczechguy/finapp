@@ -31,5 +31,11 @@ namespace InvestmentTracker.Pages.Expenses
 
             ViewModel = await _expenseService.GetMonthlyDataAsync(selectedYear, selectedMonth);
         }
+
+        public async Task<IActionResult> OnPostUpdateIncomeAsync(int incomeSourceId, decimal actualAmount, int year, int month)
+        {
+            await _expenseService.LogOrUpdateMonthlyIncomeAsync(incomeSourceId, year, month, actualAmount);
+            return RedirectToPage(new { year, month });
+        }
     }
 }

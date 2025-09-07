@@ -1,6 +1,7 @@
 @page
 @model InvestmentTracker.Pages.Expenses.IndexModel
 @using System.Text.Json
+@using InvestmentTracker.Models
 @{
     ViewData["Title"] = "Monthly Expenses";
 }
@@ -12,7 +13,7 @@
         <div class="card text-white bg-success">
             <div class="card-body">
                 <h5 class="card-title">Total Income</h5>
-                <p class="card-text fs-4">@Model.ViewModel.TotalIncome.ToString("C")</p>
+                <p class="card-text fs-4">@Model.ViewModel.TotalIncome.ToString("C", new System.Globalization.CultureInfo("cs-CZ"))</p>
             </div>
         </div>
     </div>
@@ -20,7 +21,7 @@
         <div class="card text-white bg-danger">
             <div class="card-body">
                 <h5 class="card-title">Total Expenses</h5>
-                <p class="card-text fs-4">@Model.ViewModel.TotalExpenses.ToString("C")</p>
+                <p class="card-text fs-4">@Model.ViewModel.TotalExpenses.ToString("C", new System.Globalization.CultureInfo("cs-CZ"))</p>
             </div>
         </div>
     </div>
@@ -28,7 +29,7 @@
         <div class="card text-white @(Model.ViewModel.NetBalance >= 0 ? "bg-primary" : "bg-warning")">
             <div class="card-body">
                 <h5 class="card-title">Net Balance</h5>
-                <p class="card-text fs-4">@Model.ViewModel.NetBalance.ToString("C")</p>
+                <p class="card-text fs-4">@Model.ViewModel.NetBalance.ToString("C", new System.Globalization.CultureInfo("cs-CZ"))</p>
             </div>
         </div>
     </div>
@@ -47,11 +48,62 @@
     </div>
 </div>
 
+</div>
+</div>
+
+<hr/>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                Incomes
+                <a asp-page="./IncomeSources" class="btn btn-sm btn-outline-primary">Manage Sources</a>
+            </div>
+            <div class="card-body">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Source</th>
+                            <th>Expected</th>
+                            <th>Actual</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var income in Model.ViewModel.Incomes)
+                        {
+                            <tr>
+                                <form method="post" asp-page-handler="UpdateIncome">
+                                    <td>@income.Name</td>
+                                    <td>@income.ExpectedAmount.ToString("C", new System.Globalization.CultureInfo(income.Currency.ToCultureCode()))</td>
+                                    <td>
+                                        <input type="text" name="actualAmount" value="@income.ActualAmount" class="form-control" />
+                                        <input type="hidden" name="incomeSourceId" value="@income.IncomeSourceId" />
+                                        <input type="hidden" name="year" value="@Model.ViewModel.Year" />
+                                        <input type="hidden" name="month" value="@Model.ViewModel.Month" />
+                                    </td>
+                                    <td>
+                                        <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                                    </td>
+                                </form>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        
+    </div>
+</div>
+
 @section Scripts {
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const ctx = document.getElementById('expenseChart').getContext('2d');
-            const expenseData = @Html.Raw(JsonSerializer.Serialize(Model.ViewModel.ExpensesByCategory));
+            const expenseData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ViewModel.ExpensesByCategory));
 
             new Chart(ctx, {
                 type: 'pie',

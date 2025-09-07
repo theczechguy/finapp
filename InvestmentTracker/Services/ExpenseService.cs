@@ -28,12 +28,21 @@ namespace InvestmentTracker.Services
             var endDate = startDate.AddMonths(1).AddDays(-1);
 
             // Incomes
+            var allIncomeSources = await _context.IncomeSources.ToListAsync();
             var monthlyIncomes = await _context.MonthlyIncomes
-                .Include(i => i.IncomeSource)
                 .Where(i => i.Month.Year == year && i.Month.Month == month)
-                .ToListAsync();
+                .ToDictionaryAsync(i => i.IncomeSourceId);
+
+            var incomeViewModels = allIncomeSources.Select(source => new IncomeViewModel
+            {
+                IncomeSourceId = source.Id,
+                Name = source.Name,
+                ExpectedAmount = source.ExpectedAmount,
+                ActualAmount = monthlyIncomes.TryGetValue(source.Id, out var income) ? income.ActualAmount : 0,
+                Currency = source.Currency
+            }).ToList();
             
-            var totalIncome = monthlyIncomes.Sum(i => i.ActualAmount);
+            var totalIncome = incomeViewModels.Sum(i => i.ActualAmount);
 
             // Regular Expenses
             var regularExpenses = await _context.RegularExpenses
@@ -88,7 +97,7 @@ namespace InvestmentTracker.Services
                 Month = month,
                 TotalIncome = totalIncome,
                 TotalExpenses = totalExpenses,
-                Incomes = monthlyIncomes,
+                Incomes = incomeViewModels,
                 RegularExpenses = applicableRegularExpenses,
                 IrregularExpenses = irregularExpenses,
                 ExpensesByCategory = expensesByCategory
@@ -140,6 +149,26 @@ namespace InvestmentTracker.Services
         {
             _context.Add(category);
             return _context.SaveChangesAsync();
+        }
+
+        public async Task<IEnumerable<IncomeSource>> GetAllIncomeSourcesAsync()
+        {
+            return await _context.IncomeSources.ToListAsync();
+        }
+
+        public async Task<IncomeSource?> GetIncomeSourceAsync(int id)
+        {
+            return await _context.IncomeSources.FindAsync(id);
+        }
+
+        public async Task DeleteIncomeSourceAsync(int id)
+        {
+            var incomeSource = await _context.IncomeSources.FindAsync(id);
+            if (incomeSource != null)
+            {
+                _context.IncomeSources.Remove(incomeSource);
+                await _context.SaveChangesAsync();
+            }
         }
 
         public Task AddRegularExpenseAsync(RegularExpense expense)

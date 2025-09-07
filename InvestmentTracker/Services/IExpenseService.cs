@@ -14,6 +14,9 @@ namespace InvestmentTracker.Services
         Task LogOrUpdateMonthlyIncomeAsync(int incomeSourceId, int year, int month, decimal actualAmount);
         Task<IEnumerable<ExpenseCategory>> GetExpenseCategoriesAsync();
         Task AddExpenseCategoryAsync(ExpenseCategory category);
+        Task<IEnumerable<IncomeSource>> GetAllIncomeSourcesAsync();
+        Task<IncomeSource?> GetIncomeSourceAsync(int id);
+        Task DeleteIncomeSourceAsync(int id);
         Task AddRegularExpenseAsync(RegularExpense expense);
         Task UpdateRegularExpenseAsync(RegularExpense expense);
         Task AddIrregularExpenseAsync(IrregularExpense expense);

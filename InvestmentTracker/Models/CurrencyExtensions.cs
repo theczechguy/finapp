@@ -9,7 +9,7 @@ public static class CurrencyExtensions
         return currency switch
         {
             Currency.CZK => "cs-CZ",
-            Currency.EUR => "eu-ES", // Using Spain for Euro representation
+            Currency.EUR => "de-DE", // Using Germany for Euro representation
             Currency.USD => "en-US",
             _ => CultureInfo.CurrentCulture.Name
         };

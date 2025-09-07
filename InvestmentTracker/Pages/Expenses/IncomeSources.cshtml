@@ -1,0 +1,63 @@
+@page
+@model InvestmentTracker.Pages.Expenses.IncomeSourcesModel
+@using InvestmentTracker.Models
+@{
+    ViewData["Title"] = "Manage Income Sources";
+}
+
+<h2>Manage Income Sources</h2>
+
+<div class="row">
+    <div class="col-md-8">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Expected Amount</th>
+                    <th>Currency</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var source in Model.IncomeSources)
+                {
+                    <tr>
+                        <td>@source.Name</td>
+                        <td>@source.ExpectedAmount.ToString("N2")</td>
+                        <td>@source.Currency</td>
+                        <td>
+                            <a asp-page="./EditIncomeSource" asp-route-id="@source.Id" class="btn btn-sm btn-secondary">Edit</a>
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@source.Id" style="display:inline;">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                Add New Source
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label asp-for="NewIncomeSource.Name" class="form-label"></label>
+                        <input asp-for="NewIncomeSource.Name" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="NewIncomeSource.ExpectedAmount" class="form-label"></label>
+                        <input asp-for="NewIncomeSource.ExpectedAmount" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="NewIncomeSource.Currency" class="form-label"></label>
+                        <select asp-for="NewIncomeSource.Currency" asp-items="Html.GetEnumSelectList<Currency>()" class="form-control"></select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Source</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
