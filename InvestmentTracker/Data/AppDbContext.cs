@@ -10,6 +10,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ContributionSchedule> ContributionSchedules => Set<ContributionSchedule>();
     public DbSet<OneTimeContribution> OneTimeContributions => Set<OneTimeContribution>();
 
+    public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
+    public DbSet<IncomeSource> IncomeSources => Set<IncomeSource>();
+    public DbSet<MonthlyIncome> MonthlyIncomes => Set<MonthlyIncome>();
+    public DbSet<RegularExpense> RegularExpenses => Set<RegularExpense>();
+    public DbSet<IrregularExpense> IrregularExpenses => Set<IrregularExpense>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Investment>()
@@ -39,6 +45,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<OneTimeContribution>()
             .HasIndex(c => new { c.InvestmentId, c.Date });
+
+        // Expense Tracker Models
+        modelBuilder.Entity<MonthlyIncome>()
+            .HasOne(mi => mi.IncomeSource)
+            .WithMany()
+            .HasForeignKey(mi => mi.IncomeSourceId);
+
+        modelBuilder.Entity<MonthlyIncome>()
+            .HasIndex(mi => new { mi.IncomeSourceId, mi.Month })
+            .IsUnique();
+
+        modelBuilder.Entity<RegularExpense>()
+            .HasOne(re => re.Category)
+            .WithMany()
+            .HasForeignKey(re => re.ExpenseCategoryId);
+
+        modelBuilder.Entity<IrregularExpense>()
+            .HasOne(ie => ie.Category)
+            .WithMany()
+            .HasForeignKey(ie => ie.ExpenseCategoryId);
 
         base.OnModelCreating(modelBuilder);
     }
