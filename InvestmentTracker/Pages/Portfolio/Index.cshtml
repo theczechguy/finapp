@@ -12,11 +12,25 @@
 <div class="row mb-4">
     @foreach (var total in Model.TotalsByCurrency.OrderBy(kv => kv.Key.ToString()))
     {
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body text-center">
-                    <h5 class="card-title">Total Value (@total.Key)</h5>
-                    <p class="card-text fs-4">@total.Value.ToString("C", CultureInfo.CreateSpecificCulture(total.Key.ToCultureCode()))</p>
+        <div class="col-md-6 mb-4">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Total Value (@total.Key)</h5>
+                            <p class="card-text fs-4">@total.Value.ToString("C", CultureInfo.CreateSpecificCulture(total.Key.ToCultureCode()))</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            Value by Category (@total.Key)
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chart-@total.Key" width="400" height="300"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -24,10 +38,6 @@
 </div>
 
 <h3>Value by Category</h3>
-<div id="chartsContainer" class="row mb-4">
-    <!-- Charts will be generated here -->
-</div>
-
 <div class="row mb-4">
     @foreach (var categoryTotal in Model.TotalsByCategory.OrderBy(kv => kv.Key.ToString()))
     {
@@ -49,7 +59,6 @@
         </div>
     }
 </div>
-
 
 <h3>Latest Investment Values</h3>
 <table class="table table-striped">
@@ -89,32 +98,8 @@
     <script>
         const chartData = @Html.Raw(Model.ChartDataJson);
         
-        const container = document.getElementById('chartsContainer');
-        
         for (const [currency, categories] of Object.entries(chartData)) {
-            const colDiv = document.createElement('div');
-            colDiv.className = 'col-md-6';
-            
-            const cardDiv = document.createElement('div');
-            cardDiv.className = 'card';
-            
-            const cardHeader = document.createElement('div');
-            cardHeader.className = 'card-header';
-            cardHeader.textContent = `Value by Category (${currency})`;
-            cardDiv.appendChild(cardHeader);
-            
-            const cardBody = document.createElement('div');
-            cardBody.className = 'card-body';
-            
-            const canvas = document.createElement('canvas');
-            canvas.width = 400;
-            canvas.height = 300;
-            cardBody.appendChild(canvas);
-            cardDiv.appendChild(cardBody);
-            
-            colDiv.appendChild(cardDiv);
-            container.appendChild(colDiv);
-            
+            const canvas = document.getElementById(`chart-${currency}`);
             const ctx = canvas.getContext('2d');
             new Chart(ctx, {
                 type: 'pie',
