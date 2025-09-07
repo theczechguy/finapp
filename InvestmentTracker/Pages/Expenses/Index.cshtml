@@ -247,8 +247,27 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="regularExpenseStartDate" class="form-label">Start Date</label>
-                        <input type="date" id="regularExpenseStartDate" name="startDate" class="form-control" required />
+                        <label for="regularExpenseStartDate" class="form-label">Start Year and Month</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <select id="regularExpenseStartYear" name="startYear" class="form-control" required>
+                                    <option value="">Year</option>
+                                    @for (int y = DateTime.Today.Year - 1; y <= DateTime.Today.Year + 5; y++)
+                                    {
+                                        <option value="@y" selected="@(y == DateTime.Today.Year)">@y</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <select id="regularExpenseStartMonth" name="startMonth" class="form-control" required>
+                                    <option value="">Month</option>
+                                    @for (int m = 1; m <= 12; m++)
+                                    {
+                                        <option value="@m" selected="@(m == DateTime.Today.Month)">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m)</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary">Add Expense</button>
                 </form>
@@ -351,8 +370,27 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="editRegularExpenseStartDate" class="form-label">Start Date</label>
-                        <input type="date" id="editRegularExpenseStartDate" name="startDate" class="form-control" required />
+                        <label for="editRegularExpenseStartDate" class="form-label">Start Year and Month</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <select id="editRegularExpenseStartYear" name="startYear" class="form-control" required>
+                                    <option value="">Year</option>
+                                    @for (int y = DateTime.Today.Year - 1; y <= DateTime.Today.Year + 5; y++)
+                                    {
+                                        <option value="@y">@y</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <select id="editRegularExpenseStartMonth" name="startMonth" class="form-control" required>
+                                    <option value="">Month</option>
+                                    @for (int m = 1; m <= 12; m++)
+                                    {
+                                        <option value="@m">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m)</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Schedule History Section -->
@@ -362,8 +400,8 @@
                             <table class="table table-sm table-bordered" id="editExpenseSchedulesTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Start Date</th>
-                                        <th>End Date</th>
+                                        <th>Start Year/Month</th>
+                                        <th>End Year/Month</th>
                                         <th>Amount</th>
                                         <th>Status</th>
                                     </tr>
@@ -457,12 +495,14 @@
                 recurrence: '@expense.Recurrence',
                 startDate: '@expense.StartDate.ToString("yyyy-MM-dd")',
                 schedules: [
-                    @foreach (var schedule in expense.Schedules.OrderBy(s => s.StartDate))
+                    @foreach (var schedule in expense.Schedules.OrderBy(s => s.StartYear * 12 + s.StartMonth))
                     {
                         <text>
                     {
-                        startDate: '@schedule.StartDate.ToString("yyyy-MM-dd")',
-                        endDate: '@(schedule.EndDate?.ToString("yyyy-MM-dd") ?? "")',
+                        startYear: @schedule.StartYear,
+                        startMonth: @schedule.StartMonth,
+                        endYear: @(schedule.EndYear?.ToString() ?? "null"),
+                        endMonth: @(schedule.EndMonth?.ToString() ?? "null"),
                         amount: @schedule.Amount,
                         frequency: '@schedule.Frequency'
                     },
@@ -488,12 +528,14 @@
                 recurrence: '@expense.Recurrence',
                 startDate: '@expense.StartDate.ToString("yyyy-MM-dd")',
                 schedules: [
-                    @foreach (var schedule in expense.Schedules.OrderBy(s => s.StartDate))
+                    @foreach (var schedule in expense.Schedules.OrderBy(s => s.StartYear * 12 + s.StartMonth))
                     {
                         <text>
                     {
-                        startDate: '@schedule.StartDate.ToString("yyyy-MM-dd")',
-                        endDate: '@(schedule.EndDate?.ToString("yyyy-MM-dd") ?? "")',
+                        startYear: @schedule.StartYear,
+                        startMonth: @schedule.StartMonth,
+                        endYear: @(schedule.EndYear?.ToString() ?? "null"),
+                        endMonth: @(schedule.EndMonth?.ToString() ?? "null"),
                         amount: @schedule.Amount,
                         frequency: '@schedule.Frequency'
                     },
@@ -519,7 +561,11 @@
                 document.getElementById('editRegularExpenseCategory').value = expense.categoryId || '';
                 document.getElementById('editRegularExpenseCurrency').value = expense.currency;
                 document.getElementById('editRegularExpenseFrequency').value = expense.recurrence;
-                document.getElementById('editRegularExpenseStartDate').value = expense.startDate;
+                
+                // Set year and month from the start date
+                const startDate = new Date(expense.startDate);
+                document.getElementById('editRegularExpenseStartYear').value = startDate.getFullYear();
+                document.getElementById('editRegularExpenseStartMonth').value = startDate.getMonth() + 1; // JavaScript months are 0-based
 
                 // Populate schedule history table
                 const schedulesBody = document.getElementById('editExpenseSchedulesBody');
@@ -530,14 +576,19 @@
                 expense.schedules.forEach(schedule => {
                     const row = document.createElement('tr');
 
-                    // Start Date
+                    // Start Date - display as Month Year
                     const startCell = document.createElement('td');
-                    startCell.textContent = schedule.startDate;
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    startCell.textContent = `${monthNames[schedule.startMonth - 1]} ${schedule.startYear}`;
                     row.appendChild(startCell);
 
                     // End Date
                     const endCell = document.createElement('td');
-                    endCell.textContent = schedule.endDate || 'Ongoing';
+                    if (schedule.endYear && schedule.endMonth) {
+                        endCell.textContent = `${monthNames[schedule.endMonth - 1]} ${schedule.endYear}`;
+                    } else {
+                        endCell.textContent = 'Ongoing';
+                    }
                     row.appendChild(endCell);
 
                     // Amount
@@ -547,9 +598,18 @@
 
                     // Status
                     const statusCell = document.createElement('td');
-                    const isCurrent = schedule.startDate <= today && (schedule.endDate === '' || schedule.endDate >= today);
-                    const isFuture = schedule.startDate > today;
-                    const isPast = schedule.endDate !== '' && schedule.endDate < today;
+                    const currentYear = new Date().getFullYear();
+                    const currentMonth = new Date().getMonth() + 1; // JavaScript months are 0-based
+                    
+                    const scheduleStart = schedule.startYear * 12 + schedule.startMonth;
+                    const scheduleEnd = (schedule.endYear && schedule.endMonth) 
+                        ? schedule.endYear * 12 + schedule.endMonth 
+                        : Number.MAX_SAFE_INTEGER;
+                    const current = currentYear * 12 + currentMonth;
+                    
+                    const isCurrent = scheduleStart <= current && scheduleEnd >= current;
+                    const isFuture = scheduleStart > current;
+                    const isPast = scheduleEnd < current;
 
                     let statusBadge = '';
                     if (isCurrent) {

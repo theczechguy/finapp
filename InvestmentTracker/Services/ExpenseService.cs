@@ -44,11 +44,14 @@ namespace InvestmentTracker.Services
             
             var totalIncome = incomeViewModels.Sum(i => i.ActualAmount);
 
-            // Regular Expenses - now with temporal logic
+            // Regular Expenses - now with month-based logic
             var regularExpenses = await _context.RegularExpenses
                 .Include(e => e.Category)
                 .Include(e => e.Schedules)
-                .Where(e => e.Schedules.Any(s => s.StartDate <= endDate && (s.EndDate == null || s.EndDate >= startDate)))
+                .Where(e => e.Schedules.Any(s =>
+                    (s.StartYear * 12 + s.StartMonth) <= (year * 12 + month) &&
+                    (s.EndYear == null || s.EndMonth == null ||
+                     (s.EndYear * 12 + s.EndMonth) >= (year * 12 + month))))
                 .ToListAsync();
 
             var applicableRegularExpenses = new List<RegularExpense>();
@@ -56,10 +59,10 @@ namespace InvestmentTracker.Services
             
             foreach (var expense in regularExpenses)
             {
-                // Find the applicable schedule for this month
+                // Find the applicable schedule for this month using month-based logic
                 var applicableSchedule = expense.Schedules
-                    .Where(s => s.StartDate <= endDate && (s.EndDate == null || s.EndDate >= startDate))
-                    .OrderByDescending(s => s.StartDate)
+                    .Where(s => s.IsActiveForMonth(year, month))
+                    .OrderByDescending(s => s.StartYear * 12 + s.StartMonth)
                     .FirstOrDefault();
 
                 if (applicableSchedule != null)
@@ -215,10 +218,10 @@ namespace InvestmentTracker.Services
             {
                 var initialSchedule = new ExpenseSchedule
                 {
+                    StartYear = DateTime.Today.Year,
+                    StartMonth = DateTime.Today.Month,
                     Amount = 0, // Default amount
-                    Frequency = Frequency.Monthly,
-                    StartDate = DateTime.Today,
-                    DayOfMonth = DateTime.Today.Day
+                    Frequency = Frequency.Monthly
                 };
                 expense.Schedules.Add(initialSchedule);
             }
@@ -264,8 +267,7 @@ namespace InvestmentTracker.Services
             {
                 // If the current schedule values are different, we need to create a new schedule
                 if (currentSchedule.Amount != expense.Amount ||
-                    currentSchedule.Frequency != expense.Recurrence ||
-                    currentSchedule.DayOfMonth != expense.StartDate.Day)
+                    currentSchedule.Frequency != expense.Recurrence)
                 {
                     // End the current schedule as of yesterday (if startDate is in the future)
                     // or as of the day before the new start date (if startDate is in the past)
@@ -275,25 +277,42 @@ namespace InvestmentTracker.Services
 
                     if (endDateForCurrent >= currentSchedule.StartDate)
                     {
-                        currentSchedule.EndDate = endDateForCurrent;
+                        // Set end month based on the end date
+                        var endDateTime = endDateForCurrent;
+                        currentSchedule.EndYear = endDateTime.Year;
+                        currentSchedule.EndMonth = endDateTime.Month;
                     }
 
                     // Create a new schedule starting on the specified date
                     var newSchedule = new ExpenseSchedule
                     {
+                        StartYear = expense.StartDate.Year,
+                        StartMonth = expense.StartDate.Month,
                         Amount = expense.Amount,
-                        Frequency = expense.Recurrence,
-                        StartDate = expense.StartDate,
-                        EndDate = expense.EndDate,
-                        DayOfMonth = expense.StartDate.Day
+                        Frequency = expense.Recurrence
                     };
+
+                    if (expense.EndDate.HasValue)
+                    {
+                        newSchedule.EndYear = expense.EndDate.Value.Year;
+                        newSchedule.EndMonth = expense.EndDate.Value.Month;
+                    }
 
                     existingExpense.Schedules.Add(newSchedule);
                 }
                 else
                 {
                     // If only basic properties changed, just update the current schedule's end date if needed
-                    currentSchedule.EndDate = expense.EndDate;
+                    if (expense.EndDate.HasValue)
+                    {
+                        currentSchedule.EndYear = expense.EndDate.Value.Year;
+                        currentSchedule.EndMonth = expense.EndDate.Value.Month;
+                    }
+                    else
+                    {
+                        currentSchedule.EndYear = null;
+                        currentSchedule.EndMonth = null;
+                    }
                 }
             }
             else
@@ -301,12 +320,17 @@ namespace InvestmentTracker.Services
                 // No current schedule, create a new one
                 var newSchedule = new ExpenseSchedule
                 {
+                    StartYear = expense.StartDate.Year,
+                    StartMonth = expense.StartDate.Month,
                     Amount = expense.Amount,
-                    Frequency = expense.Recurrence,
-                    StartDate = expense.StartDate,
-                    EndDate = expense.EndDate,
-                    DayOfMonth = expense.StartDate.Day
+                    Frequency = expense.Recurrence
                 };
+
+                if (expense.EndDate.HasValue)
+                {
+                    newSchedule.EndYear = expense.EndDate.Value.Year;
+                    newSchedule.EndMonth = expense.EndDate.Value.Month;
+                }
 
                 existingExpense.Schedules.Add(newSchedule);
             }
@@ -338,16 +362,18 @@ namespace InvestmentTracker.Services
                 if (currentSchedule != null)
                 {
                     // End current schedule as of the day before the new start date
-                    currentSchedule.EndDate = startDate.AddDays(-1);
+                    var endDateTime = startDate.AddDays(-1);
+                    currentSchedule.EndYear = endDateTime.Year;
+                    currentSchedule.EndMonth = endDateTime.Month;
                 }
 
                 // Create new schedule for the future date
                 var newSchedule = new ExpenseSchedule
                 {
+                    StartYear = startDate.Year,
+                    StartMonth = startDate.Month,
                     Amount = amount,
-                    Frequency = frequency,
-                    StartDate = startDate,
-                    DayOfMonth = startDate.Day
+                    Frequency = frequency
                 };
 
                 existingExpense.Schedules.Add(newSchedule);
@@ -359,19 +385,20 @@ namespace InvestmentTracker.Services
                 {
                     // If the current schedule has different values, end it and create a new one
                     if (currentSchedule.Amount != amount ||
-                        currentSchedule.Frequency != frequency ||
-                        currentSchedule.DayOfMonth != startDate.Day)
+                        currentSchedule.Frequency != frequency)
                     {
                         // End current schedule as of the day before the new start date
-                        currentSchedule.EndDate = startDate.AddDays(-1);
+                        var endDateTime = startDate.AddDays(-1);
+                        currentSchedule.EndYear = endDateTime.Year;
+                        currentSchedule.EndMonth = endDateTime.Month;
 
                         // Create new schedule
                         var newSchedule = new ExpenseSchedule
                         {
+                            StartYear = startDate.Year,
+                            StartMonth = startDate.Month,
                             Amount = amount,
-                            Frequency = frequency,
-                            StartDate = startDate,
-                            DayOfMonth = startDate.Day
+                            Frequency = frequency
                         };
 
                         existingExpense.Schedules.Add(newSchedule);
@@ -383,10 +410,10 @@ namespace InvestmentTracker.Services
                     // No current schedule, create a new one
                     var newSchedule = new ExpenseSchedule
                     {
+                        StartYear = startDate.Year,
+                        StartMonth = startDate.Month,
                         Amount = amount,
-                        Frequency = frequency,
-                        StartDate = startDate,
-                        DayOfMonth = startDate.Day
+                        Frequency = frequency
                     };
 
                     existingExpense.Schedules.Add(newSchedule);

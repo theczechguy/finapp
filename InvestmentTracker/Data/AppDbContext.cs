@@ -69,7 +69,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<ExpenseSchedule>()
-            .HasIndex(s => new { s.RegularExpenseId, s.StartDate });
+            .HasIndex(s => new { s.RegularExpenseId, s.StartYear, s.StartMonth });
+
+        modelBuilder.Entity<ExpenseSchedule>()
+            .Ignore(s => s.StartDate)
+            .Ignore(s => s.EndDate);
 
         modelBuilder.Entity<IrregularExpense>()
             .HasOne(ie => ie.Category)

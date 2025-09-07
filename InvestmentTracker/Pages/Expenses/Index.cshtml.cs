@@ -42,7 +42,7 @@ namespace InvestmentTracker.Pages.Expenses
             return RedirectToPage(new { year, month });
         }
 
-        public async Task<IActionResult> OnPostAddRegularExpenseAsync(string name, decimal amount, int categoryId, string frequency, DateTime startDate, string currency)
+        public async Task<IActionResult> OnPostAddRegularExpenseAsync(string name, decimal amount, int categoryId, string frequency, int startYear, int startMonth, string currency)
         {
             var expense = new RegularExpense
             {
@@ -51,13 +51,13 @@ namespace InvestmentTracker.Pages.Expenses
                 Currency = Enum.Parse<Currency>(currency)
             };
 
-            // Create initial schedule
+            // Create initial schedule with month-based fields
             expense.Schedules.Add(new ExpenseSchedule
             {
+                StartYear = startYear,
+                StartMonth = startMonth,
                 Amount = amount,
-                Frequency = Enum.Parse<Frequency>(frequency),
-                StartDate = startDate,
-                DayOfMonth = startDate.Day
+                Frequency = Enum.Parse<Frequency>(frequency)
             });
 
             await _expenseService.AddRegularExpenseAsync(expense);
@@ -90,7 +90,7 @@ namespace InvestmentTracker.Pages.Expenses
             return await _expenseService.GetExpenseCategoriesAsync();
         }
 
-        public async Task<IActionResult> OnPostUpdateRegularExpenseAsync(int id, string name, decimal amount, int categoryId, string frequency, DateTime startDate, string currency)
+        public async Task<IActionResult> OnPostUpdateRegularExpenseAsync(int id, string name, decimal amount, int categoryId, string frequency, int startYear, int startMonth, string currency)
         {
             var existingExpense = await _expenseService.GetRegularExpenseAsync(id);
             if (existingExpense == null)
@@ -104,6 +104,7 @@ namespace InvestmentTracker.Pages.Expenses
             existingExpense.Currency = Enum.Parse<Currency>(currency);
 
             // Handle schedule updates with temporal logic
+            var startDate = new DateTime(startYear, startMonth, 1);
             await _expenseService.UpdateRegularExpenseScheduleAsync(id, amount, Enum.Parse<Frequency>(frequency), startDate);
             return RedirectToPage(new { Year, Month });
         }
