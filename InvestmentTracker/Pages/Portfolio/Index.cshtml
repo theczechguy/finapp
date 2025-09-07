@@ -23,12 +23,37 @@
     }
 </div>
 
+<h3>Value by Category</h3>
+<div class="row mb-4">
+    @foreach (var categoryTotal in Model.TotalsByCategory.OrderBy(kv => kv.Key.ToString()))
+    {
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    @categoryTotal.Key
+                </div>
+                <ul class="list-group list-group-flush">
+                    @foreach (var currencyTotal in categoryTotal.Value)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            @currencyTotal.Key
+                            <span class="badge bg-primary rounded-pill">@currencyTotal.Value.ToString("C", CultureInfo.CreateSpecificCulture(currencyTotal.Key.ToCultureCode()))</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+</div>
+
+
 <h3>Latest Investment Values</h3>
 <table class="table table-striped">
     <thead>
         <tr>
             <th>Investment</th>
             <th>Provider</th>
+            <th>Category</th>
             <th>Latest Value</th>
             <th>As Of Date</th>
         </tr>
@@ -40,6 +65,7 @@
         <tr>
             <td>@investment.Name</td>
             <td>@(string.IsNullOrWhiteSpace(investment.Provider) ? "-" : investment.Provider)</td>
+            <td>@investment.Category</td>
             @if (latestValue != null)
             {
                 <td>@latestValue.Value.ToString("C", CultureInfo.CreateSpecificCulture(investment.Currency.ToCultureCode()))</td>

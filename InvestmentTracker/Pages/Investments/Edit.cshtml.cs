@@ -41,15 +41,32 @@ public class EditModel(IInvestmentService investmentService) : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync(int id)
     {
-        if (!ModelState.IsValid)
+        ModelState.Remove("NewContribution.Amount");
+        ModelState.Remove("NewSchedule.Amount");
+        ModelState.Remove("NewSchedule.StartDate");
+        ModelState.Remove("NewSchedule.DayOfMonth");
+        
+        var investmentToUpdate = await investmentService.GetInvestmentAsync(id);
+        if (investmentToUpdate == null)
         {
-            return Page();
+            return NotFound();
         }
 
-        await investmentService.UpdateInvestmentAsync(Investment.Id, Investment);
-        return RedirectToPage("./List");
+        if (await TryUpdateModelAsync<Investment>(
+                investmentToUpdate,
+                "Investment",
+                i => i.Name, i => i.Provider, i => i.Type, i => i.Category, i => i.Currency, i => i.ChargeAmount))
+        {
+            await investmentService.UpdateInvestmentAsync(id, investmentToUpdate);
+            return RedirectToPage("./List");
+        }
+
+        // If TryUpdateModelAsync fails, we need to reload the ancillary data
+        Schedules = investmentToUpdate.Schedules.OrderBy(s => s.StartDate).ToList();
+        Contributions = investmentToUpdate.OneTimeContributions.OrderByDescending(c => c.Date).ToList();
+        return Page();
     }
 
     public async Task<IActionResult> OnPostAddScheduleAsync(int id)

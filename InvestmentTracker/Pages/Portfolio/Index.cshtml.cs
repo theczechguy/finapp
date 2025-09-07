@@ -18,6 +18,7 @@ namespace InvestmentTracker.Pages.Portfolio
 
         public List<Investment> InvestmentsWithLatestValue { get; set; } = new();
         public Dictionary<Currency, decimal> TotalsByCurrency { get; set; } = new();
+        public Dictionary<InvestmentCategory, Dictionary<Currency, decimal>> TotalsByCategory { get; set; } = new();
 
         public async Task OnGetAsync()
         {
@@ -35,6 +36,13 @@ namespace InvestmentTracker.Pages.Portfolio
 
                     TotalsByCurrency.TryGetValue(investment.Currency, out var currentTotal);
                     TotalsByCurrency[investment.Currency] = currentTotal + latestValue.Value;
+                    
+                    if (!TotalsByCategory.ContainsKey(investment.Category))
+                    {
+                        TotalsByCategory[investment.Category] = new Dictionary<Currency, decimal>();
+                    }
+                    TotalsByCategory[investment.Category].TryGetValue(investment.Currency, out var currentCategoryTotal);
+                    TotalsByCategory[investment.Category][investment.Currency] = currentCategoryTotal + latestValue.Value;
                 }
                 else
                 {

@@ -18,9 +18,11 @@ public class Investment
     public InvestmentType Type { get; set; }
 
     [Required]
+    public InvestmentCategory Category { get; set; }
+
+    [Required]
     public Currency Currency { get; set; }
 
-    [Range(0, 100000000)]
     public decimal ChargeAmount { get; set; } = 0m;
 
     public ICollection<InvestmentValue> Values { get; set; } = new List<InvestmentValue>();

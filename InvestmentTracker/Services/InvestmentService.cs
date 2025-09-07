@@ -63,6 +63,7 @@ public class InvestmentService : IInvestmentService
         existing.Name = update.Name;
         existing.Provider = update.Provider;
         existing.Type = update.Type;
+        existing.Category = update.Category;
         existing.Currency = update.Currency;
         existing.ChargeAmount = update.ChargeAmount;
         

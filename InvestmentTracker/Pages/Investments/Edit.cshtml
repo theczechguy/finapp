@@ -26,13 +26,18 @@
     </div>
 
     <div class="mb-3">
+        <label asp-for="Investment.Category" class="form-label"></label>
+        <select asp-for="Investment.Category" class="form-select" asp-items="Html.GetEnumSelectList<InvestmentCategory>()"></select>
+    </div>
+
+    <div class="mb-3">
         <label asp-for="Investment.Currency" class="form-label"></label>
         <select asp-for="Investment.Currency" class="form-select" asp-items="Html.GetEnumSelectList<Currency>()"></select>
     </div>
 
     <div class="mb-3">
         <label asp-for="Investment.ChargeAmount" class="form-label">One-time Charge</label>
-        <input asp-for="Investment.ChargeAmount" type="text" inputmode="decimal" class="form-control" value="" placeholder="0.00" autocomplete="off" />
+        <input asp-for="Investment.ChargeAmount" type="text" inputmode="decimal" class="form-control" placeholder="0.00" autocomplete="off" />
         <span asp-validation-for="Investment.ChargeAmount" class="text-danger"></span>
     </div>
 

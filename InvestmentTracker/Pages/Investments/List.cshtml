@@ -13,6 +13,7 @@
             <th>Name</th>
             <th>Provider</th>
             <th>Type</th>
+            <th>Category</th>
             <th>Currency</th>
             <th>One-time Charge</th>
             <th>Latest Value</th>
@@ -28,6 +29,7 @@
         <td>@i.Name</td>
         <td>@(string.IsNullOrWhiteSpace(i.Provider) ? "-" : i.Provider)</td>
         <td>@i.Type</td>
+        <td>@i.Category</td>
         <td>@i.Currency</td>
         <td>@(i.ChargeAmount == 0 ? "-" : i.ChargeAmount.ToString("C", culture))</td>
         <td>@(latest is null ? "-" : latest.Value.ToString("C", culture) + " (" + latest.AsOf.ToShortDateString() + ")")</td>
