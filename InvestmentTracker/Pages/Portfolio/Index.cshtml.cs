@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Text.Json;
+using System;
+using Microsoft.AspNetCore.Mvc;
 
 namespace InvestmentTracker.Pages.Portfolio
 {
@@ -24,13 +26,32 @@ namespace InvestmentTracker.Pages.Portfolio
         public string ChartDataJson { get; set; } = "{}";
         public string ChartTimeSeriesJson { get; set; } = "{}";
 
+        [BindProperty(SupportsGet = true)]
+        public string TimeRange { get; set; } = "12m";
+
         public async Task OnGetAsync()
         {
             var investments = await _investmentService.GetAllInvestmentsAsync();
 
+            var fromDate = DateTime.Today;
+            switch (TimeRange)
+            {
+                case "6m":
+                    fromDate = fromDate.AddMonths(-6);
+                    break;
+                case "2m":
+                    fromDate = fromDate.AddMonths(-2);
+                    break;
+                case "12m":
+                default:
+                    fromDate = fromDate.AddMonths(-12);
+                    break;
+            }
+
             // Prepare time series data first (before filtering values)
             var allValues = investments.SelectMany(i => i.Values);
-            TotalsByDate = allValues.GroupBy(v => v.AsOf.Date)
+            TotalsByDate = allValues.Where(v => v.AsOf.Date >= fromDate)
+                .GroupBy(v => v.AsOf.Date)
                 .ToDictionary(g => g.Key, g => g.Sum(v => v.Value))
                 .OrderBy(kv => kv.Key)
                 .ToDictionary(kv => kv.Key, kv => kv.Value);

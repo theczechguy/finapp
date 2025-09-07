@@ -37,17 +37,6 @@
     }
 </div>
 
-<h3>Portfolio Value Over Time</h3>
-<div class="row mb-4">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-body">
-                <canvas id="timeSeriesChart" width="800" height="400"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
 <h3>Value by Category</h3>
 <div class="row mb-4">
     @foreach (var categoryTotal in Model.TotalsByCategory.OrderBy(kv => kv.Key.ToString()))
@@ -152,25 +141,24 @@
 
         // Time series chart
         const timeSeriesData = @Html.Raw(Model.ChartTimeSeriesJson);
-        const timeSeriesCanvas = document.getElementById('timeSeriesChart');
+        const timeSeriesCanvas = document.getElementById('historicalValueChart');
         const timeSeriesCtx = timeSeriesCanvas.getContext('2d');
         new Chart(timeSeriesCtx, {
-            type: 'bar',
+            type: 'line',
             data: {
                 labels: Object.keys(timeSeriesData),
                 datasets: [{
                     label: 'Total Portfolio Value',
                     data: Object.values(timeSeriesData),
-                    backgroundColor: '#36A2EB',
-                    borderColor: '#36A2EB',
-                    borderWidth: 1
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
                 }]
             },
             options: {
                 responsive: true,
                 scales: {
                     y: {
-                        beginAtZero: true,
+                        beginAtZero: false,
                         ticks: {
                             callback: function(value) {
                                 return value.toLocaleString();
@@ -197,3 +185,19 @@
         });
     </script>
 }
+
+<div class="card mb-4">
+    <div class="card-header">
+        Historical Value
+        <div class="float-end">
+            <div class="btn-group btn-group-sm" role="group" aria-label="Time range selector">
+                <a asp-page="./Index" asp-route-TimeRange="12m" class="btn @(Model.TimeRange == "12m" ? "btn-primary" : "btn-outline-primary")">12M</a>
+                <a asp-page="./Index" asp-route-TimeRange="6m" class="btn @(Model.TimeRange == "6m" ? "btn-primary" : "btn-outline-primary")">6M</a>
+                <a asp-page="./Index" asp-route-TimeRange="2m" class="btn @(Model.TimeRange == "2m" ? "btn-primary" : "btn-outline-primary")">2M</a>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <canvas id="historicalValueChart"></canvas>
+    </div>
+</div>
