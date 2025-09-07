@@ -24,6 +24,10 @@
 </div>
 
 <h3>Value by Category</h3>
+<div id="chartsContainer" class="row mb-4">
+    <!-- Charts will be generated here -->
+</div>
+
 <div class="row mb-4">
     @foreach (var categoryTotal in Model.TotalsByCategory.OrderBy(kv => kv.Key.ToString()))
     {
@@ -80,3 +84,74 @@
     }
     </tbody>
 </table>
+
+@section Scripts {
+    <script>
+        const chartData = @Html.Raw(Model.ChartDataJson);
+        
+        const container = document.getElementById('chartsContainer');
+        
+        for (const [currency, categories] of Object.entries(chartData)) {
+            const colDiv = document.createElement('div');
+            colDiv.className = 'col-md-6';
+            
+            const cardDiv = document.createElement('div');
+            cardDiv.className = 'card';
+            
+            const cardHeader = document.createElement('div');
+            cardHeader.className = 'card-header';
+            cardHeader.textContent = `Value by Category (${currency})`;
+            cardDiv.appendChild(cardHeader);
+            
+            const cardBody = document.createElement('div');
+            cardBody.className = 'card-body';
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;
+            canvas.height = 300;
+            cardBody.appendChild(canvas);
+            cardDiv.appendChild(cardBody);
+            
+            colDiv.appendChild(cardDiv);
+            container.appendChild(colDiv);
+            
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(categories),
+                    datasets: [{
+                        data: Object.values(categories),
+                        backgroundColor: [
+                            '#FF6384',
+                            '#36A2EB',
+                            '#FFCE56',
+                            '#4BC0C0',
+                            '#9966FF'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed;
+                                    return `${context.label}: ${value.toLocaleString('en-US', { style: 'currency', currency: currency })}`;
+                                }
+                            }
+                        }
+                    },
+                    hover: {
+                        mode: 'nearest',
+                        intersect: true
+                    }
+                }
+            });
+        }
+    </script>
+}

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace InvestmentTracker.Pages.Portfolio
 {
@@ -19,6 +20,7 @@ namespace InvestmentTracker.Pages.Portfolio
         public List<Investment> InvestmentsWithLatestValue { get; set; } = new();
         public Dictionary<Currency, decimal> TotalsByCurrency { get; set; } = new();
         public Dictionary<InvestmentCategory, Dictionary<Currency, decimal>> TotalsByCategory { get; set; } = new();
+        public string ChartDataJson { get; set; } = "{}";
 
         public async Task OnGetAsync()
         {
@@ -53,6 +55,25 @@ namespace InvestmentTracker.Pages.Portfolio
             }
 
             InvestmentsWithLatestValue = investmentsWithValues;
+
+            // Prepare chart data
+            var chartData = new Dictionary<string, object>();
+            foreach (var currency in TotalsByCurrency.Keys)
+            {
+                var categoryData = new Dictionary<string, decimal>();
+                foreach (var category in TotalsByCategory)
+                {
+                    if (category.Value.ContainsKey(currency))
+                    {
+                        categoryData[category.Key.ToString()] = category.Value[currency];
+                    }
+                }
+                if (categoryData.Any())
+                {
+                    chartData[currency.ToString()] = categoryData;
+                }
+            }
+            ChartDataJson = JsonSerializer.Serialize(chartData);
         }
     }
 }
