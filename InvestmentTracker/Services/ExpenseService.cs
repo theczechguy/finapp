@@ -38,7 +38,7 @@ namespace InvestmentTracker.Services
                 IncomeSourceId = source.Id,
                 Name = source.Name,
                 ExpectedAmount = source.ExpectedAmount,
-                ActualAmount = monthlyIncomes.TryGetValue(source.Id, out var income) ? income.ActualAmount : 0,
+                ActualAmount = monthlyIncomes.TryGetValue(source.Id, out var income) ? income.ActualAmount : source.ExpectedAmount,
                 Currency = source.Currency
             }).ToList();
             
