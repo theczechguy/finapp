@@ -143,7 +143,7 @@
         const timeSeriesData = @Html.Raw(Model.ChartTimeSeriesJson);
         const timeSeriesCanvas = document.getElementById('historicalValueChart');
         const timeSeriesCtx = timeSeriesCanvas.getContext('2d');
-        new Chart(timeSeriesCtx, {
+        const timeSeriesChart = new Chart(timeSeriesCtx, {
             type: 'line',
             data: {
                 labels: Object.keys(timeSeriesData),
@@ -183,6 +183,28 @@
                 }
             }
         });
+        
+        document.querySelectorAll('.time-range-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const range = this.dataset.range;
+                
+                // Update active button
+                document.querySelectorAll('.time-range-btn').forEach(btn => {
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-outline-primary');
+                });
+                this.classList.remove('btn-outline-primary');
+                this.classList.add('btn-primary');
+
+                fetch(`?handler=ChartData&timeRange=${range}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        timeSeriesChart.data.labels = Object.keys(data);
+                        timeSeriesChart.data.datasets[0].data = Object.values(data);
+                        timeSeriesChart.update();
+                    });
+            });
+        });
     </script>
 }
 
@@ -191,9 +213,9 @@
         Historical Value
         <div class="float-end">
             <div class="btn-group btn-group-sm" role="group" aria-label="Time range selector">
-                <a asp-page="./Index" asp-route-TimeRange="12m" class="btn @(Model.TimeRange == "12m" ? "btn-primary" : "btn-outline-primary")">12M</a>
-                <a asp-page="./Index" asp-route-TimeRange="6m" class="btn @(Model.TimeRange == "6m" ? "btn-primary" : "btn-outline-primary")">6M</a>
-                <a asp-page="./Index" asp-route-TimeRange="2m" class="btn @(Model.TimeRange == "2m" ? "btn-primary" : "btn-outline-primary")">2M</a>
+                <button type="button" data-range="12m" class="btn time-range-btn @(Model.TimeRange == "12m" ? "btn-primary" : "btn-outline-primary")">12M</button>
+                <button type="button" data-range="6m" class="btn time-range-btn @(Model.TimeRange == "6m" ? "btn-primary" : "btn-outline-primary")">6M</button>
+                <button type="button" data-range="2m" class="btn time-range-btn @(Model.TimeRange == "2m" ? "btn-primary" : "btn-outline-primary")">2M</button>
             </div>
         </div>
     </div>

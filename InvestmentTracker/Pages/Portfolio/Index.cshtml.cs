@@ -107,5 +107,35 @@ namespace InvestmentTracker.Pages.Portfolio
             }
             ChartDataJson = JsonSerializer.Serialize(chartData);
         }
+
+        public async Task<JsonResult> OnGetChartDataAsync(string timeRange)
+        {
+            var investments = await _investmentService.GetAllInvestmentsAsync();
+            var fromDate = DateTime.Today;
+            switch (timeRange)
+            {
+                case "6m":
+                    fromDate = fromDate.AddMonths(-6);
+                    break;
+                case "2m":
+                    fromDate = fromDate.AddMonths(-2);
+                    break;
+                case "12m":
+                default:
+                    fromDate = fromDate.AddMonths(-12);
+                    break;
+            }
+
+            var allValues = investments.SelectMany(i => i.Values);
+            var totalsByDate = allValues.Where(v => v.AsOf.Date >= fromDate)
+                .GroupBy(v => v.AsOf.Date)
+                .ToDictionary(g => g.Key, g => g.Sum(v => v.Value))
+                .OrderBy(kv => kv.Key)
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+    
+            var chartTimeSeriesJson = totalsByDate.ToDictionary(kv => kv.Key.ToString("yyyy-MM-dd"), kv => kv.Value);
+
+            return new JsonResult(chartTimeSeriesJson);
+        }
     }
 }
