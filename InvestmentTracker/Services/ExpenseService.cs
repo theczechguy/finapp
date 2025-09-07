@@ -151,6 +151,27 @@ namespace InvestmentTracker.Services
             return _context.SaveChangesAsync();
         }
 
+        public async Task<ExpenseCategory?> GetExpenseCategoryAsync(int id)
+        {
+            return await _context.ExpenseCategories.FindAsync(id);
+        }
+
+        public Task UpdateExpenseCategoryAsync(ExpenseCategory category)
+        {
+            _context.Update(category);
+            return _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteExpenseCategoryAsync(int id)
+        {
+            var category = await _context.ExpenseCategories.FindAsync(id);
+            if (category != null)
+            {
+                _context.ExpenseCategories.Remove(category);
+                await _context.SaveChangesAsync();
+            }
+        }
+
         public async Task<IEnumerable<IncomeSource>> GetAllIncomeSourcesAsync()
         {
             return await _context.IncomeSources.ToListAsync();

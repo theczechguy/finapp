@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using InvestmentTracker.Services;
 using InvestmentTracker.ViewModels;
+using InvestmentTracker.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -36,6 +37,48 @@ namespace InvestmentTracker.Pages.Expenses
         {
             await _expenseService.LogOrUpdateMonthlyIncomeAsync(incomeSourceId, year, month, actualAmount);
             return RedirectToPage(new { year, month });
+        }
+
+        public async Task<IActionResult> OnPostAddRegularExpenseAsync(string name, decimal amount, int categoryId, string frequency, DateTime startDate, string currency)
+        {
+            var expense = new RegularExpense
+            {
+                Name = name,
+                Amount = amount,
+                ExpenseCategoryId = categoryId,
+                Recurrence = Enum.Parse<Frequency>(frequency),
+                StartDate = startDate,
+                Currency = Enum.Parse<Currency>(currency)
+            };
+
+            await _expenseService.AddRegularExpenseAsync(expense);
+            return RedirectToPage(new { Year, Month });
+        }
+
+        public async Task<IActionResult> OnPostAddIrregularExpenseAsync(string name, decimal amount, int categoryId, DateTime date, string currency)
+        {
+            var expense = new IrregularExpense
+            {
+                Name = name,
+                Amount = amount,
+                ExpenseCategoryId = categoryId,
+                Date = date,
+                Currency = Enum.Parse<Currency>(currency)
+            };
+
+            await _expenseService.AddIrregularExpenseAsync(expense);
+            return RedirectToPage(new { Year, Month });
+        }
+
+        public async Task<IActionResult> OnPostDeleteIrregularExpenseAsync(int expenseId)
+        {
+            await _expenseService.DeleteIrregularExpenseAsync(expenseId);
+            return RedirectToPage(new { Year, Month });
+        }
+
+        public async Task<IEnumerable<ExpenseCategory>> GetExpenseCategoriesAsync()
+        {
+            return await _expenseService.GetExpenseCategoriesAsync();
         }
     }
 }

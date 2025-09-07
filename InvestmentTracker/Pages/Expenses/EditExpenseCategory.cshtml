@@ -1,0 +1,28 @@
+@page "{id:int}"
+@model InvestmentTracker.Pages.Expenses.EditExpenseCategoryModel
+@{
+    ViewData["Title"] = "Edit Expense Category";
+}
+
+<h2>Edit Expense Category</h2>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                Category Details
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label asp-for="Category.Name" class="form-label"></label>
+                        <input asp-for="Category.Name" class="form-control" />
+                        <span asp-validation-for="Category.Name" class="text-danger"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Category</button>
+                    <a asp-page="./ExpenseCategories" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
