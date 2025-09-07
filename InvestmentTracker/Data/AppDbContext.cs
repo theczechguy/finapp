@@ -15,6 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<MonthlyIncome> MonthlyIncomes => Set<MonthlyIncome>();
     public DbSet<RegularExpense> RegularExpenses => Set<RegularExpense>();
     public DbSet<IrregularExpense> IrregularExpenses => Set<IrregularExpense>();
+    public DbSet<ExpenseSchedule> ExpenseSchedules => Set<ExpenseSchedule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -60,6 +61,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasOne(re => re.Category)
             .WithMany()
             .HasForeignKey(re => re.ExpenseCategoryId);
+
+        modelBuilder.Entity<RegularExpense>()
+            .HasMany(re => re.Schedules)
+            .WithOne(s => s.RegularExpense)
+            .HasForeignKey(s => s.RegularExpenseId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ExpenseSchedule>()
+            .HasIndex(s => new { s.RegularExpenseId, s.StartDate });
 
         modelBuilder.Entity<IrregularExpense>()
             .HasOne(ie => ie.Category)

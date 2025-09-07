@@ -47,12 +47,18 @@ namespace InvestmentTracker.Pages.Expenses
             var expense = new RegularExpense
             {
                 Name = name,
-                Amount = amount,
                 ExpenseCategoryId = categoryId,
-                Recurrence = Enum.Parse<Frequency>(frequency),
-                StartDate = startDate,
                 Currency = Enum.Parse<Currency>(currency)
             };
+
+            // Create initial schedule
+            expense.Schedules.Add(new ExpenseSchedule
+            {
+                Amount = amount,
+                Frequency = Enum.Parse<Frequency>(frequency),
+                StartDate = startDate,
+                DayOfMonth = startDate.Day
+            });
 
             await _expenseService.AddRegularExpenseAsync(expense);
             return RedirectToPage(new { Year, Month });
@@ -92,18 +98,13 @@ namespace InvestmentTracker.Pages.Expenses
                 return NotFound();
             }
 
-            // According to the design document, changes should only apply from the selected month forward
-            // For now, we'll update the existing expense, but in a production system you'd want more sophisticated
-            // historical data handling
-
+            // Update basic properties
             existingExpense.Name = name;
-            existingExpense.Amount = amount;
             existingExpense.ExpenseCategoryId = categoryId;
-            existingExpense.Recurrence = Enum.Parse<Frequency>(frequency);
-            existingExpense.StartDate = startDate;
             existingExpense.Currency = Enum.Parse<Currency>(currency);
 
-            await _expenseService.UpdateRegularExpenseAsync(existingExpense);
+            // Handle schedule updates with temporal logic
+            await _expenseService.UpdateRegularExpenseScheduleAsync(id, amount, Enum.Parse<Frequency>(frequency), startDate);
             return RedirectToPage(new { Year, Month });
         }
 
@@ -123,6 +124,11 @@ namespace InvestmentTracker.Pages.Expenses
 
             await _expenseService.UpdateIrregularExpenseAsync(existingExpense);
             return RedirectToPage(new { Year, Month });
+        }
+
+        public async Task<IEnumerable<RegularExpense>> GetAllRegularExpensesAsync()
+        {
+            return await _expenseService.GetAllRegularExpensesAsync();
         }
     }
 }

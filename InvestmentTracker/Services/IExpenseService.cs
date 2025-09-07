@@ -28,5 +28,7 @@ namespace InvestmentTracker.Services
         Task<IrregularExpense?> GetIrregularExpenseAsync(int id);
         Task UpdateIrregularExpenseAsync(IrregularExpense expense);
         Task DeleteIrregularExpenseAsync(int expenseId);
+        Task UpdateRegularExpenseScheduleAsync(int expenseId, decimal amount, Frequency frequency, DateTime startDate);
+        Task<IEnumerable<RegularExpense>> GetAllRegularExpensesAsync();
     }
 }

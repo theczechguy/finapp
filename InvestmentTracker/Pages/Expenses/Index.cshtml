@@ -354,6 +354,30 @@
                         <label for="editRegularExpenseStartDate" class="form-label">Start Date</label>
                         <input type="date" id="editRegularExpenseStartDate" name="startDate" class="form-control" required />
                     </div>
+
+                    <!-- Schedule History Section -->
+                    <div class="mb-3">
+                        <label class="form-label">Schedule History</label>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered" id="editExpenseSchedulesTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Start Date</th>
+                                        <th>End Date</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="editExpenseSchedulesBody">
+                                    <!-- Schedule rows will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-muted">This table shows all historical and future schedules for this expense.</small>
+                        </div>
+                    </div>
+
                     <div class="alert alert-info">
                         <small><strong>Note:</strong> Changes will only apply from the selected month forward. Historical data will remain unchanged.</small>
                     </div>
@@ -431,14 +455,28 @@
                 categoryId: @(expense.Category != null ? expense.Category.Id.ToString() : "null"),
                 currency: '@expense.Currency',
                 recurrence: '@expense.Recurrence',
-                startDate: '@expense.StartDate.ToString("yyyy-MM-dd")'
+                startDate: '@expense.StartDate.ToString("yyyy-MM-dd")',
+                schedules: [
+                    @foreach (var schedule in expense.Schedules.OrderBy(s => s.StartDate))
+                    {
+                        <text>
+                    {
+                        startDate: '@schedule.StartDate.ToString("yyyy-MM-dd")',
+                        endDate: '@(schedule.EndDate?.ToString("yyyy-MM-dd") ?? "")',
+                        amount: @schedule.Amount,
+                        frequency: '@schedule.Frequency'
+                    },
+                        </text>
+                    }
+                ]
             },
                 </text>
             }
         ];
 
-        const irregularExpensesData = [
-            @foreach (var expense in Model.ViewModel.IrregularExpenses)
+        // Store full expense data for editing (including all schedules)
+        const fullRegularExpensesData = [
+            @foreach (var expense in await Model.GetAllRegularExpensesAsync())
             {
                 <text>
             {
@@ -447,7 +485,21 @@
                 amount: @expense.Amount,
                 categoryId: @(expense.Category != null ? expense.Category.Id.ToString() : "null"),
                 currency: '@expense.Currency',
-                date: '@expense.Date.ToString("yyyy-MM-dd")'
+                recurrence: '@expense.Recurrence',
+                startDate: '@expense.StartDate.ToString("yyyy-MM-dd")',
+                schedules: [
+                    @foreach (var schedule in expense.Schedules.OrderBy(s => s.StartDate))
+                    {
+                        <text>
+                    {
+                        startDate: '@schedule.StartDate.ToString("yyyy-MM-dd")',
+                        endDate: '@(schedule.EndDate?.ToString("yyyy-MM-dd") ?? "")',
+                        amount: @schedule.Amount,
+                        frequency: '@schedule.Frequency'
+                    },
+                        </text>
+                    }
+                ]
             },
                 </text>
             }
@@ -457,8 +509,8 @@
         window.editRegularExpense = function(expenseId) {
             console.log('editRegularExpense called with ID:', expenseId);
 
-            // Find the expense data
-            const expense = regularExpensesData.find(e => e.id == expenseId);
+            // Find the expense data (use full data for complete schedule information)
+            const expense = fullRegularExpensesData.find(e => e.id == expenseId);
             if (expense) {
                 console.log('Found expense:', expense.name);
                 document.getElementById('editExpenseId').value = expense.id;
@@ -468,6 +520,51 @@
                 document.getElementById('editRegularExpenseCurrency').value = expense.currency;
                 document.getElementById('editRegularExpenseFrequency').value = expense.recurrence;
                 document.getElementById('editRegularExpenseStartDate').value = expense.startDate;
+
+                // Populate schedule history table
+                const schedulesBody = document.getElementById('editExpenseSchedulesBody');
+                schedulesBody.innerHTML = '';
+
+                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+                expense.schedules.forEach(schedule => {
+                    const row = document.createElement('tr');
+
+                    // Start Date
+                    const startCell = document.createElement('td');
+                    startCell.textContent = schedule.startDate;
+                    row.appendChild(startCell);
+
+                    // End Date
+                    const endCell = document.createElement('td');
+                    endCell.textContent = schedule.endDate || 'Ongoing';
+                    row.appendChild(endCell);
+
+                    // Amount
+                    const amountCell = document.createElement('td');
+                    amountCell.textContent = schedule.amount.toLocaleString('cs-CZ', { style: 'currency', currency: expense.currency });
+                    row.appendChild(amountCell);
+
+                    // Status
+                    const statusCell = document.createElement('td');
+                    const isCurrent = schedule.startDate <= today && (schedule.endDate === '' || schedule.endDate >= today);
+                    const isFuture = schedule.startDate > today;
+                    const isPast = schedule.endDate !== '' && schedule.endDate < today;
+
+                    let statusBadge = '';
+                    if (isCurrent) {
+                        statusBadge = '<span class="badge bg-success">Current</span>';
+                    } else if (isFuture) {
+                        statusBadge = '<span class="badge bg-primary">Future</span>';
+                    } else if (isPast) {
+                        statusBadge = '<span class="badge bg-secondary">Past</span>';
+                    }
+
+                    statusCell.innerHTML = statusBadge;
+                    row.appendChild(statusCell);
+
+                    schedulesBody.appendChild(row);
+                });
             }
 
             // Show the modal

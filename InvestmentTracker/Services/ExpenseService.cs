@@ -44,23 +44,38 @@ namespace InvestmentTracker.Services
             
             var totalIncome = incomeViewModels.Sum(i => i.ActualAmount);
 
-            // Regular Expenses
+            // Regular Expenses - now with temporal logic
             var regularExpenses = await _context.RegularExpenses
                 .Include(e => e.Category)
-                .Where(e => e.StartDate <= endDate && (e.EndDate == null || e.EndDate >= startDate))
+                .Include(e => e.Schedules)
+                .Where(e => e.Schedules.Any(s => s.StartDate <= endDate && (s.EndDate == null || s.EndDate >= startDate)))
                 .ToListAsync();
 
             var applicableRegularExpenses = new List<RegularExpense>();
+            var expenseAmounts = new Dictionary<int, decimal>(); // Track amounts per expense for the month
+            
             foreach (var expense in regularExpenses)
             {
-                // This logic will need to be more robust to handle different frequencies
-                if (expense.Recurrence == Frequency.Monthly)
+                // Find the applicable schedule for this month
+                var applicableSchedule = expense.Schedules
+                    .Where(s => s.StartDate <= endDate && (s.EndDate == null || s.EndDate >= startDate))
+                    .OrderByDescending(s => s.StartDate)
+                    .FirstOrDefault();
+
+                if (applicableSchedule != null)
                 {
-                    applicableRegularExpenses.Add(expense);
+                    // This logic will need to be more robust to handle different frequencies
+                    if (applicableSchedule.Frequency == Frequency.Monthly)
+                    {
+                        // Set the display amount for this month
+                        expense.DisplayAmount = applicableSchedule.Amount;
+                        applicableRegularExpenses.Add(expense);
+                        expenseAmounts[expense.Id] = applicableSchedule.Amount;
+                    }
+                    // TODO: Add logic for Quarterly, SemiAnnually, Annually
                 }
-                // TODO: Add logic for Quarterly, SemiAnnually, Annually
             }
-            var totalRegularExpenses = applicableRegularExpenses.Sum(e => e.Amount);
+            var totalRegularExpenses = expenseAmounts.Values.Sum();
 
             // Irregular Expenses
             var irregularExpenses = await _context.IrregularExpenses
@@ -76,10 +91,10 @@ namespace InvestmentTracker.Services
             var expensesByCategory = new Dictionary<string, decimal>();
             foreach (var expense in applicableRegularExpenses)
             {
-                if (expense.Category != null)
+                if (expense.Category != null && expenseAmounts.TryGetValue(expense.Id, out var amount))
                 {
                     expensesByCategory.TryGetValue(expense.Category.Name, out var currentTotal);
-                    expensesByCategory[expense.Category.Name] = currentTotal + expense.Amount;
+                    expensesByCategory[expense.Category.Name] = currentTotal + amount;
                 }
             }
             foreach (var expense in irregularExpenses)
@@ -192,25 +207,193 @@ namespace InvestmentTracker.Services
             }
         }
 
-        public Task AddRegularExpenseAsync(RegularExpense expense)
+        public async Task AddRegularExpenseAsync(RegularExpense expense)
         {
+            // The expense should already have its initial schedule created by the caller
+            // If it doesn't have any schedules, create a default one (fallback)
+            if (!expense.Schedules.Any())
+            {
+                var initialSchedule = new ExpenseSchedule
+                {
+                    Amount = 0, // Default amount
+                    Frequency = Frequency.Monthly,
+                    StartDate = DateTime.Today,
+                    DayOfMonth = DateTime.Today.Day
+                };
+                expense.Schedules.Add(initialSchedule);
+            }
+
             _context.Add(expense);
-            return _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
         }
 
         public async Task<RegularExpense?> GetRegularExpenseAsync(int id)
         {
             return await _context.RegularExpenses
                 .Include(e => e.Category)
+                .Include(e => e.Schedules)
                 .FirstOrDefaultAsync(e => e.Id == id);
         }
 
-        public Task UpdateRegularExpenseAsync(RegularExpense expense)
+        public async Task UpdateRegularExpenseAsync(RegularExpense expense)
         {
-            // This needs more complex logic to handle historical data correctly, as per the design doc.
-            // For now, a simple update.
-            _context.Update(expense);
-            return _context.SaveChangesAsync();
+            // For temporal data integrity, we need to handle updates carefully
+            // Instead of updating existing schedules, we create new ones for future dates
+
+            var existingExpense = await _context.RegularExpenses
+                .Include(e => e.Schedules)
+                .FirstOrDefaultAsync(e => e.Id == expense.Id);
+
+            if (existingExpense == null)
+            {
+                throw new ArgumentException("Expense not found");
+            }
+
+            // Update basic properties
+            existingExpense.Name = expense.Name;
+            existingExpense.ExpenseCategoryId = expense.ExpenseCategoryId;
+            existingExpense.Currency = expense.Currency;
+
+            // Handle schedule updates with temporal logic
+            var currentSchedule = existingExpense.Schedules
+                .Where(s => s.StartDate <= DateTime.Today && (s.EndDate == null || s.EndDate >= DateTime.Today))
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefault();
+
+            if (currentSchedule != null)
+            {
+                // If the current schedule values are different, we need to create a new schedule
+                if (currentSchedule.Amount != expense.Amount ||
+                    currentSchedule.Frequency != expense.Recurrence ||
+                    currentSchedule.DayOfMonth != expense.StartDate.Day)
+                {
+                    // End the current schedule as of yesterday (if startDate is in the future)
+                    // or as of the day before the new start date (if startDate is in the past)
+                    var endDateForCurrent = expense.StartDate > DateTime.Today
+                        ? DateTime.Today.AddDays(-1)
+                        : expense.StartDate.AddDays(-1);
+
+                    if (endDateForCurrent >= currentSchedule.StartDate)
+                    {
+                        currentSchedule.EndDate = endDateForCurrent;
+                    }
+
+                    // Create a new schedule starting on the specified date
+                    var newSchedule = new ExpenseSchedule
+                    {
+                        Amount = expense.Amount,
+                        Frequency = expense.Recurrence,
+                        StartDate = expense.StartDate,
+                        EndDate = expense.EndDate,
+                        DayOfMonth = expense.StartDate.Day
+                    };
+
+                    existingExpense.Schedules.Add(newSchedule);
+                }
+                else
+                {
+                    // If only basic properties changed, just update the current schedule's end date if needed
+                    currentSchedule.EndDate = expense.EndDate;
+                }
+            }
+            else
+            {
+                // No current schedule, create a new one
+                var newSchedule = new ExpenseSchedule
+                {
+                    Amount = expense.Amount,
+                    Frequency = expense.Recurrence,
+                    StartDate = expense.StartDate,
+                    EndDate = expense.EndDate,
+                    DayOfMonth = expense.StartDate.Day
+                };
+
+                existingExpense.Schedules.Add(newSchedule);
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateRegularExpenseScheduleAsync(int expenseId, decimal amount, Frequency frequency, DateTime startDate)
+        {
+            var existingExpense = await _context.RegularExpenses
+                .Include(e => e.Schedules)
+                .FirstOrDefaultAsync(e => e.Id == expenseId);
+
+            if (existingExpense == null)
+            {
+                throw new ArgumentException("Expense not found");
+            }
+
+            // Find the most recent schedule that would be active at the time of the change
+            var currentSchedule = existingExpense.Schedules
+                .Where(s => s.StartDate <= DateTime.Today && (s.EndDate == null || s.EndDate >= DateTime.Today))
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefault();
+
+            // If we're setting a future start date, we need to handle it differently
+            if (startDate > DateTime.Today)
+            {
+                // For future changes, end the current schedule and create a new one starting on the future date
+                if (currentSchedule != null)
+                {
+                    // End current schedule as of the day before the new start date
+                    currentSchedule.EndDate = startDate.AddDays(-1);
+                }
+
+                // Create new schedule for the future date
+                var newSchedule = new ExpenseSchedule
+                {
+                    Amount = amount,
+                    Frequency = frequency,
+                    StartDate = startDate,
+                    DayOfMonth = startDate.Day
+                };
+
+                existingExpense.Schedules.Add(newSchedule);
+            }
+            else
+            {
+                // For current/past changes, modify the existing schedule or create a new one
+                if (currentSchedule != null)
+                {
+                    // If the current schedule has different values, end it and create a new one
+                    if (currentSchedule.Amount != amount ||
+                        currentSchedule.Frequency != frequency ||
+                        currentSchedule.DayOfMonth != startDate.Day)
+                    {
+                        // End current schedule as of the day before the new start date
+                        currentSchedule.EndDate = startDate.AddDays(-1);
+
+                        // Create new schedule
+                        var newSchedule = new ExpenseSchedule
+                        {
+                            Amount = amount,
+                            Frequency = frequency,
+                            StartDate = startDate,
+                            DayOfMonth = startDate.Day
+                        };
+
+                        existingExpense.Schedules.Add(newSchedule);
+                    }
+                    // If values are the same, just update the existing schedule
+                }
+                else
+                {
+                    // No current schedule, create a new one
+                    var newSchedule = new ExpenseSchedule
+                    {
+                        Amount = amount,
+                        Frequency = frequency,
+                        StartDate = startDate,
+                        DayOfMonth = startDate.Day
+                    };
+
+                    existingExpense.Schedules.Add(newSchedule);
+                }
+            }
+
+            await _context.SaveChangesAsync();
         }
 
         public Task AddIrregularExpenseAsync(IrregularExpense expense)
@@ -267,6 +450,14 @@ namespace InvestmentTracker.Services
             }
 
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<IEnumerable<RegularExpense>> GetAllRegularExpensesAsync()
+        {
+            return await _context.RegularExpenses
+                .Include(e => e.Category)
+                .Include(e => e.Schedules)
+                .ToListAsync();
         }
     }
 }
