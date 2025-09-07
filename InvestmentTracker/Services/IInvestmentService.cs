@@ -1,4 +1,6 @@
 using InvestmentTracker.Models;
+using System;
+using System.Collections.Generic;
 
 namespace InvestmentTracker.Services;
 
@@ -21,4 +23,5 @@ public interface IInvestmentService
     Task<IEnumerable<object>> GetContributionSchedulesAsync(int investmentId);
     Task<(ContributionSchedule? schedule, string? error)> AddContributionScheduleAsync(int investmentId, ContributionSchedule schedule);
     Task<bool> DeleteContributionScheduleAsync(int investmentId, int scheduleId);
+    Task<List<InvestmentValue>> GetInvestmentValuesFromDateAsync(DateTime fromDate);
 }

@@ -210,4 +210,11 @@ public class InvestmentService : IInvestmentService
         _logger.LogInformation("Successfully deleted contribution schedule with ID: {ScheduleId}", scheduleId);
         return true;
     }
+
+    public Task<List<InvestmentValue>> GetInvestmentValuesFromDateAsync(DateTime fromDate)
+    {
+        return _db.InvestmentValues
+            .Where(v => v.AsOf.Date >= fromDate)
+            .ToListAsync();
+    }
 }

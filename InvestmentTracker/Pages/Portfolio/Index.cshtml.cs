@@ -48,9 +48,9 @@ namespace InvestmentTracker.Pages.Portfolio
                     break;
             }
 
-            // Prepare time series data first (before filtering values)
-            var allValues = investments.SelectMany(i => i.Values);
-            TotalsByDate = allValues.Where(v => v.AsOf.Date >= fromDate)
+                        // Prepare time series data first (before filtering values)
+            var valuesForChart = await _investmentService.GetInvestmentValuesFromDateAsync(fromDate);
+            TotalsByDate = valuesForChart
                 .GroupBy(v => v.AsOf.Date)
                 .ToDictionary(g => g.Key, g => g.Sum(v => v.Value))
                 .OrderBy(kv => kv.Key)
@@ -110,7 +110,6 @@ namespace InvestmentTracker.Pages.Portfolio
 
         public async Task<JsonResult> OnGetChartDataAsync(string timeRange)
         {
-            var investments = await _investmentService.GetAllInvestmentsAsync();
             var fromDate = DateTime.Today;
             switch (timeRange)
             {
@@ -126,8 +125,8 @@ namespace InvestmentTracker.Pages.Portfolio
                     break;
             }
 
-            var allValues = investments.SelectMany(i => i.Values);
-            var totalsByDate = allValues.Where(v => v.AsOf.Date >= fromDate)
+            var valuesForChart = await _investmentService.GetInvestmentValuesFromDateAsync(fromDate);
+            var totalsByDate = valuesForChart
                 .GroupBy(v => v.AsOf.Date)
                 .ToDictionary(g => g.Key, g => g.Sum(v => v.Value))
                 .OrderBy(kv => kv.Key)
