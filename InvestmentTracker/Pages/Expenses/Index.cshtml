@@ -32,6 +32,16 @@
         <div class="col-auto">
             <button type="submit" class="btn btn-primary">View</button>
         </div>
+        <div class="col-auto">
+            <div class="btn-group ms-2" role="group">
+                <button type="button" class="btn btn-outline-secondary" onclick="navigateMonth(-1)" title="Previous Month">
+                    <i class="bi bi-chevron-left"></i> Previous
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="navigateMonth(1)" title="Next Month">
+                    Next <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+        </div>
     </div>
 </form>
 
@@ -674,6 +684,28 @@
             } else {
                 console.error('Modal element not found!');
             }
+        };
+
+        // Month navigation function
+        window.navigateMonth = function(direction) {
+            const currentYear = @Model.ViewModel.Year;
+            const currentMonth = @Model.ViewModel.Month;
+            
+            let newYear = currentYear;
+            let newMonth = currentMonth + direction;
+            
+            // Handle year transitions
+            if (newMonth < 1) {
+                newMonth = 12;
+                newYear = currentYear - 1;
+            } else if (newMonth > 12) {
+                newMonth = 1;
+                newYear = currentYear + 1;
+            }
+            
+            // Navigate to the new month
+            const url = `?year=${newYear}&month=${newMonth}`;
+            window.location.href = url;
         };
     </script>
 }
