@@ -20,11 +20,22 @@ namespace InvestmentTracker.Pages.Portfolio
         public List<Investment> InvestmentsWithLatestValue { get; set; } = new();
         public Dictionary<Currency, decimal> TotalsByCurrency { get; set; } = new();
         public Dictionary<InvestmentCategory, Dictionary<Currency, decimal>> TotalsByCategory { get; set; } = new();
+        public Dictionary<DateTime, decimal> TotalsByDate { get; set; } = new();
         public string ChartDataJson { get; set; } = "{}";
+        public string ChartTimeSeriesJson { get; set; } = "{}";
 
         public async Task OnGetAsync()
         {
             var investments = await _investmentService.GetAllInvestmentsAsync();
+
+            // Prepare time series data first (before filtering values)
+            var allValues = investments.SelectMany(i => i.Values);
+            TotalsByDate = allValues.GroupBy(v => v.AsOf.Date)
+                .ToDictionary(g => g.Key, g => g.Sum(v => v.Value))
+                .OrderBy(kv => kv.Key)
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+            ChartTimeSeriesJson = JsonSerializer.Serialize(TotalsByDate.ToDictionary(kv => kv.Key.ToString("yyyy-MM-dd"), kv => kv.Value));
+
             var investmentsWithValues = new List<Investment>();
 
             foreach (var investment in investments)

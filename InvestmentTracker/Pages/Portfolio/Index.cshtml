@@ -37,6 +37,17 @@
     }
 </div>
 
+<h3>Portfolio Value Over Time</h3>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <canvas id="timeSeriesChart" width="800" height="400"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
 <h3>Value by Category</h3>
 <div class="row mb-4">
     @foreach (var categoryTotal in Model.TotalsByCategory.OrderBy(kv => kv.Key.ToString()))
@@ -138,5 +149,51 @@
                 }
             });
         }
+
+        // Time series chart
+        const timeSeriesData = @Html.Raw(Model.ChartTimeSeriesJson);
+        const timeSeriesCanvas = document.getElementById('timeSeriesChart');
+        const timeSeriesCtx = timeSeriesCanvas.getContext('2d');
+        new Chart(timeSeriesCtx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(timeSeriesData),
+                datasets: [{
+                    label: 'Total Portfolio Value',
+                    data: Object.values(timeSeriesData),
+                    backgroundColor: '#36A2EB',
+                    borderColor: '#36A2EB',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString();
+                            }
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Total Value: ${context.parsed.y.toLocaleString()}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
     </script>
 }
