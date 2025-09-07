@@ -198,6 +198,13 @@ namespace InvestmentTracker.Services
             return _context.SaveChangesAsync();
         }
 
+        public async Task<RegularExpense?> GetRegularExpenseAsync(int id)
+        {
+            return await _context.RegularExpenses
+                .Include(e => e.Category)
+                .FirstOrDefaultAsync(e => e.Id == id);
+        }
+
         public Task UpdateRegularExpenseAsync(RegularExpense expense)
         {
             // This needs more complex logic to handle historical data correctly, as per the design doc.
@@ -212,11 +219,54 @@ namespace InvestmentTracker.Services
             return _context.SaveChangesAsync();
         }
 
+        public async Task<IrregularExpense?> GetIrregularExpenseAsync(int id)
+        {
+            return await _context.IrregularExpenses
+                .Include(e => e.Category)
+                .FirstOrDefaultAsync(e => e.Id == id);
+        }
+
+        public Task UpdateIrregularExpenseAsync(IrregularExpense expense)
+        {
+            _context.Update(expense);
+            return _context.SaveChangesAsync();
+        }
+
         public Task DeleteIrregularExpenseAsync(int expenseId)
         {
             var expense = new IrregularExpense { Id = expenseId };
             _context.Remove(expense);
             return _context.SaveChangesAsync();
+        }
+
+        public async Task SeedDefaultCategoriesAsync()
+        {
+            var existingCategories = await _context.ExpenseCategories.AnyAsync();
+            if (existingCategories)
+            {
+                return; // Already seeded
+            }
+
+            var defaultCategories = new[]
+            {
+                "Groceries",
+                "Utilities",
+                "Transportation",
+                "Entertainment",
+                "Healthcare",
+                "Dining Out",
+                "Shopping",
+                "Insurance",
+                "Rent/Mortgage",
+                "Education"
+            };
+
+            foreach (var categoryName in defaultCategories)
+            {
+                _context.ExpenseCategories.Add(new ExpenseCategory { Name = categoryName });
+            }
+
+            await _context.SaveChangesAsync();
         }
     }
 }

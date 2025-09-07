@@ -3,10 +3,11 @@
 @using System.Text.Json
 @using InvestmentTracker.Models
 @{
-    ViewData["Title"] = "Monthly Expenses";
+    var currentDate = new DateTime(Model.ViewModel.Year, Model.ViewModel.Month, 1);
+    ViewData["Title"] = $"Monthly Expenses - {currentDate.ToString("MMMM yyyy")}";
 }
 
-<h2>Monthly Expense Overview</h2>
+<h2>Monthly Expenses - @currentDate.ToString("MMMM yyyy")</h2>
 
 <form method="get" class="mb-4">
     <div class="row g-3 align-items-end">
@@ -62,7 +63,7 @@
 </div>
 
 <div class="row mt-4">
-    <div class="col-md-6">
+    <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 Incomes
@@ -102,6 +103,9 @@
             </div>
         </div>
     </div>
+</div>
+
+<div class="row mt-4">
     <div class="col-md-6">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -122,15 +126,24 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var expense in Model.ViewModel.RegularExpenses)
+                        @if (Model.ViewModel.RegularExpenses.Any())
+                        {
+                            @foreach (var expense in Model.ViewModel.RegularExpenses)
+                            {
+                                <tr>
+                                    <td>@expense.Name</td>
+                                    <td>@(expense.Category?.Name ?? "Uncategorized")</td>
+                                    <td>@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="editRegularExpense(@expense.Id)">Edit</button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
                         {
                             <tr>
-                                <td>@expense.Name</td>
-                                <td>@(expense.Category?.Name ?? "Uncategorized")</td>
-                                <td>@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
-                                <td>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="editRegularExpense(@expense.Id)">Edit</button>
-                                </td>
+                                <td colspan="4" class="text-center text-muted">No regular expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addRegularExpenseModal">Add your first expense</a></td>
                             </tr>
                         }
                     </tbody>
@@ -138,16 +151,51 @@
             </div>
         </div>
     </div>
-</div>
-
-<div class="row">
-    <div class="col-md-12">
+    <div class="col-md-6">
         <div class="card">
-            <div class="card-header">
-                Expense Breakdown
+            <div class="card-header d-flex justify-content-between align-items-center">
+                Irregular Expenses
+                <div>
+                    <a asp-page="./ExpenseCategories" class="btn btn-sm btn-outline-secondary me-2">Manage Categories</a>
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Quick Add</button>
+                </div>
             </div>
             <div class="card-body">
-                <canvas id="expenseChart"></canvas>
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Amount</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.ViewModel.IrregularExpenses.Any())
+                        {
+                            @foreach (var expense in Model.ViewModel.IrregularExpenses)
+                            {
+                                <tr>
+                                    <td>@expense.Date.ToString("dd/MM/yyyy")</td>
+                                    <td>@expense.Name</td>
+                                    <td>@(expense.Category?.Name ?? "Uncategorized")</td>
+                                    <td>@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-secondary me-1" onclick="editIrregularExpense(@expense.Id)">Edit</button>
+                                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteIrregularExpense(@expense.Id)">Delete</button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No irregular expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Add your first expense</a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -256,69 +304,219 @@
     </div>
 </div>
 
+<!-- Edit Regular Expense Modal -->
+<div class="modal fade" id="editRegularExpenseModal" tabindex="-1" aria-labelledby="editRegularExpenseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editRegularExpenseModalLabel">Edit Regular Expense</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" asp-page-handler="UpdateRegularExpense">
+                    <input type="hidden" id="editExpenseId" name="id" />
+                    <div class="mb-3">
+                        <label for="editRegularExpenseName" class="form-label">Name</label>
+                        <input type="text" id="editRegularExpenseName" name="name" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="editRegularExpenseAmount" class="form-label">Amount</label>
+                        <input type="number" id="editRegularExpenseAmount" name="amount" step="0.01" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="editRegularExpenseCategory" class="form-label">Category</label>
+                        <select id="editRegularExpenseCategory" name="categoryId" class="form-control" required>
+                            <option value="">Select Category</option>
+                            @foreach (var category in await Model.GetExpenseCategoriesAsync())
+                            {
+                                <option value="@category.Id">@category.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editRegularExpenseCurrency" class="form-label">Currency</label>
+                        <select id="editRegularExpenseCurrency" name="currency" class="form-control" required>
+                            <option value="CZK">CZK</option>
+                            <option value="EUR">EUR</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editRegularExpenseFrequency" class="form-label">Frequency</label>
+                        <select id="editRegularExpenseFrequency" name="frequency" class="form-control" required>
+                            <option value="Monthly">Monthly</option>
+                            <option value="Quarterly">Quarterly</option>
+                            <option value="SemiAnnually">Semi-Annually</option>
+                            <option value="Annually">Annually</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editRegularExpenseStartDate" class="form-label">Start Date</label>
+                        <input type="date" id="editRegularExpenseStartDate" name="startDate" class="form-control" required />
+                    </div>
+                    <div class="alert alert-info">
+                        <small><strong>Note:</strong> Changes will only apply from the selected month forward. Historical data will remain unchanged.</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Expense</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Irregular Expense Modal -->
+<div class="modal fade" id="editIrregularExpenseModal" tabindex="-1" aria-labelledby="editIrregularExpenseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editIrregularExpenseModalLabel">Edit Irregular Expense</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" asp-page-handler="UpdateIrregularExpense">
+                    <input type="hidden" id="editIrregularExpenseId" name="id" />
+                    <div class="mb-3">
+                        <label for="editIrregularExpenseName" class="form-label">Name</label>
+                        <input type="text" id="editIrregularExpenseName" name="name" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="editIrregularExpenseAmount" class="form-label">Amount</label>
+                        <input type="number" id="editIrregularExpenseAmount" name="amount" step="0.01" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="editIrregularExpenseCategory" class="form-label">Category</label>
+                        <select id="editIrregularExpenseCategory" name="categoryId" class="form-control" required>
+                            <option value="">Select Category</option>
+                            @foreach (var category in await Model.GetExpenseCategoriesAsync())
+                            {
+                                <option value="@category.Id">@category.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editIrregularExpenseCurrency" class="form-label">Currency</label>
+                        <select id="editIrregularExpenseCurrency" name="currency" class="form-control" required>
+                            <option value="CZK">CZK</option>
+                            <option value="EUR">EUR</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editIrregularExpenseDate" class="form-label">Date</label>
+                        <input type="date" id="editIrregularExpenseDate" name="date" class="form-control" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Expense</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden form for delete operations -->
+<form id="deleteIrregularExpenseForm" method="post" asp-page-handler="DeleteIrregularExpense" style="display: none;">
+    <input type="hidden" name="expenseId" id="deleteExpenseId" />
+</form>
+
 @section Scripts {
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const ctx = document.getElementById('expenseChart').getContext('2d');
-            const expenseData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ViewModel.ExpensesByCategory));
+        // Create expense data objects
+        const regularExpensesData = [
+            @foreach (var expense in Model.ViewModel.RegularExpenses)
+            {
+                <text>
+            {
+                id: @expense.Id,
+                name: '@Html.Raw(expense.Name.Replace("'", "\\'"))',
+                amount: @expense.Amount,
+                categoryId: @(expense.Category != null ? expense.Category.Id.ToString() : "null"),
+                currency: '@expense.Currency',
+                recurrence: '@expense.Recurrence',
+                startDate: '@expense.StartDate.ToString("yyyy-MM-dd")'
+            },
+                </text>
+            }
+        ];
 
-            new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: Object.keys(expenseData),
-                    datasets: [{
-                        data: Object.values(expenseData),
-                        backgroundColor: [
-                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-                            '#FF9F40', '#C9CBCF', '#E7E9ED', '#77DD77', '#FDFD96'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                        }
-                    }
-                }
-            });
-        });
+        const irregularExpensesData = [
+            @foreach (var expense in Model.ViewModel.IrregularExpenses)
+            {
+                <text>
+            {
+                id: @expense.Id,
+                name: '@Html.Raw(expense.Name.Replace("'", "\\'"))',
+                amount: @expense.Amount,
+                categoryId: @(expense.Category != null ? expense.Category.Id.ToString() : "null"),
+                currency: '@expense.Currency',
+                date: '@expense.Date.ToString("yyyy-MM-dd")'
+            },
+                </text>
+            }
+        ];
 
-        function editRegularExpense(expenseId) {
-            // TODO: Implement edit functionality
-            alert('Edit functionality for regular expense ' + expenseId + ' will be implemented next');
-        }
+        // Define functions globally
+        window.editRegularExpense = function(expenseId) {
+            console.log('editRegularExpense called with ID:', expenseId);
 
-        function deleteIrregularExpense(expenseId) {
-            if (confirm('Are you sure you want to delete this expense?')) {
-                // Create a form and submit it
-                const form = document.createElement('form');
-                form.method = 'post';
-                form.action = '?handler=DeleteIrregularExpense';
+            // Find the expense data
+            const expense = regularExpensesData.find(e => e.id == expenseId);
+            if (expense) {
+                console.log('Found expense:', expense.name);
+                document.getElementById('editExpenseId').value = expense.id;
+                document.getElementById('editRegularExpenseName').value = expense.name;
+                document.getElementById('editRegularExpenseAmount').value = expense.amount;
+                document.getElementById('editRegularExpenseCategory').value = expense.categoryId || '';
+                document.getElementById('editRegularExpenseCurrency').value = expense.currency;
+                document.getElementById('editRegularExpenseFrequency').value = expense.recurrence;
+                document.getElementById('editRegularExpenseStartDate').value = expense.startDate;
+            }
 
-                const expenseIdInput = document.createElement('input');
-                expenseIdInput.type = 'hidden';
-                expenseIdInput.name = 'expenseId';
+            // Show the modal
+            const modalElement = document.getElementById('editRegularExpenseModal');
+            console.log('Modal element:', modalElement);
+            if (modalElement) {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+                console.log('Modal shown successfully');
+            } else {
+                console.error('Modal element not found!');
+            }
+        };
+
+        window.deleteIrregularExpense = function(expenseId) {
+            if (confirm('Are you sure you want to delete this irregular expense? This action cannot be undone.')) {
+                // Use the hidden form
+                const form = document.getElementById('deleteIrregularExpenseForm');
+                const expenseIdInput = document.getElementById('deleteExpenseId');
                 expenseIdInput.value = expenseId;
-                form.appendChild(expenseIdInput);
-
-                // Add year and month to maintain current view
-                const yearInput = document.createElement('input');
-                yearInput.type = 'hidden';
-                yearInput.name = 'year';
-                yearInput.value = '@Model.ViewModel.Year';
-                form.appendChild(yearInput);
-
-                const monthInput = document.createElement('input');
-                monthInput.type = 'hidden';
-                monthInput.name = 'month';
-                monthInput.value = '@Model.ViewModel.Month';
-                form.appendChild(monthInput);
-
-                document.body.appendChild(form);
                 form.submit();
             }
-        }
+        };
+
+        window.editIrregularExpense = function(expenseId) {
+            console.log('editIrregularExpense called with ID:', expenseId);
+
+            // Find the expense data
+            const expense = irregularExpensesData.find(e => e.id == expenseId);
+            if (expense) {
+                console.log('Found expense:', expense.name);
+                document.getElementById('editIrregularExpenseId').value = expense.id;
+                document.getElementById('editIrregularExpenseName').value = expense.name;
+                document.getElementById('editIrregularExpenseAmount').value = expense.amount;
+                document.getElementById('editIrregularExpenseCategory').value = expense.categoryId || '';
+                document.getElementById('editIrregularExpenseCurrency').value = expense.currency;
+                document.getElementById('editIrregularExpenseDate').value = expense.date;
+            }
+
+            // Show the modal
+            const modalElement = document.getElementById('editIrregularExpenseModal');
+            console.log('Modal element:', modalElement);
+            if (modalElement) {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+                console.log('Modal shown successfully');
+            } else {
+                console.error('Modal element not found!');
+            }
+        };
     </script>
 }

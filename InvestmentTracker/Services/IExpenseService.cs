@@ -17,12 +17,16 @@ namespace InvestmentTracker.Services
         Task<ExpenseCategory?> GetExpenseCategoryAsync(int id);
         Task UpdateExpenseCategoryAsync(ExpenseCategory category);
         Task DeleteExpenseCategoryAsync(int id);
+        Task SeedDefaultCategoriesAsync();
         Task<IEnumerable<IncomeSource>> GetAllIncomeSourcesAsync();
         Task<IncomeSource?> GetIncomeSourceAsync(int id);
         Task DeleteIncomeSourceAsync(int id);
         Task AddRegularExpenseAsync(RegularExpense expense);
+        Task<RegularExpense?> GetRegularExpenseAsync(int id);
         Task UpdateRegularExpenseAsync(RegularExpense expense);
         Task AddIrregularExpenseAsync(IrregularExpense expense);
+        Task<IrregularExpense?> GetIrregularExpenseAsync(int id);
+        Task UpdateIrregularExpenseAsync(IrregularExpense expense);
         Task DeleteIrregularExpenseAsync(int expenseId);
     }
 }
