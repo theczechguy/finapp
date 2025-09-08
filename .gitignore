@@ -130,3 +130,4 @@ pids/
 
 # DynamoDB Local files
 .dynamodb/
+InvestmentTracker/investmenttracker.db
