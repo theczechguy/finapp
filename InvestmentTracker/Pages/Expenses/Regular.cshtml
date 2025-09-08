@@ -15,7 +15,7 @@
                     </a>
                     <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addExpenseModal" title="Add Expense" aria-label="Add Expense">
                         <i class="bi bi-plus-lg"></i>
-                        <span class="d-none d-sm-inline ms-1">Add Expense</span>
+                        <span class="d-none d-sm-inline ms-1">Add Expense <kbd>A</kbd></span>
                     </button>
                 </div>
             </div>
@@ -534,6 +534,37 @@
             document.getElementById('expenseId').value = '0';
             document.querySelector('#addExpenseModal .modal-title').textContent = 'Add Recurring Expense';
             document.getElementById('startingMonthContainer').style.display = 'none';
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            // Don't trigger shortcuts when user is typing in input fields
+            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.tagName === 'SELECT') {
+                return;
+            }
+
+            // Don't trigger shortcuts when modal is open
+            if (document.querySelector('.modal.show')) {
+                return;
+            }
+
+            // Don't trigger shortcuts when modifier keys are pressed (Cmd, Ctrl, Alt, Shift)
+            if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
+                return;
+            }
+
+            switch(event.key) {
+                case 'a':
+                case 'A':
+                    event.preventDefault();
+                    // Reset form and show add modal
+                    document.getElementById('expenseForm').reset();
+                    document.querySelector('#addExpenseModal .modal-title').textContent = 'Add Recurring Expense';
+                    document.getElementById('expenseId').value = '0';
+                    toggleStartingMonth();
+                    new bootstrap.Modal(document.getElementById('addExpenseModal')).show();
+                    break;
+            }
         });
     </script>
 }
