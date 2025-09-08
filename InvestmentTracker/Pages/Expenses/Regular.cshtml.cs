@@ -209,6 +209,83 @@ namespace InvestmentTracker.Pages.Expenses
             }
         }
 
+        public async Task<IActionResult> OnPostUpdateAsync(
+            int id,
+            string name, 
+            int categoryId, 
+            decimal amount, 
+            string frequency, 
+            int? startingMonth, 
+            string? description)
+        {
+            try
+            {
+                // Validate inputs
+                if (id <= 0 || string.IsNullOrWhiteSpace(name) || categoryId <= 0 || amount <= 0 || string.IsNullOrWhiteSpace(frequency))
+                {
+                    return new JsonResult(new { success = false, message = "Please fill in all required fields." });
+                }
+
+                // Parse frequency
+                if (!Enum.TryParse<Frequency>(frequency, out var parsedFrequency))
+                {
+                    return new JsonResult(new { success = false, message = "Invalid frequency selected." });
+                }
+
+                // Validate starting month for non-monthly frequencies
+                if (parsedFrequency != Frequency.Monthly && (!startingMonth.HasValue || startingMonth < 1 || startingMonth > 12))
+                {
+                    return new JsonResult(new { success = false, message = "Starting month is required for non-monthly frequencies." });
+                }
+
+                // Find the expense
+                var expense = await _context.RegularExpenses
+                    .Include(e => e.Schedules)
+                    .FirstOrDefaultAsync(e => e.Id == id);
+
+                if (expense == null)
+                {
+                    return new JsonResult(new { success = false, message = "Expense not found." });
+                }
+
+                // Update the expense
+                expense.Name = name.Trim();
+                expense.Description = description?.Trim();
+                expense.ExpenseCategoryId = categoryId;
+
+                // Update or create the schedule
+                var currentSchedule = expense.Schedules.FirstOrDefault();
+                if (currentSchedule != null)
+                {
+                    // Update existing schedule
+                    currentSchedule.Amount = amount;
+                    currentSchedule.Frequency = parsedFrequency;
+                    currentSchedule.StartMonth = startingMonth ?? DateTime.Now.Month;
+                }
+                else
+                {
+                    // Create new schedule if none exists
+                    var schedule = new ExpenseSchedule
+                    {
+                        StartYear = DateTime.Now.Year,
+                        StartMonth = startingMonth ?? DateTime.Now.Month,
+                        Amount = amount,
+                        Frequency = parsedFrequency,
+                        RegularExpense = expense
+                    };
+                    expense.Schedules.Add(schedule);
+                }
+
+                await _context.SaveChangesAsync();
+
+                return new JsonResult(new { success = true, message = "Regular expense updated successfully." });
+            }
+            catch
+            {
+                return new JsonResult(new { success = false, message = "An error occurred while updating the expense." });
+            }
+        }
+
         public async Task<IActionResult> OnPostDeleteAsync(int id)
         {
             try
@@ -261,7 +338,8 @@ namespace InvestmentTracker.Pages.Expenses
                         amount = currentSchedule?.Amount ?? 0,
                         categoryId = expense.ExpenseCategoryId,
                         frequency = currentSchedule?.Frequency.ToString() ?? "Monthly",
-                        startingMonth = currentSchedule?.StartMonth ?? DateTime.Now.Month
+                        startingMonth = currentSchedule?.StartMonth ?? DateTime.Now.Month,
+                        hasSchedule = currentSchedule != null
                     }
                 });
             }
@@ -269,6 +347,85 @@ namespace InvestmentTracker.Pages.Expenses
             {
                 return new JsonResult(new { success = false, message = "An error occurred while loading the expense details." });
             }
+        }
+
+        public string GetDetailedSchedule(RegularExpense expense)
+        {
+            if (expense.Schedules == null || !expense.Schedules.Any())
+                return "No schedule defined";
+
+            var currentSchedule = expense.Schedules
+                .OrderByDescending(s => s.StartYear * 12 + s.StartMonth)
+                .First();
+
+            var scheduleInfo = new List<string>();
+            
+            // Add period info
+            var startDate = $"{currentSchedule.StartYear}-{currentSchedule.StartMonth:D2}";
+            var endDate = currentSchedule.EndYear.HasValue && currentSchedule.EndMonth.HasValue 
+                ? $"{currentSchedule.EndYear}-{currentSchedule.EndMonth:D2}" 
+                : "ongoing";
+            
+            scheduleInfo.Add($"<strong>Period:</strong> {startDate} to {endDate}");
+            
+            // Add frequency-specific information with upcoming months
+            var frequencyInfo = GetFrequencyDescription(currentSchedule);
+            if (!string.IsNullOrEmpty(frequencyInfo))
+            {
+                scheduleInfo.Add($"<strong>Schedule:</strong> {frequencyInfo}");
+            }
+            
+            return string.Join("<br/>", scheduleInfo);
+        }
+
+        public string GetFrequencyDescription(ExpenseSchedule schedule)
+        {
+            var today = DateTime.Today;
+            var upcomingMonths = new List<string>();
+            
+            // Check next 12 months to show upcoming occurrences
+            for (int i = 0; i < 12; i++)
+            {
+                var checkDate = today.AddMonths(i);
+                if (schedule.ShouldApplyInMonth(checkDate.Year, checkDate.Month))
+                {
+                    upcomingMonths.Add(checkDate.ToString("MMM yyyy"));
+                    if (upcomingMonths.Count >= 4) break; // Show max 4 upcoming occurrences
+                }
+            }
+            
+            if (schedule.Frequency == Frequency.Monthly)
+            {
+                return "Every month";
+            }
+            else if (upcomingMonths.Any())
+            {
+                return $"Next occurrences: {string.Join(", ", upcomingMonths)}";
+            }
+            
+            return schedule.Frequency.ToString();
+        }
+
+        private List<string> GetScheduleMonths(int startMonth, int intervalMonths, int currentYear, int nextYear)
+        {
+            var months = new List<string>();
+            
+            // Get months for current year
+            for (int month = startMonth; month <= 12; month += intervalMonths)
+            {
+                months.Add(new DateTime(currentYear, month, 1).ToString("MMM"));
+            }
+            
+            // Get months for next year (up to 12 months ahead)
+            for (int month = startMonth; month <= 12 && months.Count < 4; month += intervalMonths)
+            {
+                if (month <= 12)
+                {
+                    months.Add(new DateTime(nextYear, month, 1).ToString("MMM"));
+                }
+            }
+            
+            return months.Take(4).ToList(); // Limit to 4 months to keep display clean
         }
     }
 }

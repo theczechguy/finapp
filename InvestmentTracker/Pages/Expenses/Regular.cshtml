@@ -119,7 +119,7 @@
                                         <th>Category</th>
                                         <th>Amount</th>
                                         <th>Frequency</th>
-                                        <th>Schedule</th>
+                                        <th>Schedule Details</th>
                                         <th>Next Due</th>
                                         <th>Annual Impact</th>
                                         <th>Actions</th>
@@ -150,33 +150,22 @@
                                                 <span class="badge @expense.FrequencyBadgeClass">@expense.FrequencyDisplay</span>
                                             </td>
                                             <td>
-                                                @if (expense.Recurrence == InvestmentTracker.Models.Frequency.Monthly)
-                                                {
-                                                    <span class="text-muted">Every month</span>
-                                                }
-                                                else
-                                                {
-                                                    <span>
-                                                        @{
-                                                    var currentSchedule = expense.Schedules.FirstOrDefault();
-                                                }
-                                                @if (currentSchedule != null)
-                                                {
-                                                    @switch (expense.Recurrence)
-                                                    {
-                                                        case InvestmentTracker.Models.Frequency.Quarterly:
-                                                            @($"Every 3 months (starting {new DateTime(2024, currentSchedule.StartMonth, 1):MMMM})")
-                                                            break;
-                                                        case InvestmentTracker.Models.Frequency.SemiAnnually:
-                                                            @($"Every 6 months (starting {new DateTime(2024, currentSchedule.StartMonth, 1):MMMM})")
-                                                            break;
-                                                        case InvestmentTracker.Models.Frequency.Annually:
-                                                            @($"Once per year ({new DateTime(2024, currentSchedule.StartMonth, 1):MMMM})")
-                                                            break;
+                                                <div>
+                                                    @Html.Raw(Model.GetDetailedSchedule(expense))
+                                                    @{
+                                                        var currentSchedule = expense.Schedules.FirstOrDefault();
                                                     }
-                                                }
-                                                    </span>
-                                                }
+                                                    @if (currentSchedule != null && expense.Recurrence != InvestmentTracker.Models.Frequency.Monthly)
+                                                    {
+                                                        <br><small class="text-muted">
+                                                            Starts: @(new DateTime(currentSchedule.StartYear, currentSchedule.StartMonth, 1).ToString("MMM yyyy"))
+                                                            @if (currentSchedule.EndYear.HasValue && currentSchedule.EndMonth.HasValue)
+                                                            {
+                                                                <br />@:Ends: @(new DateTime(currentSchedule.EndYear.Value, currentSchedule.EndMonth.Value, 1).ToString("MMM yyyy"))
+                                                            }
+                                                        </small>
+                                                    }
+                                                </div>
                                             </td>
                                             <td>
                                                 @{
