@@ -74,4 +74,41 @@ public class RegularExpense
     {
         return Schedules.OrderByDescending(s => s.EndDate ?? DateTime.MaxValue).FirstOrDefault()?.EndDate;
     }
+
+    // Get frequency info for display purposes
+    [NotMapped]
+    public string FrequencyDisplay
+    {
+        get
+        {
+            var frequency = GetCurrentFrequency();
+            return frequency switch
+            {
+                Frequency.Monthly => "Monthly",
+                Frequency.Quarterly => "Quarterly",
+                Frequency.SemiAnnually => "Semi-Annual",
+                Frequency.Annually => "Annual",
+                _ => "Monthly"
+            };
+        }
+    }
+
+    [NotMapped]
+    public bool IsAlternativeSchedule => GetCurrentFrequency() != Frequency.Monthly;
+
+    [NotMapped] 
+    public string FrequencyBadgeClass
+    {
+        get
+        {
+            return GetCurrentFrequency() switch
+            {
+                Frequency.Monthly => "bg-primary",
+                Frequency.Quarterly => "bg-info",
+                Frequency.SemiAnnually => "bg-warning text-dark",
+                Frequency.Annually => "bg-success",
+                _ => "bg-primary"
+            };
+        }
+    }
 }

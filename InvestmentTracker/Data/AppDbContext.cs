@@ -82,6 +82,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<ExpenseSchedule>()
             .HasIndex(s => new { s.RegularExpenseId, s.StartYear, s.StartMonth });
 
+        // Performance optimization indexes for temporal expense queries
+        modelBuilder.Entity<ExpenseSchedule>()
+            .HasIndex(s => new { s.StartYear, s.StartMonth, s.EndYear, s.EndMonth })
+            .HasDatabaseName("IX_ExpenseSchedules_TemporalLookup");
+
+        // Covering index for month-based expense calculations
+        modelBuilder.Entity<ExpenseSchedule>()
+            .HasIndex(s => new { s.StartYear, s.StartMonth, s.EndYear, s.EndMonth, s.RegularExpenseId, s.Amount, s.Frequency })
+            .HasDatabaseName("IX_ExpenseSchedules_CoveringQuery");
+
         modelBuilder.Entity<ExpenseSchedule>()
             .Ignore(s => s.StartDate)
             .Ignore(s => s.EndDate);
@@ -90,6 +100,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasOne(ie => ie.Category)
             .WithMany()
             .HasForeignKey(ie => ie.ExpenseCategoryId);
+
+        // Optimize irregular expense queries by date and category
+        modelBuilder.Entity<IrregularExpense>()
+            .HasIndex(ie => ie.Date)
+            .HasDatabaseName("IX_IrregularExpenses_Date");
+
+        modelBuilder.Entity<IrregularExpense>()
+            .HasIndex(ie => new { ie.Date, ie.ExpenseCategoryId, ie.Amount })
+            .HasDatabaseName("IX_IrregularExpenses_DateCategoryAmount");
 
         // Budgets
         modelBuilder.Entity<CategoryBudget>()
@@ -105,10 +124,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<CategoryBudget>()
             .HasIndex(cb => new { cb.ExpenseCategoryId, cb.StartYear, cb.StartMonth, cb.EndYear, cb.EndMonth })
             .HasDatabaseName("IX_CategoryBudgets_TemporalLookup");
-
-        modelBuilder.Entity<CategoryBudget>()
-            .HasIndex(cb => cb.Amount)
-            .HasDatabaseName("IX_CategoryBudgets_Amount");
 
         // Covering index for most common budget lookup
         modelBuilder.Entity<CategoryBudget>()

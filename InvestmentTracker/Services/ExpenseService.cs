@@ -27,13 +27,61 @@ namespace InvestmentTracker.Services
             var startDate = new DateTime(year, month, 1);
             var endDate = startDate.AddMonths(1).AddDays(-1);
 
-            // Incomes
-            var allIncomeSources = await _context.IncomeSources.ToListAsync();
+            // Use parallel tasks for independent queries to improve performance
+            var incomeTask = GetMonthlyIncomeDataAsync(year, month);
+            var oneTimeIncomeTask = GetOneTimeIncomesForMonthAsync(year, month);
+            var regularExpenseTask = GetApplicableRegularExpensesAsync(year, month);
+            var irregularExpenseTask = GetIrregularExpensesForMonthAsync(startDate, endDate);
+            var budgetTask = GetEffectiveBudgetsAsync(year, month);
+            var categoriesTask = _context.ExpenseCategories.AsNoTracking().ToListAsync();
+
+            await Task.WhenAll(incomeTask, oneTimeIncomeTask, regularExpenseTask, irregularExpenseTask, budgetTask, categoriesTask);
+
+            var incomeViewModels = await incomeTask;
+            var oneTimeIncomes = await oneTimeIncomeTask;
+            var (applicableRegularExpenses, expenseAmounts) = await regularExpenseTask;
+            var irregularExpenses = await irregularExpenseTask;
+            var effectiveBudgets = await budgetTask;
+            var allCategories = await categoriesTask;
+
+            // Calculate totals
+            var totalIncome = incomeViewModels.Sum(i => i.ActualAmount) + oneTimeIncomes.Sum(oti => oti.Amount);
+            var totalRegularExpenses = expenseAmounts.Values.Sum();
+            var totalIrregularExpenses = irregularExpenses.Sum(e => e.Amount);
+            var totalExpenses = totalRegularExpenses + totalIrregularExpenses;
+
+            // Build category breakdown efficiently
+            var expensesByCategory = BuildCategoryBreakdown(applicableRegularExpenses, expenseAmounts, irregularExpenses);
+
+            // Build budgets view model
+            var budgetsVm = BuildBudgetsViewModel(effectiveBudgets, expensesByCategory, allCategories);
+
+            var viewModel = new MonthlyExpenseViewModel
+            {
+                Year = year,
+                Month = month,
+                TotalIncome = totalIncome,
+                TotalExpenses = totalExpenses,
+                Incomes = incomeViewModels.ToList(),
+                OneTimeIncomes = oneTimeIncomes.ToList(),
+                RegularExpenses = applicableRegularExpenses,
+                IrregularExpenses = irregularExpenses.ToList(),
+                ExpensesByCategory = expensesByCategory,
+                Budgets = budgetsVm
+            };
+
+            return viewModel;
+        }
+
+        private async Task<List<IncomeViewModel>> GetMonthlyIncomeDataAsync(int year, int month)
+        {
+            var allIncomeSources = await _context.IncomeSources.AsNoTracking().ToListAsync();
             var monthlyIncomes = await _context.MonthlyIncomes
+                .AsNoTracking()
                 .Where(i => i.Month.Year == year && i.Month.Month == month)
                 .ToDictionaryAsync(i => i.IncomeSourceId);
 
-            var incomeViewModels = allIncomeSources.Select(source => new IncomeViewModel
+            return allIncomeSources.Select(source => new IncomeViewModel
             {
                 IncomeSourceId = source.Id,
                 Name = source.Name,
@@ -41,89 +89,91 @@ namespace InvestmentTracker.Services
                 ActualAmount = monthlyIncomes.TryGetValue(source.Id, out var income) ? income.ActualAmount : source.ExpectedAmount,
                 Currency = source.Currency
             }).ToList();
-            
-            var totalIncome = incomeViewModels.Sum(i => i.ActualAmount);
+        }
 
-            // One-time Incomes
-            var oneTimeIncomes = await GetOneTimeIncomesForMonthAsync(year, month);
-            var totalOneTimeIncome = oneTimeIncomes.Sum(oti => oti.Amount);
-            totalIncome += totalOneTimeIncome;
-
-            // Regular Expenses - now with month-based logic
+        private async Task<(List<RegularExpense> expenses, Dictionary<int, decimal> amounts)> GetApplicableRegularExpensesAsync(int year, int month)
+        {
+            // Optimized query with proper frequency handling
+            var monthIndex = year * 12 + month;
             var regularExpenses = await _context.RegularExpenses
+                .AsNoTracking()
                 .Include(e => e.Category)
                 .Include(e => e.FamilyMember)
-                .Include(e => e.Schedules)
+                .Include(e => e.Schedules.Where(s => 
+                    (s.StartYear * 12 + s.StartMonth) <= monthIndex &&
+                    (s.EndYear == null || s.EndMonth == null || (s.EndYear * 12 + s.EndMonth) >= monthIndex)))
                 .Where(e => e.Schedules.Any(s =>
-                    (s.StartYear * 12 + s.StartMonth) <= (year * 12 + month) &&
-                    (s.EndYear == null || s.EndMonth == null ||
-                     (s.EndYear * 12 + s.EndMonth) >= (year * 12 + month))))
+                    (s.StartYear * 12 + s.StartMonth) <= monthIndex &&
+                    (s.EndYear == null || s.EndMonth == null || (s.EndYear * 12 + s.EndMonth) >= monthIndex)))
                 .ToListAsync();
 
             var applicableRegularExpenses = new List<RegularExpense>();
-            var expenseAmounts = new Dictionary<int, decimal>(); // Track amounts per expense for the month
+            var expenseAmounts = new Dictionary<int, decimal>();
             
             foreach (var expense in regularExpenses)
             {
-                // Find the applicable schedule for this month using month-based logic
+                // Find the most recent applicable schedule for this month
                 var applicableSchedule = expense.Schedules
                     .Where(s => s.IsActiveForMonth(year, month))
                     .OrderByDescending(s => s.StartYear * 12 + s.StartMonth)
                     .FirstOrDefault();
 
-                if (applicableSchedule != null)
+                if (applicableSchedule != null && applicableSchedule.ShouldApplyInMonth(year, month))
                 {
-                    // This logic will need to be more robust to handle different frequencies
-                    if (applicableSchedule.Frequency == Frequency.Monthly)
-                    {
-                        // Set the display amount for this month
-                        expense.DisplayAmount = applicableSchedule.Amount;
-                        applicableRegularExpenses.Add(expense);
-                        expenseAmounts[expense.Id] = applicableSchedule.Amount;
-                    }
-                    // TODO: Add logic for Quarterly, SemiAnnually, Annually
+                    // Set the display amount for this month
+                    expense.DisplayAmount = applicableSchedule.Amount;
+                    applicableRegularExpenses.Add(expense);
+                    expenseAmounts[expense.Id] = applicableSchedule.Amount;
                 }
             }
-            var totalRegularExpenses = expenseAmounts.Values.Sum();
 
-            // Irregular Expenses
-            var irregularExpenses = await _context.IrregularExpenses
+            return (applicableRegularExpenses, expenseAmounts);
+        }
+
+        private async Task<List<IrregularExpense>> GetIrregularExpensesForMonthAsync(DateTime startDate, DateTime endDate)
+        {
+            return await _context.IrregularExpenses
+                .AsNoTracking()
                 .Include(e => e.Category)
                 .Include(e => e.FamilyMember)
                 .Where(e => e.Date >= startDate && e.Date <= endDate)
                 .ToListAsync();
-            var totalIrregularExpenses = irregularExpenses.Sum(e => e.Amount);
+        }
 
-            // Totals
-            var totalExpenses = totalRegularExpenses + totalIrregularExpenses;
-
-            // Category Breakdown
+        private static Dictionary<string, decimal> BuildCategoryBreakdown(
+            List<RegularExpense> applicableRegularExpenses, 
+            Dictionary<int, decimal> expenseAmounts, 
+            List<IrregularExpense> irregularExpenses)
+        {
             var expensesByCategory = new Dictionary<string, decimal>();
-            foreach (var expense in applicableRegularExpenses)
+            
+            foreach (var expense in applicableRegularExpenses.Where(e => e.Category != null))
             {
-                if (expense.Category != null && expenseAmounts.TryGetValue(expense.Id, out var amount))
+                if (expenseAmounts.TryGetValue(expense.Id, out var amount))
                 {
-                    expensesByCategory.TryGetValue(expense.Category.Name, out var currentTotal);
+                    expensesByCategory.TryGetValue(expense.Category!.Name, out var currentTotal);
                     expensesByCategory[expense.Category.Name] = currentTotal + amount;
                 }
             }
-            foreach (var expense in irregularExpenses)
+            
+            foreach (var expense in irregularExpenses.Where(e => e.Category != null))
             {
-                if (expense.Category != null)
-                {
-                    expensesByCategory.TryGetValue(expense.Category.Name, out var currentTotal);
-                    expensesByCategory[expense.Category.Name] = currentTotal + expense.Amount;
-                }
+                expensesByCategory.TryGetValue(expense.Category!.Name, out var currentTotal);
+                expensesByCategory[expense.Category.Name] = currentTotal + expense.Amount;
             }
 
-            // Budgets: compute effective budgets and map to view model
-            var effectiveBudgets = await GetEffectiveBudgetsAsync(year, month);
+            return expensesByCategory;
+        }
+
+        private static List<BudgetItemViewModel> BuildBudgetsViewModel(
+            List<CategoryBudget> effectiveBudgets, 
+            Dictionary<string, decimal> expensesByCategory, 
+            List<ExpenseCategory> allCategories)
+        {
             var budgetsByCategoryId = effectiveBudgets
                 .GroupBy(b => b.ExpenseCategoryId)
                 .ToDictionary(g => g.Key, g => g.OrderByDescending(b => b.StartYear * 12 + b.StartMonth).First());
 
-            // Build budgets list per category present in categories list
-            var allCategories = await _context.ExpenseCategories.ToListAsync();
             var budgetsVm = new List<BudgetItemViewModel>();
             foreach (var cat in allCategories)
             {
@@ -145,21 +195,7 @@ namespace InvestmentTracker.Services
                 });
             }
 
-            var viewModel = new MonthlyExpenseViewModel
-            {
-                Year = year,
-                Month = month,
-                TotalIncome = totalIncome,
-                TotalExpenses = totalExpenses,
-                Incomes = incomeViewModels,
-                OneTimeIncomes = oneTimeIncomes.ToList(),
-                RegularExpenses = applicableRegularExpenses,
-                IrregularExpenses = irregularExpenses,
-                ExpensesByCategory = expensesByCategory,
-                Budgets = budgetsVm
-            };
-
-            return viewModel;
+            return budgetsVm;
         }
 
         public async Task DeleteCategoryBudgetAsync(int categoryId, int year, int month)
@@ -236,6 +272,7 @@ namespace InvestmentTracker.Services
         {
             var monthIndex = year * 12 + month;
             return await _context.CategoryBudgets
+                .AsNoTracking()
                 .Include(cb => cb.ExpenseCategory)
                 .Where(cb => (cb.StartYear * 12 + cb.StartMonth) <= monthIndex &&
                              (cb.EndYear == null || cb.EndMonth == null || (cb.EndYear * 12 + cb.EndMonth) >= monthIndex))
@@ -338,6 +375,7 @@ namespace InvestmentTracker.Services
             var endDate = startDate.AddMonths(1).AddDays(-1);
             
             return await _context.OneTimeIncomes
+                .AsNoTracking()
                 .Include(oti => oti.IncomeSource)
                 .Where(oti => oti.Date >= startDate && oti.Date <= endDate)
                 .ToListAsync();

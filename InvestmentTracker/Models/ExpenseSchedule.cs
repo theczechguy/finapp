@@ -57,4 +57,46 @@ public class ExpenseSchedule
     {
         return $"{StartYear}-{StartMonth:D2}";
     }
+
+    /// <summary>
+    /// Determines if this expense should be applied in the given month based on frequency
+    /// </summary>
+    public bool ShouldApplyInMonth(int year, int month)
+    {
+        if (!IsActiveForMonth(year, month))
+            return false;
+
+        return Frequency switch
+        {
+            Frequency.Monthly => true,
+            Frequency.Quarterly => IsQuarterlyMonth(year, month),
+            Frequency.SemiAnnually => IsSemiAnnualMonth(year, month),
+            Frequency.Annually => IsAnnualMonth(year, month),
+            _ => false
+        };
+    }
+
+    private bool IsQuarterlyMonth(int year, int month)
+    {
+        // Show quarterly expenses in months 1, 4, 7, 10 relative to start month
+        var startDate = new DateTime(StartYear, StartMonth, 1);
+        var targetDate = new DateTime(year, month, 1);
+        var monthsDiff = (targetDate.Year - startDate.Year) * 12 + targetDate.Month - startDate.Month;
+        return monthsDiff >= 0 && monthsDiff % 3 == 0;
+    }
+
+    private bool IsSemiAnnualMonth(int year, int month)
+    {
+        // Show semi-annual expenses every 6 months from start
+        var startDate = new DateTime(StartYear, StartMonth, 1);
+        var targetDate = new DateTime(year, month, 1);
+        var monthsDiff = (targetDate.Year - startDate.Year) * 12 + targetDate.Month - startDate.Month;
+        return monthsDiff >= 0 && monthsDiff % 6 == 0;
+    }
+
+    private bool IsAnnualMonth(int year, int month)
+    {
+        // Show annual expenses in the same month each year
+        return month == StartMonth;
+    }
 }

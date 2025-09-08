@@ -249,8 +249,6 @@
     </div>
     <div class="card-footer text-muted small">
         Near threshold at 80%. Over at 100%. Leftover does not carry over.
-        <br>
-        <strong class="text-primary">Keyboard Shortcuts:</strong> ←/P (Previous), →/N (Next), C/T/Home (Current Month)
     </div>
 </div>
 
@@ -267,6 +265,16 @@
                 </div>
             </div>
             <div class="card-body">
+                @if (Model.ViewModel.RegularExpenses.Any(e => e.IsAlternativeSchedule))
+                {
+                    <div class="alert alert-info py-2 mb-3" role="alert">
+                        <small>
+                            <i class="bi bi-info-circle me-1"></i>
+                            <strong>Alternative Schedules:</strong> Some expenses use quarterly, semi-annual, or annual schedules and only appear in specific months.
+                            <i class="bi bi-calendar-event text-info"></i> indicates when these expenses are active this month.
+                        </small>
+                    </div>
+                }
                 <div id="regularExpensesContainer">
                     <div class="table-responsive">
                     <table class="table mb-0">
@@ -275,6 +283,7 @@
                                 <th>Name</th>
                                 <th>Category</th>
                                 <th>Amount</th>
+                                <th>Schedule</th>
                                 <th>Type</th>
                                 <th></th>
                             </tr>
@@ -285,9 +294,24 @@
                                 @foreach (var expense in Model.ViewModel.RegularExpenses)
                                 {
                                     <tr class="fade-in">
-                                        <td>@expense.Name</td>
+                                        <td>
+                                            @if (expense.IsAlternativeSchedule)
+                                            {
+                                                <i class="bi bi-calendar-event text-info me-1" title="@expense.FrequencyDisplay schedule - shows only in specific months" data-bs-toggle="tooltip"></i>
+                                            }
+                                            @expense.Name
+                                        </td>
                                         <td>@(expense.Category?.Name ?? "Uncategorized")</td>
                                         <td>@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
+                                        <td>
+                                            <span class="badge @expense.FrequencyBadgeClass" title="@expense.FrequencyDisplay schedule">
+                                                @expense.FrequencyDisplay
+                                            </span>
+                                            @if (expense.IsAlternativeSchedule)
+                                            {
+                                                <small class="text-muted d-block">Active this month</small>
+                                            }
+                                        </td>
                                         <td>
                                             <span class="badge bg-@(expense.ExpenseType == ExpenseType.Family ? "primary" : "secondary")">
                                                 @expense.ExpenseType
@@ -308,7 +332,7 @@
                             else
                             {
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted">No regular expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addRegularExpenseModal">Add your first expense</a></td>
+                                    <td colspan="6" class="text-center text-muted">No regular expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addRegularExpenseModal">Add your first expense</a></td>
                                 </tr>
                             }
                         </tbody>
