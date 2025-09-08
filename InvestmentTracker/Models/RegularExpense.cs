@@ -15,6 +15,11 @@ public class RegularExpense
     public int? ExpenseCategoryId { get; set; }
     public ExpenseCategory? Category { get; set; }
 
+    // Family/Individual categorization
+    public ExpenseType ExpenseType { get; set; } = ExpenseType.Family;
+    public int? FamilyMemberId { get; set; }
+    public FamilyMember? FamilyMember { get; set; }
+
     // Collection of schedules for temporal data
     public ICollection<ExpenseSchedule> Schedules { get; set; } = new List<ExpenseSchedule>();
 

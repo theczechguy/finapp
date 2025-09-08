@@ -52,6 +52,7 @@ namespace InvestmentTracker.Services
             // Regular Expenses - now with month-based logic
             var regularExpenses = await _context.RegularExpenses
                 .Include(e => e.Category)
+                .Include(e => e.FamilyMember)
                 .Include(e => e.Schedules)
                 .Where(e => e.Schedules.Any(s =>
                     (s.StartYear * 12 + s.StartMonth) <= (year * 12 + month) &&
@@ -88,6 +89,7 @@ namespace InvestmentTracker.Services
             // Irregular Expenses
             var irregularExpenses = await _context.IrregularExpenses
                 .Include(e => e.Category)
+                .Include(e => e.FamilyMember)
                 .Where(e => e.Date >= startDate && e.Date <= endDate)
                 .ToListAsync();
             var totalIrregularExpenses = irregularExpenses.Sum(e => e.Amount);
@@ -278,6 +280,7 @@ namespace InvestmentTracker.Services
             return await _context.RegularExpenses
                 .Include(e => e.Category)
                 .Include(e => e.Schedules)
+                .Include(e => e.FamilyMember)
                 .FirstOrDefaultAsync(e => e.Id == id);
         }
 
@@ -476,6 +479,7 @@ namespace InvestmentTracker.Services
         {
             return await _context.IrregularExpenses
                 .Include(e => e.Category)
+                .Include(e => e.FamilyMember)
                 .FirstOrDefaultAsync(e => e.Id == id);
         }
 
@@ -526,8 +530,34 @@ namespace InvestmentTracker.Services
         {
             return await _context.RegularExpenses
                 .Include(e => e.Category)
+                .Include(e => e.FamilyMember)
                 .Include(e => e.Schedules)
                 .ToListAsync();
+        }
+
+        public async Task<IEnumerable<FamilyMember>> GetFamilyMembersAsync()
+        {
+            return await _context.FamilyMember
+                .Where(fm => fm.IsActive)
+                .OrderBy(fm => fm.Name)
+                .ToListAsync();
+        }
+
+        public async Task AddFamilyMemberAsync(FamilyMember familyMember)
+        {
+            _context.Add(familyMember);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<FamilyMember?> GetFamilyMemberAsync(int id)
+        {
+            return await _context.FamilyMember.FindAsync(id);
+        }
+
+        public async Task UpdateFamilyMemberAsync(FamilyMember familyMember)
+        {
+            _context.Update(familyMember);
+            await _context.SaveChangesAsync();
         }
     }
 }

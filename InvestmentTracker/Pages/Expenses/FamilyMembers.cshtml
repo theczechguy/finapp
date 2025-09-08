@@ -1,0 +1,176 @@
+@page
+@model InvestmentTracker.Pages.Expenses.FamilyMembersModel
+@using System.Text.Json
+@using InvestmentTracker.Models
+@{
+    ViewData["Title"] = "Family Members";
+}
+
+<h2>Family Members</h2>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                Family Members
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addFamilyMemberModal">Add Member</button>
+            </div>
+            <div class="card-body">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Relationship</th>
+                            <th>Status</th>
+                            <th>Added</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.FamilyMembers.Any())
+                        {
+                            @foreach (var member in Model.FamilyMembers)
+                            {
+                                <tr>
+                                    <td>@member.Name</td>
+                                    <td>@member.Relationship</td>
+                                    <td>
+                                        <span class="badge bg-@(member.IsActive ? "success" : "secondary")">
+                                            @(member.IsActive ? "Active" : "Inactive")
+                                        </span>
+                                    </td>
+                                    <td>@member.CreatedDate.ToString("dd/MM/yyyy")</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-secondary me-1" onclick="editFamilyMember(@member.Id)">Edit</button>
+                                        <form method="post" asp-page-handler="ToggleStatus" asp-route-memberId="@member.Id" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-@(member.IsActive ? "warning" : "success")">
+                                                @(member.IsActive ? "Deactivate" : "Activate")
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No family members found. <a href="#" data-bs-toggle="modal" data-bs-target="#addFamilyMemberModal">Add your first family member</a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Quick Stats</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Total Members:</strong> @Model.FamilyMembers.Count</p>
+                <p><strong>Active Members:</strong> @Model.FamilyMembers.Count(m => m.IsActive)</p>
+                <p><strong>Inactive Members:</strong> @Model.FamilyMembers.Count(m => !m.IsActive)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Family Member Modal -->
+<div class="modal fade" id="addFamilyMemberModal" tabindex="-1" aria-labelledby="addFamilyMemberModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addFamilyMemberModalLabel">Add Family Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" asp-page-handler="AddFamilyMember">
+                    <div class="mb-3">
+                        <label for="memberName" class="form-label">Name</label>
+                        <input type="text" id="memberName" name="name" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="memberRelationship" class="form-label">Relationship</label>
+                        <select id="memberRelationship" name="relationship" class="form-control" required>
+                            <option value="">Select Relationship</option>
+                            <option value="Spouse">Spouse</option>
+                            <option value="Child">Child</option>
+                            <option value="Parent">Parent</option>
+                            <option value="Sibling">Sibling</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Member</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Family Member Modal -->
+<div class="modal fade" id="editFamilyMemberModal" tabindex="-1" aria-labelledby="editFamilyMemberModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editFamilyMemberModalLabel">Edit Family Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" asp-page-handler="UpdateFamilyMember">
+                    <input type="hidden" id="editMemberId" name="id" />
+                    <div class="mb-3">
+                        <label for="editMemberName" class="form-label">Name</label>
+                        <input type="text" id="editMemberName" name="name" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="editMemberRelationship" class="form-label">Relationship</label>
+                        <select id="editMemberRelationship" name="relationship" class="form-control" required>
+                            <option value="">Select Relationship</option>
+                            <option value="Spouse">Spouse</option>
+                            <option value="Child">Child</option>
+                            <option value="Parent">Parent</option>
+                            <option value="Sibling">Sibling</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Member</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Family members data
+        const familyMembersData = [
+            @foreach (var member in Model.FamilyMembers)
+            {
+                <text>
+            {
+                id: @member.Id,
+                name: '@Html.Raw(member.Name.Replace("'", "\\'"))',
+                relationship: '@member.Relationship',
+                isActive: @member.IsActive.ToString().ToLower()
+            },
+                </text>
+            }
+        ];
+
+        window.editFamilyMember = function(memberId) {
+            const member = familyMembersData.find(m => m.id == memberId);
+            if (member) {
+                document.getElementById('editMemberId').value = member.id;
+                document.getElementById('editMemberName').value = member.name;
+                document.getElementById('editMemberRelationship').value = member.relationship;
+            }
+
+            const modalElement = document.getElementById('editFamilyMemberModal');
+            if (modalElement) {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            }
+        };
+    </script>
+}

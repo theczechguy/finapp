@@ -169,6 +169,7 @@
                 Regular Expenses
                 <div>
                     <a asp-page="./ExpenseCategories" class="btn btn-sm btn-outline-secondary me-2">Manage Categories</a>
+                    <a asp-page="./FamilyMembers" class="btn btn-sm btn-outline-info me-2">Family Members</a>
                     <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addRegularExpenseModal">Add Expense</button>
                 </div>
             </div>
@@ -179,6 +180,7 @@
                             <th>Name</th>
                             <th>Category</th>
                             <th>Amount</th>
+                            <th>Type</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -192,6 +194,15 @@
                                     <td>@(expense.Category?.Name ?? "Uncategorized")</td>
                                     <td>@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
                                     <td>
+                                        <span class="badge bg-@(expense.ExpenseType == ExpenseType.Family ? "primary" : "secondary")">
+                                            @expense.ExpenseType
+                                        </span>
+                                        @if (expense.FamilyMember != null)
+                                        {
+                                            <small class="text-muted d-block">@expense.FamilyMember.Name</small>
+                                        }
+                                    </td>
+                                    <td>
                                         <button type="button" class="btn btn-sm btn-secondary" onclick="editRegularExpense(@expense.Id)">Edit</button>
                                     </td>
                                 </tr>
@@ -200,7 +211,7 @@
                         else
                         {
                             <tr>
-                                <td colspan="4" class="text-center text-muted">No regular expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addRegularExpenseModal">Add your first expense</a></td>
+                                <td colspan="5" class="text-center text-muted">No regular expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addRegularExpenseModal">Add your first expense</a></td>
                             </tr>
                         }
                     </tbody>
@@ -214,6 +225,7 @@
                 Irregular Expenses
                 <div>
                     <a asp-page="./ExpenseCategories" class="btn btn-sm btn-outline-secondary me-2">Manage Categories</a>
+                    <a asp-page="./FamilyMembers" class="btn btn-sm btn-outline-info me-2">Family Members</a>
                     <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Quick Add</button>
                 </div>
             </div>
@@ -225,6 +237,7 @@
                             <th>Name</th>
                             <th>Category</th>
                             <th>Amount</th>
+                            <th>Type</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -239,6 +252,15 @@
                                     <td>@(expense.Category?.Name ?? "Uncategorized")</td>
                                     <td>@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
                                     <td>
+                                        <span class="badge bg-@(expense.ExpenseType == ExpenseType.Family ? "primary" : "secondary")">
+                                            @expense.ExpenseType
+                                        </span>
+                                        @if (expense.FamilyMember != null)
+                                        {
+                                            <small class="text-muted d-block">@expense.FamilyMember.Name</small>
+                                        }
+                                    </td>
+                                    <td>
                                         <button type="button" class="btn btn-sm btn-secondary me-1" onclick="editIrregularExpense(@expense.Id)">Edit</button>
                                         <form method="post" asp-page-handler="DeleteIrregularExpense" asp-route-expenseId="@expense.Id" class="d-inline" data-confirm="Delete this irregular expense? This action cannot be undone.">
                                             <button type="submit" class="btn btn-sm btn-danger">Delete</button>
@@ -250,7 +272,7 @@
                         else
                         {
                             <tr>
-                                <td colspan="5" class="text-center text-muted">No irregular expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Add your first expense</a></td>
+                                <td colspan="6" class="text-center text-muted">No irregular expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Add your first expense</a></td>
                             </tr>
                         }
                     </tbody>
@@ -289,6 +311,23 @@
                         </select>
                     </div>
                     <div class="mb-3">
+                        <label for="regularExpenseType" class="form-label">Expense Type</label>
+                        <select id="regularExpenseType" name="expenseType" class="form-control" required onchange="toggleFamilyMemberSelection('regularExpense')">
+                            <option value="Family" selected>Family</option>
+                            <option value="Individual">Individual</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="regularExpenseFamilyMemberContainer" style="display: none;">
+                        <label for="regularExpenseFamilyMember" class="form-label">Family Member</label>
+                        <select id="regularExpenseFamilyMember" name="familyMemberId" class="form-control">
+                            <option value="">Select Family Member</option>
+                            @foreach (var member in await Model.GetFamilyMembersAsync())
+                            {
+                                <option value="@member.Id">@member.Name (@member.Relationship)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3>
                         <label for="regularExpenseCurrency" class="form-label">Currency</label>
                         <select id="regularExpenseCurrency" name="currency" class="form-control" required>
                             <option value="CZK" selected>CZK</option>
@@ -364,6 +403,23 @@
                         </select>
                     </div>
                     <div class="mb-3">
+                        <label for="irregularExpenseType" class="form-label">Expense Type</label>
+                        <select id="irregularExpenseType" name="expenseType" class="form-control" required onchange="toggleFamilyMemberSelection('irregularExpense')">
+                            <option value="Family" selected>Family</option>
+                            <option value="Individual">Individual</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="irregularExpenseFamilyMemberContainer" style="display: none;">
+                        <label for="irregularExpenseFamilyMember" class="form-label">Family Member</label>
+                        <select id="irregularExpenseFamilyMember" name="familyMemberId" class="form-control">
+                            <option value="">Select Family Member</option>
+                            @foreach (var member in await Model.GetFamilyMembersAsync())
+                            {
+                                <option value="@member.Id">@member.Name (@member.Relationship)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3>
                         <label for="irregularExpenseCurrency" class="form-label">Currency</label>
                         <select id="irregularExpenseCurrency" name="currency" class="form-control" required>
                             <option value="CZK" selected>CZK</option>
@@ -412,6 +468,23 @@
                         </select>
                     </div>
                     <div class="mb-3">
+                        <label for="editRegularExpenseType" class="form-label">Expense Type</label>
+                        <select id="editRegularExpenseType" name="expenseType" class="form-control" required onchange="toggleFamilyMemberSelection('editRegularExpense')">
+                            <option value="Family">Family</option>
+                            <option value="Individual">Individual</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="editRegularExpenseFamilyMemberContainer" style="display: none;">
+                        <label for="editRegularExpenseFamilyMember" class="form-label">Family Member</label>
+                        <select id="editRegularExpenseFamilyMember" name="familyMemberId" class="form-control">
+                            <option value="">Select Family Member</option>
+                            @foreach (var member in await Model.GetFamilyMembersAsync())
+                            {
+                                <option value="@member.Id">@member.Name (@member.Relationship)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3>
                         <label for="editRegularExpenseCurrency" class="form-label">Currency</label>
                         <select id="editRegularExpenseCurrency" name="currency" class="form-control" required>
                             <option value="CZK">CZK</option>
@@ -515,6 +588,23 @@
                         </select>
                     </div>
                     <div class="mb-3">
+                        <label for="editIrregularExpenseType" class="form-label">Expense Type</label>
+                        <select id="editIrregularExpenseType" name="expenseType" class="form-control" required onchange="toggleFamilyMemberSelection('editIrregularExpense')">
+                            <option value="Family">Family</option>
+                            <option value="Individual">Individual</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="editIrregularExpenseFamilyMemberContainer" style="display: none;">
+                        <label for="editIrregularExpenseFamilyMember" class="form-label">Family Member</label>
+                        <select id="editIrregularExpenseFamilyMember" name="familyMemberId" class="form-control">
+                            <option value="">Select Family Member</option>
+                            @foreach (var member in await Model.GetFamilyMembersAsync())
+                            {
+                                <option value="@member.Id">@member.Name (@member.Relationship)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3>
                         <label for="editIrregularExpenseCurrency" class="form-label">Currency</label>
                         <select id="editIrregularExpenseCurrency" name="currency" class="form-control" required>
                             <option value="CZK">CZK</option>
@@ -643,21 +733,8 @@
                 currency: '@expense.Currency',
                 recurrence: '@expense.Recurrence',
                 startDate: '@expense.StartDate.ToString("yyyy-MM-dd")',
-                schedules: [
-                    @foreach (var schedule in expense.Schedules.OrderBy(s => s.StartYear * 12 + s.StartMonth))
-                    {
-                        <text>
-                    {
-                        startYear: @schedule.StartYear,
-                        startMonth: @schedule.StartMonth,
-                        endYear: @(schedule.EndYear?.ToString() ?? "null"),
-                        endMonth: @(schedule.EndMonth?.ToString() ?? "null"),
-                        amount: @schedule.Amount,
-                        frequency: '@schedule.Frequency'
-                    },
-                        </text>
-                    }
-                ]
+                expenseType: '@expense.ExpenseType',
+                familyMemberId: @(expense.FamilyMemberId?.ToString() ?? "null")
             },
                 </text>
             }
@@ -676,6 +753,8 @@
                 currency: '@expense.Currency',
                 recurrence: '@expense.Recurrence',
                 startDate: '@expense.StartDate.ToString("yyyy-MM-dd")',
+                expenseType: '@expense.ExpenseType',
+                familyMemberId: @(expense.FamilyMemberId?.ToString() ?? "null"),
                 schedules: [
                     @foreach (var schedule in expense.Schedules.OrderBy(s => s.StartYear * 12 + s.StartMonth))
                     {
@@ -713,6 +792,25 @@
             }
         ];
 
+        // Irregular expenses data
+        const irregularExpensesData = [
+            @foreach (var expense in Model.ViewModel.IrregularExpenses)
+            {
+                <text>
+            {
+                id: @expense.Id,
+                name: '@Html.Raw(expense.Name.Replace("'", "\\'"))',
+                amount: @expense.Amount,
+                categoryId: @(expense.Category != null ? expense.Category.Id.ToString() : "null"),
+                currency: '@expense.Currency',
+                date: '@expense.Date.ToString("yyyy-MM-dd")',
+                expenseType: '@expense.ExpenseType',
+                familyMemberId: @(expense.FamilyMemberId?.ToString() ?? "null")
+            },
+                </text>
+            }
+        ];
+
         // Define functions globally
         window.editRegularExpense = function(expenseId) {
             console.log('editRegularExpense called with ID:', expenseId);
@@ -727,6 +825,13 @@
                 document.getElementById('editRegularExpenseCategory').value = expense.categoryId || '';
                 document.getElementById('editRegularExpenseCurrency').value = expense.currency;
                 document.getElementById('editRegularExpenseFrequency').value = expense.recurrence;
+                
+                // Set expense type and family member
+                document.getElementById('editRegularExpenseType').value = expense.expenseType || 'Family';
+                document.getElementById('editRegularExpenseFamilyMember').value = expense.familyMemberId || '';
+                
+                // Toggle family member selection based on expense type
+                toggleFamilyMemberSelection('editRegularExpense');
                 
                 // Set year and month from the start date
                 const startDate = new Date(expense.startDate);
@@ -818,6 +923,13 @@
                 document.getElementById('editIrregularExpenseCategory').value = expense.categoryId || '';
                 document.getElementById('editIrregularExpenseCurrency').value = expense.currency;
                 document.getElementById('editIrregularExpenseDate').value = expense.date;
+                
+                // Set expense type and family member
+                document.getElementById('editIrregularExpenseType').value = expense.expenseType || 'Family';
+                document.getElementById('editIrregularExpenseFamilyMember').value = expense.familyMemberId || '';
+                
+                // Toggle family member selection based on expense type
+                toggleFamilyMemberSelection('editIrregularExpense');
             }
 
             // Show the modal
@@ -887,5 +999,29 @@
                 form.submit();
             }
         };
+
+        // Toggle family member selection visibility based on expense type
+        window.toggleFamilyMemberSelection = function(prefix) {
+            const expenseTypeSelect = document.getElementById(prefix + 'Type');
+            const familyMemberContainer = document.getElementById(prefix + 'FamilyMemberContainer');
+            const familyMemberSelect = document.getElementById(prefix + 'FamilyMember');
+            
+            if (expenseTypeSelect.value === 'Individual') {
+                familyMemberContainer.style.display = 'block';
+                familyMemberSelect.required = true;
+            } else {
+                familyMemberContainer.style.display = 'none';
+                familyMemberSelect.required = false;
+                familyMemberSelect.value = '';
+            }
+        };
+
+        // Initialize tooltips
+        document.addEventListener('DOMContentLoaded', function() {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            const tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
     </script>
 }

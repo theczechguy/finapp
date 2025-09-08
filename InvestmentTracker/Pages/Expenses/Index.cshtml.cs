@@ -42,13 +42,15 @@ namespace InvestmentTracker.Pages.Expenses
             return RedirectToPage(new { year, month });
         }
 
-        public async Task<IActionResult> OnPostAddRegularExpenseAsync(string name, decimal amount, int categoryId, string frequency, int startYear, int startMonth, string currency)
+        public async Task<IActionResult> OnPostAddRegularExpenseAsync(string name, decimal amount, int categoryId, string frequency, int startYear, int startMonth, string currency, string expenseType, int? familyMemberId)
         {
             var expense = new RegularExpense
             {
                 Name = name,
                 ExpenseCategoryId = categoryId,
-                Currency = Enum.Parse<Currency>(currency)
+                Currency = Enum.Parse<Currency>(currency),
+                ExpenseType = Enum.Parse<ExpenseType>(expenseType),
+                FamilyMemberId = familyMemberId
             };
 
             // Create initial schedule with month-based fields
@@ -64,7 +66,7 @@ namespace InvestmentTracker.Pages.Expenses
             return RedirectToPage(new { Year, Month });
         }
 
-        public async Task<IActionResult> OnPostAddIrregularExpenseAsync(string name, decimal amount, int categoryId, DateTime date, string currency)
+        public async Task<IActionResult> OnPostAddIrregularExpenseAsync(string name, decimal amount, int categoryId, DateTime date, string currency, string expenseType, int? familyMemberId)
         {
             var expense = new IrregularExpense
             {
@@ -72,7 +74,9 @@ namespace InvestmentTracker.Pages.Expenses
                 Amount = amount,
                 ExpenseCategoryId = categoryId,
                 Date = date,
-                Currency = Enum.Parse<Currency>(currency)
+                Currency = Enum.Parse<Currency>(currency),
+                ExpenseType = Enum.Parse<ExpenseType>(expenseType),
+                FamilyMemberId = familyMemberId
             };
 
             await _expenseService.AddIrregularExpenseAsync(expense);
@@ -90,7 +94,7 @@ namespace InvestmentTracker.Pages.Expenses
             return await _expenseService.GetExpenseCategoriesAsync();
         }
 
-        public async Task<IActionResult> OnPostUpdateRegularExpenseAsync(int id, string name, decimal amount, int categoryId, string frequency, int startYear, int startMonth, string currency)
+        public async Task<IActionResult> OnPostUpdateRegularExpenseAsync(int id, string name, decimal amount, int categoryId, string frequency, int startYear, int startMonth, string currency, string expenseType, int? familyMemberId)
         {
             var existingExpense = await _expenseService.GetRegularExpenseAsync(id);
             if (existingExpense == null)
@@ -102,6 +106,8 @@ namespace InvestmentTracker.Pages.Expenses
             existingExpense.Name = name;
             existingExpense.ExpenseCategoryId = categoryId;
             existingExpense.Currency = Enum.Parse<Currency>(currency);
+            existingExpense.ExpenseType = Enum.Parse<ExpenseType>(expenseType);
+            existingExpense.FamilyMemberId = familyMemberId;
 
             // Handle schedule updates with temporal logic
             var startDate = new DateTime(startYear, startMonth, 1);
@@ -109,7 +115,7 @@ namespace InvestmentTracker.Pages.Expenses
             return RedirectToPage(new { Year, Month });
         }
 
-        public async Task<IActionResult> OnPostUpdateIrregularExpenseAsync(int id, string name, decimal amount, int categoryId, DateTime date, string currency)
+        public async Task<IActionResult> OnPostUpdateIrregularExpenseAsync(int id, string name, decimal amount, int categoryId, DateTime date, string currency, string expenseType, int? familyMemberId)
         {
             var existingExpense = await _expenseService.GetIrregularExpenseAsync(id);
             if (existingExpense == null)
@@ -122,6 +128,8 @@ namespace InvestmentTracker.Pages.Expenses
             existingExpense.ExpenseCategoryId = categoryId;
             existingExpense.Date = date;
             existingExpense.Currency = Enum.Parse<Currency>(currency);
+            existingExpense.ExpenseType = Enum.Parse<ExpenseType>(expenseType);
+            existingExpense.FamilyMemberId = familyMemberId;
 
             await _expenseService.UpdateIrregularExpenseAsync(existingExpense);
             return RedirectToPage(new { Year, Month });
@@ -174,6 +182,11 @@ namespace InvestmentTracker.Pages.Expenses
         public async Task<IEnumerable<RegularExpense>> GetAllRegularExpensesAsync()
         {
             return await _expenseService.GetAllRegularExpensesAsync();
+        }
+
+        public async Task<IEnumerable<FamilyMember>> GetFamilyMembersAsync()
+        {
+            return await _expenseService.GetFamilyMembersAsync();
         }
     }
 }
