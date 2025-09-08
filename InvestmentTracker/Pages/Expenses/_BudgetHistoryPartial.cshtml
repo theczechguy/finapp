@@ -1,0 +1,36 @@
+@model List<InvestmentTracker.ViewModels.BudgetHistoryItem>
+
+@if (Model.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Period</th>
+                    <th class="text-end">Amount</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@item.PeriodDisplay</td>
+                        <td class="text-end">@item.Amount.ToString("N0", new System.Globalization.CultureInfo("cs-CZ"))</td>
+                        <td>
+                            <span class="badge @(item.IsActive ? "bg-success" : "bg-secondary")">
+                                @item.StatusDisplay
+                            </span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="text-center text-muted">
+        No budget history found for this category.
+    </div>
+}

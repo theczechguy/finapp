@@ -37,6 +37,10 @@
                 <button type="button" class="btn btn-outline-secondary" onclick="navigateMonth(-1)" title="Previous Month">
                     <i class="bi bi-chevron-left"></i> Previous
                 </button>
+                <button type="button" class="btn btn-outline-primary" onclick="navigateToCurrentMonth()" title="Current Month">
+                    <i class="bi bi-calendar-event"></i>
+                    <span class="d-none d-sm-inline ms-1">Current</span>
+                </button>
                 <button type="button" class="btn btn-outline-secondary" onclick="navigateMonth(1)" title="Next Month">
                     Next <i class="bi bi-chevron-right"></i>
                 </button>
@@ -182,6 +186,10 @@
 <div class="card mb-4">
     <div class="card-header">
         <span>Budgets</span>
+        <a href="./Budgets?year=@Model.ViewModel.Year&month=@Model.ViewModel.Month" class="btn btn-sm btn-outline-primary float-end">
+            <i class="bi bi-gear"></i>
+            <span class="d-none d-sm-inline ms-1">Manage</span>
+        </a>
     </div>
     <div class="card-body">
         @if (Model.ViewModel.Budgets.Any(b => b.BudgetAmount.HasValue))
@@ -198,14 +206,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                    @foreach (var b in Model.ViewModel.Budgets.Where(b => b.BudgetAmount.HasValue).OrderBy(x => x.CategoryName))
+                    @foreach (var b in Model.ViewModel.Budgets.Where(b => b.BudgetAmount.HasValue).OrderByDescending(x => x.BudgetAmount.HasValue).ThenBy(x => x.CategoryName))
                     {
                         var percent = b.BudgetAmount.HasValue && b.BudgetAmount > 0 ? Math.Min(100, Math.Round(b.Percent)) : 0;
                         var barClass = b.Status == "Over" ? "bg-danger" : b.Status == "Near" ? "bg-warning" : "bg-primary";
                         <tr>
                             <td>@b.CategoryName</td>
-                            <td class="text-end">@(b.BudgetAmount!.Value.ToString("C", new System.Globalization.CultureInfo("cs-CZ")))</td>
-                            <td class="text-end">@b.SpentAmount.ToString("C", new System.Globalization.CultureInfo("cs-CZ"))</td>
+                            <td class="text-end">@(b.BudgetAmount!.Value.ToString("N0", new System.Globalization.CultureInfo("cs-CZ")))</td>
+                            <td class="text-end">@b.SpentAmount.ToString("N0", new System.Globalization.CultureInfo("cs-CZ"))</td>
                             <td>
                                 <div class="progress" role="progressbar" aria-label=$"Spent {b.SpentAmount} of {b.BudgetAmount} ({percent}%)">
                                     <div class="progress-bar @barClass" style="width:@percent%">
@@ -215,11 +223,11 @@
                                 <small class="text-muted">
                                     @if (b.Percent >= 100)
                                     {
-                                        <text>Over by @((b.SpentAmount - (b.BudgetAmount ?? 0)).ToString("C", new System.Globalization.CultureInfo("cs-CZ")))</text>
+                                        <text>Over by @((b.SpentAmount - (b.BudgetAmount ?? 0)).ToString("N0", new System.Globalization.CultureInfo("cs-CZ")))</text>
                                     }
                                     else
                                     {
-                                        <text>Remaining @(((b.BudgetAmount ?? 0) - b.SpentAmount).ToString("C", new System.Globalization.CultureInfo("cs-CZ")))</text>
+                                        <text>Remaining @(((b.BudgetAmount ?? 0) - b.SpentAmount).ToString("N0", new System.Globalization.CultureInfo("cs-CZ")))</text>
                                     }
                                 </small>
                             </td>
@@ -1078,6 +1086,16 @@
             
             // Navigate to the new month
             const url = `?year=${newYear}&month=${newMonth}`;
+            window.location.href = url;
+        };
+
+        window.navigateToCurrentMonth = function() {
+            const currentDate = new Date();
+            const currentYear = currentDate.getFullYear();
+            const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-based
+            
+            // Navigate to current month
+            const url = `?year=${currentYear}&month=${currentMonth}`;
             window.location.href = url;
         };
 

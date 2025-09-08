@@ -29,4 +29,25 @@ namespace InvestmentTracker.ViewModels
         public decimal Percent => BudgetAmount.HasValue && BudgetAmount > 0 ? (SpentAmount / BudgetAmount.Value) * 100 : 0;
         public string Status => !BudgetAmount.HasValue ? "No budget" : Percent >= 100 ? "Over" : Percent >= 80 ? "Near" : "Under";
     }
+
+    public class BudgetHistoryItem
+    {
+        public int BudgetId { get; set; }
+        public int CategoryId { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public int StartYear { get; set; }
+        public int StartMonth { get; set; }
+        public int? EndYear { get; set; }
+        public int? EndMonth { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public bool IsActive { get; set; }
+
+        public string PeriodDisplay => EndDate.HasValue
+            ? $"{StartDate.ToString("MMM yyyy")} - {EndDate.Value.ToString("MMM yyyy")}"
+            : $"{StartDate.ToString("MMM yyyy")} - Ongoing";
+
+        public string StatusDisplay => IsActive ? "Active" : "Inactive";
+    }
 }

@@ -101,6 +101,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<CategoryBudget>()
             .HasIndex(cb => new { cb.ExpenseCategoryId, cb.StartYear, cb.StartMonth });
 
+        // Performance optimization indexes for temporal queries
+        modelBuilder.Entity<CategoryBudget>()
+            .HasIndex(cb => new { cb.ExpenseCategoryId, cb.StartYear, cb.StartMonth, cb.EndYear, cb.EndMonth })
+            .HasDatabaseName("IX_CategoryBudgets_TemporalLookup");
+
+        modelBuilder.Entity<CategoryBudget>()
+            .HasIndex(cb => cb.Amount)
+            .HasDatabaseName("IX_CategoryBudgets_Amount");
+
+        // Covering index for most common budget lookup
+        modelBuilder.Entity<CategoryBudget>()
+            .HasIndex(cb => new { cb.StartYear, cb.StartMonth, cb.EndYear, cb.EndMonth, cb.ExpenseCategoryId, cb.Amount })
+            .HasDatabaseName("IX_CategoryBudgets_CoveringQuery");
+
         base.OnModelCreating(modelBuilder);
     }
 }

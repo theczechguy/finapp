@@ -162,6 +162,76 @@ namespace InvestmentTracker.Services
             return viewModel;
         }
 
+        public async Task DeleteCategoryBudgetAsync(int categoryId, int year, int month)
+        {
+            var monthIndex = year * 12 + month;
+            var budgets = await _context.CategoryBudgets
+                .Where(cb => cb.ExpenseCategoryId == categoryId)
+                .ToListAsync();
+
+            // Find budgets that are active for this month or start in future months
+            var relevantBudgets = budgets.Where(cb =>
+                (cb.StartYear * 12 + cb.StartMonth) >= monthIndex ||
+                cb.IsActiveForMonth(year, month)).ToList();
+
+            foreach (var budget in relevantBudgets)
+            {
+                var budgetStart = budget.StartYear * 12 + budget.StartMonth;
+                var budgetEnd = budget.EndYear.HasValue && budget.EndMonth.HasValue
+                    ? budget.EndYear.Value * 12 + budget.EndMonth.Value
+                    : int.MaxValue;
+
+                if (budgetStart >= monthIndex)
+                {
+                    // Budget starts at or after this month - delete it entirely
+                    _context.CategoryBudgets.Remove(budget);
+                }
+                else if (budgetStart < monthIndex && budgetEnd >= monthIndex)
+                {
+                    // Budget started before this month but extends to/through this month
+                    // End it at the previous month
+                    var prevMonth = new DateTime(year, month, 1).AddMonths(-1);
+                    budget.EndYear = prevMonth.Year;
+                    budget.EndMonth = prevMonth.Month;
+                }
+                // If budget ended before this month, we don't need to modify it
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<List<BudgetHistoryItem>> GetBudgetHistoryAsync(int categoryId)
+        {
+            var budgets = await _context.CategoryBudgets
+                .Where(cb => cb.ExpenseCategoryId == categoryId)
+                .Include(cb => cb.ExpenseCategory)
+                .OrderByDescending(cb => cb.StartYear)
+                .ThenByDescending(cb => cb.StartMonth)
+                .ToListAsync();
+
+            var history = new List<BudgetHistoryItem>();
+
+            foreach (var budget in budgets)
+            {
+                history.Add(new BudgetHistoryItem
+                {
+                    BudgetId = budget.Id,
+                    CategoryId = budget.ExpenseCategoryId,
+                    CategoryName = budget.ExpenseCategory?.Name ?? "Unknown",
+                    Amount = budget.Amount,
+                    StartYear = budget.StartYear,
+                    StartMonth = budget.StartMonth,
+                    EndYear = budget.EndYear,
+                    EndMonth = budget.EndMonth,
+                    StartDate = budget.StartDate,
+                    EndDate = budget.EndDate,
+                    IsActive = budget.IsActiveForMonth(DateTime.Today.Year, DateTime.Today.Month)
+                });
+            }
+
+            return history;
+        }
+
         public async Task<List<CategoryBudget>> GetEffectiveBudgetsAsync(int year, int month)
         {
             var monthIndex = year * 12 + month;
@@ -255,129 +325,11 @@ namespace InvestmentTracker.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task DeleteCategoryBudgetAsync(int categoryId, int year, int month)
-        {
-            var monthIndex = year * 12 + month;
-            var budgets = await _context.CategoryBudgets
-                .Where(cb => cb.ExpenseCategoryId == categoryId)
-                .ToListAsync();
-
-            // Find budgets that are active for this month
-            var activeBudgets = budgets.Where(cb => cb.IsActiveForMonth(year, month)).ToList();
-
-            foreach (var budget in activeBudgets)
-            {
-                var budgetStart = budget.StartYear * 12 + budget.StartMonth;
-                var budgetEnd = budget.EndYear.HasValue && budget.EndMonth.HasValue
-                    ? budget.EndYear.Value * 12 + budget.EndMonth.Value
-                    : int.MaxValue;
-
-                if (budgetStart == monthIndex && budgetEnd == monthIndex)
-                {
-                    // Single month budget - delete it entirely
-                    _context.CategoryBudgets.Remove(budget);
-                }
-                else if (budgetStart <= monthIndex && budgetEnd >= monthIndex)
-                {
-                    if (budgetStart == monthIndex)
-                    {
-                        // Budget starts this month - move start to next month
-                        var nextMonth = new DateTime(year, month, 1).AddMonths(1);
-                        budget.StartYear = nextMonth.Year;
-                        budget.StartMonth = nextMonth.Month;
-                    }
-                    else if (budgetEnd == monthIndex)
-                    {
-                        // Budget ends this month - move end to previous month
-                        var prevMonth = new DateTime(year, month, 1).AddMonths(-1);
-                        budget.EndYear = prevMonth.Year;
-                        budget.EndMonth = prevMonth.Month;
-                    }
-                    else
-                    {
-                        // Budget spans across this month - split it
-                        // End the first part at previous month
-                        var prevMonth = new DateTime(year, month, 1).AddMonths(-1);
-                        budget.EndYear = prevMonth.Year;
-                        budget.EndMonth = prevMonth.Month;
-
-                        // Create a new budget starting next month with the same amount
-                        var nextMonth = new DateTime(year, month, 1).AddMonths(1);
-                        var newBudget = new CategoryBudget
-                        {
-                            ExpenseCategoryId = categoryId,
-                            StartYear = nextMonth.Year,
-                            StartMonth = nextMonth.Month,
-                            EndYear = budget.EndYear,
-                            EndMonth = budget.EndMonth,
-                            Amount = budget.Amount
-                        };
-                        _context.CategoryBudgets.Add(newBudget);
-                    }
-                }
-            }
-
-            await _context.SaveChangesAsync();
-        }
-
-        public Task AddIncomeSourceAsync(IncomeSource incomeSource)
-        {
-            _context.Add(incomeSource);
-            return _context.SaveChangesAsync();
-        }
-
-        public Task UpdateIncomeSourceAsync(IncomeSource incomeSource)
-        {
-            _context.Update(incomeSource);
-            return _context.SaveChangesAsync();
-        }
-
-        public async Task LogOrUpdateMonthlyIncomeAsync(int incomeSourceId, int year, int month, decimal actualAmount)
-        {
-            var monthDate = new DateTime(year, month, 1);
-            var existing = await _context.MonthlyIncomes.FirstOrDefaultAsync(m => m.IncomeSourceId == incomeSourceId && m.Month == monthDate);
-
-            if (existing != null)
-            {
-                existing.ActualAmount = actualAmount;
-            }
-            else
-            {
-                var newMonthlyIncome = new MonthlyIncome
-                {
-                    IncomeSourceId = incomeSourceId,
-                    Month = monthDate,
-                    ActualAmount = actualAmount
-                };
-                _context.Add(newMonthlyIncome);
-            }
-            await _context.SaveChangesAsync();
-        }
-
-        public Task AddOneTimeIncomeAsync(OneTimeIncome income)
-        {
-            _context.Add(income);
-            return _context.SaveChangesAsync();
-        }
-
-        public async Task<OneTimeIncome?> GetOneTimeIncomeAsync(int id)
-        {
-            return await _context.OneTimeIncomes
-                .Include(oti => oti.IncomeSource)
-                .FirstOrDefaultAsync(oti => oti.Id == id);
-        }
-
-        public Task UpdateOneTimeIncomeAsync(OneTimeIncome income)
-        {
-            _context.Update(income);
-            return _context.SaveChangesAsync();
-        }
-
-        public Task DeleteOneTimeIncomeAsync(int incomeId)
+        public async Task DeleteOneTimeIncomeAsync(int incomeId)
         {
             var income = new OneTimeIncome { Id = incomeId };
             _context.Remove(income);
-            return _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
         }
 
         public async Task<IEnumerable<OneTimeIncome>> GetOneTimeIncomesForMonthAsync(int year, int month)
@@ -746,6 +698,59 @@ namespace InvestmentTracker.Services
         {
             _context.Update(familyMember);
             await _context.SaveChangesAsync();
+        }
+
+        public Task AddIncomeSourceAsync(IncomeSource incomeSource)
+        {
+            _context.Add(incomeSource);
+            return _context.SaveChangesAsync();
+        }
+
+        public Task UpdateIncomeSourceAsync(IncomeSource incomeSource)
+        {
+            _context.Update(incomeSource);
+            return _context.SaveChangesAsync();
+        }
+
+        public Task LogOrUpdateMonthlyIncomeAsync(int incomeSourceId, int year, int month, decimal actualAmount)
+        {
+            var monthDate = new DateTime(year, month, 1);
+            var existing = _context.MonthlyIncomes.FirstOrDefault(m => m.IncomeSourceId == incomeSourceId && m.Month == monthDate);
+
+            if (existing != null)
+            {
+                existing.ActualAmount = actualAmount;
+            }
+            else
+            {
+                var newMonthlyIncome = new MonthlyIncome
+                {
+                    IncomeSourceId = incomeSourceId,
+                    Month = monthDate,
+                    ActualAmount = actualAmount
+                };
+                _context.Add(newMonthlyIncome);
+            }
+            return _context.SaveChangesAsync();
+        }
+
+        public Task AddOneTimeIncomeAsync(OneTimeIncome income)
+        {
+            _context.Add(income);
+            return _context.SaveChangesAsync();
+        }
+
+        public async Task<OneTimeIncome?> GetOneTimeIncomeAsync(int id)
+        {
+            return await _context.OneTimeIncomes
+                .Include(oti => oti.IncomeSource)
+                .FirstOrDefaultAsync(oti => oti.Id == id);
+        }
+
+        public Task UpdateOneTimeIncomeAsync(OneTimeIncome income)
+        {
+            _context.Update(income);
+            return _context.SaveChangesAsync();
         }
     }
 }

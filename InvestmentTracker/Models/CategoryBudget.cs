@@ -26,7 +26,7 @@ public class CategoryBudget
     public int? EndMonth { get; set; }
 
     [Required]
-    [Range(0.01, double.MaxValue)]
+    [Range(1, 10000000, ErrorMessage = "Budget amount must be between 1 and 10,000,000")]
     [Column(TypeName = "decimal(18,2)")]
     public decimal Amount { get; set; }
 
@@ -44,5 +44,38 @@ public class CategoryBudget
         var start = StartDate;
         var end = EndDate ?? DateTime.MaxValue;
         return start <= target && end >= target;
+    }
+
+    // Validation methods
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        // Validate date ranges
+        if (EndYear.HasValue && EndMonth.HasValue)
+        {
+            var startDate = new DateTime(StartYear, StartMonth, 1);
+            var endDate = new DateTime(EndYear.Value, EndMonth.Value, DateTime.DaysInMonth(EndYear.Value, EndMonth.Value));
+
+            if (endDate < startDate)
+            {
+                yield return new ValidationResult("End date must be after start date", new[] { nameof(EndYear), nameof(EndMonth) });
+            }
+        }
+
+        // Validate reasonable amount ranges
+        if (Amount <= 0)
+        {
+            yield return new ValidationResult("Budget amount must be greater than zero", new[] { nameof(Amount) });
+        }
+
+        if (Amount > 10000000.00m)
+        {
+            yield return new ValidationResult("Budget amount cannot exceed 10,000,000", new[] { nameof(Amount) });
+        }
+
+        // Validate whole numbers only
+        if (Amount % 1 != 0)
+        {
+            yield return new ValidationResult("Budget amount must be a whole number", new[] { nameof(Amount) });
+        }
     }
 }

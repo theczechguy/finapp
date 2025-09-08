@@ -7,6 +7,7 @@ using InvestmentTracker.ViewModels;
 using InvestmentTracker.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.ComponentModel.DataAnnotations;
 
 namespace InvestmentTracker.Pages.Expenses
 {
@@ -38,8 +39,37 @@ namespace InvestmentTracker.Pages.Expenses
             ViewModel = await _expenseService.GetMonthlyDataAsync(selectedYear, selectedMonth);
         }
 
-        public async Task<IActionResult> OnPostSetBudgetAsync(int categoryId, decimal amount, int year, int month, string scope)
+        public async Task<IActionResult> OnPostSetBudgetAsync(
+            int categoryId,
+            [Range(1, 10000000, ErrorMessage = "Budget amount must be between 1 and 10,000,000")] decimal amount,
+            int year,
+            int month,
+            string scope)
         {
+            // Server-side validation
+            if (amount <= 0)
+            {
+                ModelState.AddModelError("amount", "Budget amount must be greater than zero");
+            }
+
+            if (amount > 10000000.00m)
+            {
+                ModelState.AddModelError("amount", "Budget amount cannot exceed 10,000,000");
+            }
+
+            // Validate whole numbers only
+            if (amount % 1 != 0)
+            {
+                ModelState.AddModelError("amount", "Budget amount must be a whole number");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                // Reload the page with validation errors
+                await OnGetAsync();
+                return Page();
+            }
+
             var applyToFuture = string.Equals(scope, "future", StringComparison.OrdinalIgnoreCase);
             await _expenseService.SetCategoryBudgetAsync(categoryId, amount, year, month, applyToFuture);
             return RedirectToPage(new { year, month });
@@ -49,6 +79,16 @@ namespace InvestmentTracker.Pages.Expenses
         {
             await _expenseService.DeleteCategoryBudgetAsync(categoryId, year, month);
             return RedirectToPage(new { year, month });
+        }
+
+        public async Task<IActionResult> OnGetBudgetHistoryAsync(int categoryId)
+        {
+            var history = await _expenseService.GetBudgetHistoryAsync(categoryId);
+            return new PartialViewResult
+            {
+                ViewName = "_BudgetHistoryPartial",
+                ViewData = new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary<List<InvestmentTracker.ViewModels.BudgetHistoryItem>>(ViewData, history)
+            };
         }
 
         public async Task<IEnumerable<ExpenseCategory>> GetExpenseCategoriesAsync()
