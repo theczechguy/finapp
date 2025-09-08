@@ -29,7 +29,7 @@ fi
 
 DEPLOY_PATH="/opt/finapp"
 
-echo "🚀 Deploying FinApp to Docker host: $DOCKER_HOST"
+echo "� Deploying FinApp to Docker host: $DOCKER_HOST"
 
 # Create deployment package (exclude unnecessary files)
 echo "📦 Creating deployment package..."
@@ -41,12 +41,13 @@ tar --exclude='.git' \
     --exclude='.vs' \
     --exclude='.vscode' \
     --exclude='logs' \
-    -czf finapp-deploy.tar.gz .
+    --exclude='deployment' \
+    -czf finapp-deploy.tar.gz -C .. .
 
 echo "📤 Uploading to Docker host..."
 scp finapp-deploy.tar.gz $DOCKER_HOST:/tmp/
 
-echo "🐳 Deploying with Docker..."
+echo "🐳 Deploying with Docker and PostgreSQL..."
 ssh $DOCKER_HOST << EOF
     set -e
     
@@ -60,38 +61,27 @@ ssh $DOCKER_HOST << EOF
     # Extract new version
     cd $DEPLOY_PATH
     
-    # Backup data directory if it exists
-    if [ -d "data" ]; then
-        echo "💾 Backing up existing data..."
-        cp -r data data.backup.\$(date +%Y%m%d_%H%M%S) || true
-    fi
-    
-    # Clean old files but preserve data
-    find . -mindepth 1 -maxdepth 1 ! -name 'data' ! -name 'logs' ! -name 'data.backup.*' -exec rm -rf {} +
+    # Clean old files but preserve postgres data
+    find . -mindepth 1 -maxdepth 1 ! -name 'postgres_data' -exec rm -rf {} +
     
     # Extract new files
     tar -xzf /tmp/finapp-deploy.tar.gz
     
-    # Ensure data directory exists
-    mkdir -p data logs
-    
-    # Set proper permissions for data directory (SQLite needs write access)
-    chmod 755 data logs
-    
-    echo "🏗️  Building and starting application..."
+    echo "🏗️  Building and starting application with PostgreSQL..."
     docker compose up -d --build
     
-    echo "⏳ Waiting for application to start..."
-    sleep 15
+    echo "⏳ Waiting for PostgreSQL and application to start..."
+    sleep 30
     
     # Check if application is running
     if docker compose ps | grep -q "Up"; then
         echo "✅ Deployment successful!"
         echo "🌐 Application should be available at: http://$(echo $DOCKER_HOST | cut -d'@' -f2):5000"
+        echo "🐘 PostgreSQL database running on port 5432"
         echo "📋 Container status:"
         docker compose ps
         echo "📝 Recent logs:"
-        docker compose logs --tail=10
+        docker compose logs --tail=10 finapp
     else
         echo "❌ Deployment failed!"
         echo "📋 Container status:"
@@ -110,3 +100,4 @@ rm finapp-deploy.tar.gz
 
 echo "✨ Deployment complete!"
 echo "🌐 Your FinApp should be accessible at: http://$(echo $DOCKER_HOST | cut -d'@' -f2):5000"
+echo "🐘 PostgreSQL database provides production-grade reliability and performance"

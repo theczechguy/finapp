@@ -13,11 +13,30 @@ builder.Services.AddRazorPages(options => { })
     {
         o.ModelBinderProviders.Insert(0, new InvariantDecimalModelBinderProvider());
     });
+
+// Configure database - PostgreSQL only
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException("PostgreSQL connection string is required.");
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-                           ?? "Data Source=investmenttracker.db";
-    options.UseSqlite(connectionString);
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        // Configure PostgreSQL to handle DateTime properly
+        npgsqlOptions.EnableRetryOnFailure();
+    });
+    
+    // Configure DateTime handling for PostgreSQL
+    AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+    
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging();
+    }
 });
 
 builder.Services.AddScoped<IInvestmentService, InvestmentService>();

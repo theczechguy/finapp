@@ -10,20 +10,15 @@ namespace InvestmentTracker.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<decimal>(
-                name: "ExpectedAmount",
-                table: "IncomeSources",
-                type: "decimal(18, 2)",
-                nullable: false,
-                oldClrType: typeof(decimal),
-                oldType: "TEXT");
-
             migrationBuilder.AddColumn<int>(
                 name: "Currency",
                 table: "IncomeSources",
                 type: "INTEGER",
                 nullable: false,
                 defaultValue: 0);
+
+            // Skip the problematic AlterColumn for now - we'll handle this differently
+            // The ExpectedAmount column will remain as TEXT for compatibility
         }
 
         /// <inheritdoc />
@@ -32,14 +27,6 @@ namespace InvestmentTracker.Data.Migrations
             migrationBuilder.DropColumn(
                 name: "Currency",
                 table: "IncomeSources");
-
-            migrationBuilder.AlterColumn<decimal>(
-                name: "ExpectedAmount",
-                table: "IncomeSources",
-                type: "TEXT",
-                nullable: false,
-                oldClrType: typeof(decimal),
-                oldType: "decimal(18, 2)");
         }
     }
 }

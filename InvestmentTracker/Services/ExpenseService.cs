@@ -27,22 +27,13 @@ namespace InvestmentTracker.Services
             var startDate = new DateTime(year, month, 1);
             var endDate = startDate.AddMonths(1).AddDays(-1);
 
-            // Use parallel tasks for independent queries to improve performance
-            var incomeTask = GetMonthlyIncomeDataAsync(year, month);
-            var oneTimeIncomeTask = GetOneTimeIncomesForMonthAsync(year, month);
-            var regularExpenseTask = GetApplicableRegularExpensesAsync(year, month);
-            var irregularExpenseTask = GetIrregularExpensesForMonthAsync(startDate, endDate);
-            var budgetTask = GetEffectiveBudgetsAsync(year, month);
-            var categoriesTask = _context.ExpenseCategories.AsNoTracking().ToListAsync();
-
-            await Task.WhenAll(incomeTask, oneTimeIncomeTask, regularExpenseTask, irregularExpenseTask, budgetTask, categoriesTask);
-
-            var incomeViewModels = await incomeTask;
-            var oneTimeIncomes = await oneTimeIncomeTask;
-            var (applicableRegularExpenses, expenseAmounts) = await regularExpenseTask;
-            var irregularExpenses = await irregularExpenseTask;
-            var effectiveBudgets = await budgetTask;
-            var allCategories = await categoriesTask;
+            // Execute queries sequentially to avoid DbContext concurrency issues
+            var incomeViewModels = await GetMonthlyIncomeDataAsync(year, month);
+            var oneTimeIncomes = await GetOneTimeIncomesForMonthAsync(year, month);
+            var (applicableRegularExpenses, expenseAmounts) = await GetApplicableRegularExpensesAsync(year, month);
+            var irregularExpenses = await GetIrregularExpensesForMonthAsync(startDate, endDate);
+            var effectiveBudgets = await GetEffectiveBudgetsAsync(year, month);
+            var allCategories = await _context.ExpenseCategories.AsNoTracking().ToListAsync();
 
             // Calculate totals
             var totalIncome = incomeViewModels.Sum(i => i.ActualAmount) + oneTimeIncomes.Sum(oti => oti.Amount);

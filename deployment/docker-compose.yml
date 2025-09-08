@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: finapp-postgres
+    environment:
+      POSTGRES_DB: finapp
+      POSTGRES_USER: finapp
+      POSTGRES_PASSWORD: finapp123
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finapp"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - finapp-network
+
+  finapp:
+    build: .
+    container_name: finapp
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - finapp-network
+
+networks:
+  finapp-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# FinApp Deployment Manager
+# This script provides easy access to all deployment tools
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEPLOYMENT_DIR="$SCRIPT_DIR/deployment"
+
+if [ ! -d "$DEPLOYMENT_DIR" ]; then
+    echo "❌ Error: deployment directory not found at $DEPLOYMENT_DIR"
+    exit 1
+fi
+
+case "${1:-help}" in
+    "check"|"status")
+        echo "🔍 Checking deployment status..."
+        exec "$DEPLOYMENT_DIR/check-status.sh" "${@:2}"
+        ;;
+    "assess"|"inspect")
+        echo "🔍 Assessing current deployment..."
+        exec "$DEPLOYMENT_DIR/check-deployment.sh" "${@:2}"
+        ;;
+    "deploy"|"update")
+        echo "🚀 Performing regular deployment..."
+        exec "$DEPLOYMENT_DIR/deploy.sh" "${@:2}"
+        ;;
+    "fresh"|"clean")
+        echo "🔥 Performing fresh deployment (destroys all data)..."
+        exec "$DEPLOYMENT_DIR/deploy-fresh.sh" "${@:2}"
+        ;;
+    "help"|"-h"|"--help"|*)
+        echo "🚀 FinApp Deployment Manager"
+        echo ""
+        echo "Usage: $0 <command> [arguments...]"
+        echo ""
+        echo "Commands:"
+        echo "  check, status           Check current deployment status"
+        echo "  assess, inspect         Assess what's currently deployed" 
+        echo "  deploy, update          Regular deployment (preserves data)"
+        echo "  fresh, clean            Fresh deployment (destroys ALL data)"
+        echo "  help                    Show this help message"
+        echo ""
+        echo "Examples:"
+        echo "  $0 check user@192.168.1.100"
+        echo "  $0 assess user@192.168.1.100"
+        echo "  $0 deploy user@192.168.1.100"
+        echo "  $0 fresh user@192.168.1.100"
+        echo ""
+        echo "📁 All deployment scripts are located in: $DEPLOYMENT_DIR"
+        echo ""
+        echo "⚠️  Warning: 'fresh' command will destroy all existing data!"
+        ;;
+esac
