@@ -22,11 +22,12 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 # Copy the published application
 COPY --from=build /app .
 
-# Create directory for SQLite database and logs
-RUN mkdir -p /app/data /app/logs
+# Create directory for SQLite database and logs with proper permissions
+RUN mkdir -p /app/data /app/logs && \
+    chown -R app:app /app && \
+    chmod -R 755 /app/data /app/logs
 
-# Set permissions for SQLite database
-RUN chown -R app:app /app
+# Switch to non-root user
 USER app
 
 # Expose port
@@ -37,7 +38,7 @@ ENV ASPNETCORE_URLS=http://+:5000
 ENV ASPNETCORE_ENVIRONMENT=Production
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:5000 || exit 1
 
 # Start the application
