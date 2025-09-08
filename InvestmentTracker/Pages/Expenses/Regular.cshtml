@@ -1,0 +1,550 @@
+@page "/expenses/regular"
+@model InvestmentTracker.Pages.Expenses.RegularModel
+@{
+    ViewData["Title"] = "Regular Expenses";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-calendar-check text-primary me-2"></i>Regular Expenses</h2>
+                <div>
+                    <a href="/expenses" class="btn btn-outline-secondary me-2">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Monthly View
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addExpenseModal" title="Add Expense" aria-label="Add Expense">
+                        <i class="bi bi-plus-lg"></i>
+                        <span class="d-none d-sm-inline ms-1">Add Expense</span>
+                    </button>
+                </div>
+            </div>
+
+            @if (!Model.RegularExpenses.Any())
+            {
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    No regular expenses defined yet. <a href="#" data-bs-toggle="modal" data-bs-target="#addExpenseModal">Add your first regular expense</a>.
+                </div>
+            }
+            else
+            {
+                <!-- Filter and Sort Controls -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Filter by Category</label>
+                                <select class="form-select" id="categoryFilter">
+                                    <option value="">All Categories</option>
+                                    @foreach (var category in Model.Categories)
+                                    {
+                                        <option value="@category.Id">@category.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Filter by Frequency</label>
+                                <select class="form-select" id="frequencyFilter">
+                                    <option value="">All Frequencies</option>
+                                    <option value="Monthly">Monthly</option>
+                                    <option value="Quarterly">Quarterly</option>
+                                    <option value="SemiAnnually">Semi-Annually</option>
+                                    <option value="Annually">Annually</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Sort By</label>
+                                <select class="form-select" id="sortBy">
+                                    <option value="name">Name</option>
+                                    <option value="amount">Amount</option>
+                                    <option value="category">Category</option>
+                                    <option value="frequency">Frequency</option>
+                                    <option value="nextDue">Next Due</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                                    <i class="fas fa-times me-1"></i>Clear Filters
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title text-primary">@Model.RegularExpenses.Count</h5>
+                                <p class="card-text">Total Regular Expenses</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title text-success">@Model.TotalMonthlyAmount.ToString("C", new System.Globalization.CultureInfo("cs-CZ"))</h5>
+                                <p class="card-text">Monthly Average</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title text-info">@Model.AlternativeScheduleCount</h5>
+                                <p class="card-text">Alternative Schedules</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title text-warning">@Model.TotalAnnualAmount.ToString("C", new System.Globalization.CultureInfo("cs-CZ"))</h5>
+                                <p class="card-text">Annual Total</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expenses Table -->
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive" style="max-height: calc(100vh - 400px); overflow-y: auto;">
+                            <table class="table table-hover table-sticky-header" id="expensesTable">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Expense</th>
+                                        <th>Category</th>
+                                        <th>Amount</th>
+                                        <th>Frequency</th>
+                                        <th>Schedule</th>
+                                        <th>Next Due</th>
+                                        <th>Annual Impact</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var expense in Model.RegularExpenses)
+                                    {
+                                        <tr data-category="@expense.ExpenseCategoryId" data-frequency="@expense.Recurrence">
+                                            <td>
+                                                @if (expense.IsAlternativeSchedule)
+                                                {
+                                                    <i class="fas fa-calendar-alt text-warning me-2" title="Alternative Schedule"></i>
+                                                }
+                                                <strong>@expense.Name</strong>
+                                                @if (!string.IsNullOrWhiteSpace(expense.Description))
+                                                {
+                                                    <br><small class="text-muted">@expense.Description</small>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">@(expense.Category?.Name ?? "Unknown")</span>
+                                            </td>
+                                            <td class="text-end">
+                                                <strong>@expense.Amount.ToString("C", new System.Globalization.CultureInfo("cs-CZ"))</strong>
+                                            </td>
+                                            <td>
+                                                <span class="badge @expense.FrequencyBadgeClass">@expense.FrequencyDisplay</span>
+                                            </td>
+                                            <td>
+                                                @if (expense.Recurrence == InvestmentTracker.Models.Frequency.Monthly)
+                                                {
+                                                    <span class="text-muted">Every month</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>
+                                                        @{
+                                                    var currentSchedule = expense.Schedules.FirstOrDefault();
+                                                }
+                                                @if (currentSchedule != null)
+                                                {
+                                                    @switch (expense.Recurrence)
+                                                    {
+                                                        case InvestmentTracker.Models.Frequency.Quarterly:
+                                                            @($"Every 3 months (starting {new DateTime(2024, currentSchedule.StartMonth, 1):MMMM})")
+                                                            break;
+                                                        case InvestmentTracker.Models.Frequency.SemiAnnually:
+                                                            @($"Every 6 months (starting {new DateTime(2024, currentSchedule.StartMonth, 1):MMMM})")
+                                                            break;
+                                                        case InvestmentTracker.Models.Frequency.Annually:
+                                                            @($"Once per year ({new DateTime(2024, currentSchedule.StartMonth, 1):MMMM})")
+                                                            break;
+                                                    }
+                                                }
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @{
+                                                    var nextDue = Model.GetNextDueDate(expense);
+                                                }
+                                                @if (nextDue.HasValue)
+                                                {
+                                                    var monthsUntil = (nextDue.Value.Year - DateTime.Now.Year) * 12 + nextDue.Value.Month - DateTime.Now.Month;
+                                                    <span class="@(monthsUntil <= 1 ? "text-warning fw-bold" : "")">
+                                                        @nextDue.Value.ToString("MMMM yyyy")
+                                                    </span>
+                                                    @if (monthsUntil <= 1)
+                                                    {
+                                                        <br><small class="text-warning">Due soon!</small>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td class="text-end">
+                                                @{
+                                                    var annualAmount = expense.Recurrence switch
+                                                    {
+                                                        InvestmentTracker.Models.Frequency.Monthly => expense.Amount * 12,
+                                                        InvestmentTracker.Models.Frequency.Quarterly => expense.Amount * 4,
+                                                        InvestmentTracker.Models.Frequency.SemiAnnually => expense.Amount * 2,
+                                                        InvestmentTracker.Models.Frequency.Annually => expense.Amount,
+                                                        _ => expense.Amount * 12
+                                                    };
+                                                }
+                                                <strong>@annualAmount.ToString("C", new System.Globalization.CultureInfo("cs-CZ"))</strong>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                                    <button type="button" class="btn btn-sm btn-secondary" onclick="editExpense(@expense.Id)" title="Edit" aria-label="Edit">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteExpense(@expense.Id, '@expense.Name')" title="Delete" aria-label="Delete">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Expense Modal -->
+<div class="modal fade" id="addExpenseModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form id="expenseForm">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Regular Expense</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="expenseId" value="0">
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="expenseName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Category <span class="text-danger">*</span></label>
+                            <select class="form-select" id="expenseCategory" required>
+                                <option value="">Select a category</option>
+                                @foreach (var category in Model.Categories)
+                                {
+                                    <option value="@category.Id">@category.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Amount <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="expenseAmount" step="0.01" min="0" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Frequency <span class="text-danger">*</span></label>
+                            <select class="form-select" id="expenseFrequency" required onchange="toggleStartingMonth()">
+                                <option value="">Select frequency</option>
+                                <option value="Monthly">Monthly</option>
+                                <option value="Quarterly">Quarterly (every 3 months)</option>
+                                <option value="SemiAnnually">Semi-Annually (every 6 months)</option>
+                                <option value="Annually">Annually (once per year)</option>
+                            </select>
+                        </div>
+                        <div class="col-12" id="startingMonthContainer" style="display: none;">
+                            <label class="form-label">Starting Month <span class="text-danger">*</span></label>
+                            <select class="form-select" id="startingMonth">
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7">July</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle text-primary me-1"></i>
+                                <span id="frequencyHelp">Select the month when this expense should first occur.</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" id="expenseDescription" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Expense</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        /* Scrollable table with fixed header */
+        .table-sticky-header {
+            position: relative;
+        }
+        
+        .table-sticky-header thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: var(--bs-gray-100) !important;
+            border-bottom: 2px solid var(--bs-border-color);
+        }
+        
+        /* Custom scrollbar for better UX */
+        .table-responsive::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .table-responsive::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        .table-responsive::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        /* Ensure modal appears above sticky elements */
+        .modal {
+            z-index: 1060;
+        }
+    </style>
+    
+    <script>
+        function toggleStartingMonth() {
+            const frequency = document.getElementById('expenseFrequency').value;
+            const container = document.getElementById('startingMonthContainer');
+            const helpText = document.getElementById('frequencyHelp');
+            
+            if (frequency === 'Monthly') {
+                container.style.display = 'none';
+            } else {
+                container.style.display = 'block';
+                
+                switch (frequency) {
+                    case 'Quarterly':
+                        helpText.textContent = 'Select the month when this quarterly expense should first occur (will repeat every 3 months).';
+                        break;
+                    case 'SemiAnnually':
+                        helpText.textContent = 'Select the month when this semi-annual expense should first occur (will repeat every 6 months).';
+                        break;
+                    case 'Annually':
+                        helpText.textContent = 'Select the month when this annual expense occurs each year.';
+                        break;
+                }
+            }
+        }
+
+        function clearFilters() {
+            document.getElementById('categoryFilter').value = '';
+            document.getElementById('frequencyFilter').value = '';
+            document.getElementById('sortBy').value = 'name';
+            filterAndSortTable();
+        }
+
+        function filterAndSortTable() {
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const frequencyFilter = document.getElementById('frequencyFilter').value;
+            const sortBy = document.getElementById('sortBy').value;
+            const tbody = document.querySelector('#expensesTable tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            // Filter rows
+            rows.forEach(row => {
+                const category = row.dataset.category;
+                const frequency = row.dataset.frequency;
+                
+                const categoryMatch = !categoryFilter || category === categoryFilter;
+                const frequencyMatch = !frequencyFilter || frequency === frequencyFilter;
+                
+                row.style.display = categoryMatch && frequencyMatch ? '' : 'none';
+            });
+
+            // Sort visible rows
+            const visibleRows = rows.filter(row => row.style.display !== 'none');
+            
+            visibleRows.sort((a, b) => {
+                let aValue, bValue;
+                
+                switch (sortBy) {
+                    case 'name':
+                        aValue = a.cells[0].textContent.trim().toLowerCase();
+                        bValue = b.cells[0].textContent.trim().toLowerCase();
+                        break;
+                    case 'amount':
+                        aValue = parseFloat(a.cells[2].textContent.replace(/[^0-9.-]/g, ''));
+                        bValue = parseFloat(b.cells[2].textContent.replace(/[^0-9.-]/g, ''));
+                        return bValue - aValue; // Descending for amount
+                    case 'category':
+                        aValue = a.cells[1].textContent.trim().toLowerCase();
+                        bValue = b.cells[1].textContent.trim().toLowerCase();
+                        break;
+                    case 'frequency':
+                        aValue = a.cells[3].textContent.trim().toLowerCase();
+                        bValue = b.cells[3].textContent.trim().toLowerCase();
+                        break;
+                    case 'nextDue':
+                        aValue = a.cells[5].textContent.trim();
+                        bValue = b.cells[5].textContent.trim();
+                        break;
+                    default:
+                        return 0;
+                }
+                
+                if (sortBy !== 'amount') {
+                    return aValue.localeCompare(bValue);
+                }
+            });
+
+            // Reorder the DOM
+            visibleRows.forEach(row => tbody.appendChild(row));
+        }
+
+        // Event listeners
+        document.getElementById('categoryFilter').addEventListener('change', filterAndSortTable);
+        document.getElementById('frequencyFilter').addEventListener('change', filterAndSortTable);
+        document.getElementById('sortBy').addEventListener('change', filterAndSortTable);
+
+        function editExpense(id) {
+            fetch(`/expenses/regular?handler=ExpenseDetails&id=${id}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Populate the form with expense data
+                        document.getElementById('expenseId').value = data.expense.id;
+                        document.getElementById('expenseName').value = data.expense.name;
+                        document.getElementById('expenseCategory').value = data.expense.categoryId;
+                        document.getElementById('expenseAmount').value = data.expense.amount;
+                        document.getElementById('expenseFrequency').value = data.expense.frequency;
+                        document.getElementById('startingMonth').value = data.expense.startingMonth;
+                        document.getElementById('expenseDescription').value = data.expense.description || '';
+                        
+                        // Update modal title and toggle starting month visibility
+                        document.querySelector('#addExpenseModal .modal-title').textContent = 'Edit Regular Expense';
+                        toggleStartingMonth();
+                        
+                        // Show the modal
+                        new bootstrap.Modal(document.getElementById('addExpenseModal')).show();
+                    } else {
+                        alert('Error loading expense details: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while loading expense details.');
+                });
+        }
+
+        function deleteExpense(id, name) {
+            if (confirm(`Are you sure you want to delete "${name}"?`)) {
+                fetch('/expenses/regular?handler=Delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    },
+                    body: `id=${id}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload(); // Reload to reflect changes
+                    } else {
+                        alert('Error deleting expense: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while deleting the expense.');
+                });
+            }
+        }
+
+        document.getElementById('expenseForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const expenseId = document.getElementById('expenseId').value;
+            
+            formData.append('id', expenseId);
+            formData.append('name', document.getElementById('expenseName').value);
+            formData.append('categoryId', document.getElementById('expenseCategory').value);
+            formData.append('amount', document.getElementById('expenseAmount').value);
+            formData.append('frequency', document.getElementById('expenseFrequency').value);
+            formData.append('startingMonth', document.getElementById('startingMonth').value);
+            formData.append('description', document.getElementById('expenseDescription').value);
+            
+            const isEdit = expenseId && expenseId !== '0';
+            const handler = isEdit ? 'Update' : 'Create';
+            
+            fetch(`/expenses/regular?handler=${handler}`, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload(); // Reload to reflect changes
+                } else {
+                    alert('Error saving expense: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while saving the expense.');
+            });
+        });
+
+        // Reset form when modal is closed
+        document.getElementById('addExpenseModal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('expenseForm').reset();
+            document.getElementById('expenseId').value = '0';
+            document.querySelector('#addExpenseModal .modal-title').textContent = 'Add Regular Expense';
+            document.getElementById('startingMonthContainer').style.display = 'none';
+        });
+    </script>
+}
