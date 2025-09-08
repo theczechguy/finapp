@@ -7,6 +7,7 @@
 <p>
     <a class="btn btn-primary" asp-page="Create">Add Investment</a>
 </p>
+<div class="table-responsive">
 <table class="table table-striped">
     <thead>
         <tr>
@@ -34,13 +35,16 @@
         <td>@(i.ChargeAmount == 0 ? "-" : i.ChargeAmount.ToString("C", culture))</td>
         <td>@(latest is null ? "-" : latest.Value.ToString("C", culture) + " (" + latest.AsOf.ToShortDateString() + ")")</td>
         <td>
-            <a class="btn btn-sm btn-outline-secondary" asp-page="Values" asp-route-id="@i.Id">Values</a>
-            <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@i.Id">Edit</a>
-            <form method="post" asp-page-handler="Delete" asp-route-id="@i.Id" class="d-inline" data-confirm="Delete this investment? All its values and schedules will be removed." data-loading="Deleting investment...">
-                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-            </form>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <a class="btn btn-sm btn-outline-secondary" asp-page="Values" asp-route-id="@i.Id">Values</a>
+                <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@i.Id">Edit</a>
+                <form method="post" asp-page-handler="Delete" asp-route-id="@i.Id" class="d-inline" data-confirm="Delete this investment? All its values and schedules will be removed." data-loading="Deleting investment...">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+            </div>
         </td>
     </tr>
 }
     </tbody>
 </table>
+</div>

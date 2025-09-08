@@ -80,6 +80,7 @@
                 <a asp-page="./IncomeSources" class="btn btn-sm btn-outline-primary">Manage Sources</a>
             </div>
             <div class="card-body">
+                <div class="table-responsive">
                 <table class="table mb-0">
                     <thead>
                         <tr>
@@ -110,6 +111,7 @@
                         }
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     </div>
@@ -120,6 +122,7 @@
                 <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addOneTimeIncomeModal">Add Income <kbd>O</kbd></button>
             </div>
             <div class="card-body">
+                <div class="table-responsive">
                 <table class="table mb-0">
                     <thead>
                         <tr>
@@ -141,10 +144,12 @@
                                     <td>@(income.IncomeSource?.Name ?? "Other")</td>
                                     <td>@income.Amount.ToString("C", new System.Globalization.CultureInfo(income.Currency.ToCultureCode()))</td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-secondary me-1" onclick="editOneTimeIncome(@income.Id)">Edit</button>
-                                        <form method="post" asp-page-handler="DeleteOneTimeIncome" asp-route-incomeId="@income.Id" class="d-inline" data-confirm="Delete this one-time income? This action cannot be undone." data-loading="Deleting income...">
-                                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                        </form>
+                                        <div class="d-flex flex-wrap align-items-center gap-2">
+                                            <button type="button" class="btn btn-sm btn-secondary align-middle" onclick="editOneTimeIncome(@income.Id)">Edit</button>
+                                            <form method="post" asp-page-handler="DeleteOneTimeIncome" asp-route-incomeId="@income.Id" class="d-inline" data-confirm="Delete this one-time income? This action cannot be undone." data-loading="Deleting income...">
+                                                <button type="submit" class="btn btn-sm btn-danger align-middle">Delete</button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             }
@@ -157,6 +162,7 @@
                         }
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     </div>
@@ -173,6 +179,7 @@
             </div>
             <div class="card-body">
                 <div id="regularExpensesContainer">
+                    <div class="table-responsive">
                     <table class="table mb-0">
                         <thead>
                             <tr>
@@ -215,6 +222,7 @@
                             }
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -229,6 +237,7 @@
             </div>
             <div class="card-body">
                 <div id="irregularExpensesContainer">
+                    <div class="table-responsive">
                     <table class="table mb-0">
                         <thead>
                             <tr>
@@ -260,10 +269,12 @@
                                             }
                                         </td>
                                         <td>
-                                            <button type="button" class="btn btn-sm btn-secondary me-1" onclick="editIrregularExpense(@expense.Id)">Edit</button>
-                                            <form method="post" asp-page-handler="DeleteIrregularExpense" asp-route-expenseId="@expense.Id" class="d-inline" data-confirm="Delete this irregular expense? This action cannot be undone." data-loading="Deleting expense...">
-                                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                            </form>
+                                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                                <button type="button" class="btn btn-sm btn-secondary" onclick="editIrregularExpense(@expense.Id)">Edit</button>
+                                                <form method="post" asp-page-handler="DeleteIrregularExpense" asp-route-expenseId="@expense.Id" class="d-inline" data-confirm="Delete this irregular expense? This action cannot be undone." data-loading="Deleting expense...">
+                                                    <button type="submit" class="btn btn-sm btn-danger align-middle">Delete</button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                 }
@@ -276,6 +287,7 @@
                             }
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
         </div>

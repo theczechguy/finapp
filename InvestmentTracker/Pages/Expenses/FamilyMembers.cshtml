@@ -41,12 +41,14 @@
                                     </td>
                                     <td>@member.CreatedDate.ToString("dd/MM/yyyy")</td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-secondary me-1" onclick="editFamilyMember(@member.Id)">Edit</button>
-                                        <form method="post" asp-page-handler="ToggleStatus" asp-route-memberId="@member.Id" class="d-inline" data-loading="Updating status...">
-                                            <button type="submit" class="btn btn-sm btn-@(member.IsActive ? "warning" : "success")">
-                                                @(member.IsActive ? "Deactivate" : "Activate")
-                                            </button>
-                                        </form>
+                                        <div class="d-flex flex-wrap align-items-center gap-2">
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="editFamilyMember(@member.Id)">Edit</button>
+                                            <form method="post" asp-page-handler="ToggleStatus" asp-route-memberId="@member.Id" class="d-inline" data-loading="Updating status...">
+                                                <button type="submit" class="btn btn-sm btn-@(member.IsActive ? "warning" : "success")">
+                                                    @(member.IsActive ? "Deactivate" : "Activate")
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             }

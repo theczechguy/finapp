@@ -8,7 +8,8 @@
 
 <div class="row">
     <div class="col-md-8">
-        <table class="table">
+    <div class="table-responsive">
+    <table class="table">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -21,15 +22,18 @@
                     <tr>
                         <td>@category.Name</td>
                         <td>
-                            <a asp-page="./EditExpenseCategory" asp-route-id="@category.Id" class="btn btn-sm btn-secondary">Edit</a>
-                            <form method="post" asp-page-handler="Delete" asp-route-id="@category.Id" class="d-inline" data-confirm="Delete this expense category? This will affect all expenses using this category." data-loading="Deleting category...">
-                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                            </form>
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <a asp-page="./EditExpenseCategory" asp-route-id="@category.Id" class="btn btn-sm btn-secondary">Edit</a>
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@category.Id" class="d-inline" data-confirm="Delete this expense category? This will affect all expenses using this category." data-loading="Deleting category...">
+                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 }
             </tbody>
-        </table>
+    </table>
+    </div>
     </div>
     <div class="col-md-4">
         <div class="card">

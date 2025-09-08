@@ -85,6 +85,7 @@
 
     @if (Model.Investment.OneTimeContributions?.Any() == true)
     {
+        <div class="table-responsive">
         <table class="table table-sm mt-2">
             <thead><tr><th>Date</th><th>Amount</th><th></th></tr></thead>
             <tbody>
@@ -102,9 +103,11 @@
             }
             </tbody>
         </table>
+        </div>
     }
 
     <h5 class="mt-4">History</h5>
+    <div class="table-responsive">
     <table class="table table-sm">
         <thead>
             <tr>
@@ -128,6 +131,7 @@
         }
         </tbody>
     </table>
+    </div>
 }
 
 @section Scripts{
