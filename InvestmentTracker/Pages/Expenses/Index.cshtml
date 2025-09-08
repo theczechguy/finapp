@@ -72,6 +72,72 @@
     </div>
 </div>
 
+<!-- Budgets Card -->
+<div class="card mb-4">
+    <div class="card-header">
+        <span>Budgets — @currentDate.ToString("MMMM yyyy")</span>
+    </div>
+    <div class="card-body">
+        @if (Model.ViewModel.Budgets.Any(b => b.BudgetAmount.HasValue))
+        {
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Category</th>
+                            <th class="text-end">Budget</th>
+                            <th class="text-end">Spent</th>
+                            <th style="width:40%">Progress</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var b in Model.ViewModel.Budgets.Where(b => b.BudgetAmount.HasValue).OrderBy(x => x.CategoryName))
+                    {
+                        var percent = b.BudgetAmount.HasValue && b.BudgetAmount > 0 ? Math.Min(100, Math.Round(b.Percent)) : 0;
+                        var barClass = b.Status == "Over" ? "bg-danger" : b.Status == "Near" ? "bg-warning" : "bg-primary";
+                        <tr>
+                            <td>@b.CategoryName</td>
+                            <td class="text-end">@(b.BudgetAmount!.Value.ToString("C", new System.Globalization.CultureInfo("cs-CZ")))</td>
+                            <td class="text-end">@b.SpentAmount.ToString("C", new System.Globalization.CultureInfo("cs-CZ"))</td>
+                            <td>
+                                <div class="progress" role="progressbar" aria-label=$"Spent {b.SpentAmount} of {b.BudgetAmount} ({percent}%)">
+                                    <div class="progress-bar @barClass" style="width:@percent%">
+                                        <span class="ms-2">@percent%</span>
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    @if (b.Percent >= 100)
+                                    {
+                                        <text>Over by @((b.SpentAmount - (b.BudgetAmount ?? 0)).ToString("C", new System.Globalization.CultureInfo("cs-CZ")))</text>
+                                    }
+                                    else
+                                    {
+                                        <text>Remaining @(((b.BudgetAmount ?? 0) - b.SpentAmount).ToString("C", new System.Globalization.CultureInfo("cs-CZ")))</text>
+                                    }
+                                </small>
+                            </td>
+                            <td>
+                                <span class="badge @(b.Status == "Over" ? "bg-danger" : b.Status == "Near" ? "bg-warning text-dark" : "bg-primary")">@b.Status</span>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center text-muted">
+                No budgets set for this month.
+            </div>
+        }
+    </div>
+    <div class="card-footer text-muted small">
+        Near threshold at 80%. Over at 100%. Leftover does not carry over.
+    </div>
+</div>
+
 <div class="row mt-4">
     <div class="col-md-6">
         <div class="card">

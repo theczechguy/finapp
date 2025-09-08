@@ -39,5 +39,10 @@ namespace InvestmentTracker.Services
         Task AddFamilyMemberAsync(FamilyMember familyMember);
         Task<FamilyMember?> GetFamilyMemberAsync(int id);
         Task UpdateFamilyMemberAsync(FamilyMember familyMember);
+
+    // Budgets
+    Task<List<CategoryBudget>> GetEffectiveBudgetsAsync(int year, int month);
+    Task SetCategoryBudgetAsync(int categoryId, decimal amount, int year, int month, bool applyToFuture);
+    Task DeleteCategoryBudgetAsync(int categoryId, int year, int month);
     }
 }

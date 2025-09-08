@@ -16,5 +16,17 @@ namespace InvestmentTracker.ViewModels
         public List<RegularExpense> RegularExpenses { get; set; } = new();
         public List<IrregularExpense> IrregularExpenses { get; set; } = new();
         public Dictionary<string, decimal> ExpensesByCategory { get; set; } = new();
+
+        public List<BudgetItemViewModel> Budgets { get; set; } = new();
+    }
+
+    public class BudgetItemViewModel
+    {
+        public int CategoryId { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+        public decimal? BudgetAmount { get; set; }
+        public decimal SpentAmount { get; set; }
+        public decimal Percent => BudgetAmount.HasValue && BudgetAmount > 0 ? (SpentAmount / BudgetAmount.Value) * 100 : 0;
+        public string Status => !BudgetAmount.HasValue ? "No budget" : Percent >= 100 ? "Over" : Percent >= 80 ? "Near" : "Under";
     }
 }

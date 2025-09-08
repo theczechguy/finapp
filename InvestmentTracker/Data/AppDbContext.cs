@@ -18,6 +18,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<IrregularExpense> IrregularExpenses => Set<IrregularExpense>();
     public DbSet<ExpenseSchedule> ExpenseSchedules => Set<ExpenseSchedule>();
     public DbSet<FamilyMember> FamilyMember => Set<FamilyMember>();
+    public DbSet<CategoryBudget> CategoryBudgets => Set<CategoryBudget>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -89,6 +90,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasOne(ie => ie.Category)
             .WithMany()
             .HasForeignKey(ie => ie.ExpenseCategoryId);
+
+        // Budgets
+        modelBuilder.Entity<CategoryBudget>()
+            .HasOne(cb => cb.ExpenseCategory)
+            .WithMany()
+            .HasForeignKey(cb => cb.ExpenseCategoryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CategoryBudget>()
+            .HasIndex(cb => new { cb.ExpenseCategoryId, cb.StartYear, cb.StartMonth });
 
         base.OnModelCreating(modelBuilder);
     }

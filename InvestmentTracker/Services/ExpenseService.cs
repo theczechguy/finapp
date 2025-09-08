@@ -116,6 +116,35 @@ namespace InvestmentTracker.Services
                 }
             }
 
+            // Budgets: compute effective budgets and map to view model
+            var effectiveBudgets = await GetEffectiveBudgetsAsync(year, month);
+            var budgetsByCategoryId = effectiveBudgets
+                .GroupBy(b => b.ExpenseCategoryId)
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(b => b.StartYear * 12 + b.StartMonth).First());
+
+            // Build budgets list per category present in categories list
+            var allCategories = await _context.ExpenseCategories.ToListAsync();
+            var budgetsVm = new List<BudgetItemViewModel>();
+            foreach (var cat in allCategories)
+            {
+                expensesByCategory.TryGetValue(cat.Name, out var spent);
+                var budget = budgetsByCategoryId.TryGetValue(cat.Id, out var b) ? b.Amount : (decimal?)null;
+                
+                // Treat zero-amount budgets as no budget
+                if (budget.HasValue && budget.Value == 0)
+                {
+                    budget = null;
+                }
+                
+                budgetsVm.Add(new BudgetItemViewModel
+                {
+                    CategoryId = cat.Id,
+                    CategoryName = cat.Name,
+                    BudgetAmount = budget,
+                    SpentAmount = spent
+                });
+            }
+
             var viewModel = new MonthlyExpenseViewModel
             {
                 Year = year,
@@ -126,10 +155,169 @@ namespace InvestmentTracker.Services
                 OneTimeIncomes = oneTimeIncomes.ToList(),
                 RegularExpenses = applicableRegularExpenses,
                 IrregularExpenses = irregularExpenses,
-                ExpensesByCategory = expensesByCategory
+                ExpensesByCategory = expensesByCategory,
+                Budgets = budgetsVm
             };
 
             return viewModel;
+        }
+
+        public async Task<List<CategoryBudget>> GetEffectiveBudgetsAsync(int year, int month)
+        {
+            var monthIndex = year * 12 + month;
+            return await _context.CategoryBudgets
+                .Include(cb => cb.ExpenseCategory)
+                .Where(cb => (cb.StartYear * 12 + cb.StartMonth) <= monthIndex &&
+                             (cb.EndYear == null || cb.EndMonth == null || (cb.EndYear * 12 + cb.EndMonth) >= monthIndex))
+                .ToListAsync();
+        }
+
+        public async Task SetCategoryBudgetAsync(int categoryId, decimal amount, int year, int month, bool applyToFuture)
+        {
+            var monthIndex = year * 12 + month;
+            var budgets = await _context.CategoryBudgets
+                .Where(cb => cb.ExpenseCategoryId == categoryId)
+                .ToListAsync();
+
+            if (applyToFuture)
+            {
+                // End any existing budget that extends beyond this month
+                foreach (var existing in budgets)
+                {
+                    var existingStart = existing.StartYear * 12 + existing.StartMonth;
+                    var existingEnd = existing.EndYear.HasValue && existing.EndMonth.HasValue
+                        ? existing.EndYear.Value * 12 + existing.EndMonth.Value
+                        : int.MaxValue;
+
+                    if (existingStart <= monthIndex && existingEnd >= monthIndex)
+                    {
+                        // End it at previous month
+                        var prev = new DateTime(year, month, 1).AddMonths(-1);
+                        existing.EndYear = prev.Year;
+                        existing.EndMonth = prev.Month;
+                    }
+                }
+
+                // Add a new budget starting this month with no end
+                var newBudget = new CategoryBudget
+                {
+                    ExpenseCategoryId = categoryId,
+                    StartYear = year,
+                    StartMonth = month,
+                    Amount = amount
+                };
+                _context.CategoryBudgets.Add(newBudget);
+            }
+            else
+            {
+                // This month only: create a single-month budget or adjust existing range
+                // If a range covers this month, split it into up to two ranges (before and after)
+                var covering = budgets.FirstOrDefault(cb => cb.IsActiveForMonth(year, month));
+                if (covering != null)
+                {
+                    // Adjust covering: end the first part at previous month
+                    var prev = new DateTime(year, month, 1).AddMonths(-1);
+                    if (prev >= covering.StartDate)
+                    {
+                        covering.EndYear = prev.Year;
+                        covering.EndMonth = prev.Month;
+                    }
+
+                    // Add a second part beginning next month with original amount if the original had open end
+                    var next = new DateTime(year, month, 1).AddMonths(1);
+                    var originalHadOpenEnd = !covering.EndYear.HasValue || !covering.EndMonth.HasValue;
+                    if (originalHadOpenEnd)
+                    {
+                        var tail = new CategoryBudget
+                        {
+                            ExpenseCategoryId = categoryId,
+                            StartYear = next.Year,
+                            StartMonth = next.Month,
+                            Amount = covering.Amount
+                        };
+                        _context.CategoryBudgets.Add(tail);
+                    }
+                }
+
+                // Add the single-month override
+                var thisMonthBudget = new CategoryBudget
+                {
+                    ExpenseCategoryId = categoryId,
+                    StartYear = year,
+                    StartMonth = month,
+                    EndYear = year,
+                    EndMonth = month,
+                    Amount = amount
+                };
+                _context.CategoryBudgets.Add(thisMonthBudget);
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteCategoryBudgetAsync(int categoryId, int year, int month)
+        {
+            var monthIndex = year * 12 + month;
+            var budgets = await _context.CategoryBudgets
+                .Where(cb => cb.ExpenseCategoryId == categoryId)
+                .ToListAsync();
+
+            // Find budgets that are active for this month
+            var activeBudgets = budgets.Where(cb => cb.IsActiveForMonth(year, month)).ToList();
+
+            foreach (var budget in activeBudgets)
+            {
+                var budgetStart = budget.StartYear * 12 + budget.StartMonth;
+                var budgetEnd = budget.EndYear.HasValue && budget.EndMonth.HasValue
+                    ? budget.EndYear.Value * 12 + budget.EndMonth.Value
+                    : int.MaxValue;
+
+                if (budgetStart == monthIndex && budgetEnd == monthIndex)
+                {
+                    // Single month budget - delete it entirely
+                    _context.CategoryBudgets.Remove(budget);
+                }
+                else if (budgetStart <= monthIndex && budgetEnd >= monthIndex)
+                {
+                    if (budgetStart == monthIndex)
+                    {
+                        // Budget starts this month - move start to next month
+                        var nextMonth = new DateTime(year, month, 1).AddMonths(1);
+                        budget.StartYear = nextMonth.Year;
+                        budget.StartMonth = nextMonth.Month;
+                    }
+                    else if (budgetEnd == monthIndex)
+                    {
+                        // Budget ends this month - move end to previous month
+                        var prevMonth = new DateTime(year, month, 1).AddMonths(-1);
+                        budget.EndYear = prevMonth.Year;
+                        budget.EndMonth = prevMonth.Month;
+                    }
+                    else
+                    {
+                        // Budget spans across this month - split it
+                        // End the first part at previous month
+                        var prevMonth = new DateTime(year, month, 1).AddMonths(-1);
+                        budget.EndYear = prevMonth.Year;
+                        budget.EndMonth = prevMonth.Month;
+
+                        // Create a new budget starting next month with the same amount
+                        var nextMonth = new DateTime(year, month, 1).AddMonths(1);
+                        var newBudget = new CategoryBudget
+                        {
+                            ExpenseCategoryId = categoryId,
+                            StartYear = nextMonth.Year,
+                            StartMonth = nextMonth.Month,
+                            EndYear = budget.EndYear,
+                            EndMonth = budget.EndMonth,
+                            Amount = budget.Amount
+                        };
+                        _context.CategoryBudgets.Add(newBudget);
+                    }
+                }
+            }
+
+            await _context.SaveChangesAsync();
         }
 
         public Task AddIncomeSourceAsync(IncomeSource incomeSource)
