@@ -35,7 +35,7 @@
     </div>
 
     <h5>Add Value</h5>
-    <form method="post" asp-page-handler="AddValue" asp-route-id="@Model.Investment.Id" class="row g-3">
+    <form method="post" asp-page-handler="AddValue" asp-route-id="@Model.Investment.Id" class="row g-3" data-loading="Adding value...">
         <div class="col-auto">
             <input type="hidden" asp-for="NewValue.InvestmentId" />
             <label asp-for="NewValue.AsOf" class="form-label"></label>
@@ -60,7 +60,7 @@
     </form>
 
     <h5 class="mt-4">One-time Contributions</h5>
-    <form method="post" asp-page-handler="AddContribution" asp-route-id="@Model.Investment.Id" class="row g-3">
+    <form method="post" asp-page-handler="AddContribution" asp-route-id="@Model.Investment.Id" class="row g-3" data-loading="Adding contribution...">
         <div class="col-auto">
             <label asp-for="NewContribution.Date" class="form-label">Date</label>
             <input asp-for="NewContribution.Date" type="date" class="form-control" />
@@ -94,7 +94,7 @@
                     <td>@c.Date.ToShortDateString()</td>
                     <td>@c.Amount.ToString("C", culture)</td>
                     <td>
-                        <form method="post" asp-page-handler="DeleteContribution" asp-route-id="@Model.Investment.Id" asp-route-contributionId="@c.Id" data-confirm="Delete this one-time contribution?">
+                        <form method="post" asp-page-handler="DeleteContribution" asp-route-id="@Model.Investment.Id" asp-route-contributionId="@c.Id" data-confirm="Delete this one-time contribution?" data-loading="Deleting contribution...">
                             <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
                         </form>
                     </td>
@@ -120,7 +120,7 @@
                 <td>@v.AsOf.ToShortDateString()</td>
                 <td>@v.Value.ToString("C", culture)</td>
                 <td>
-                    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Investment.Id" asp-route-valueId="@v.Id" data-confirm="Delete this value record?">
+                    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Investment.Id" asp-route-valueId="@v.Id" data-confirm="Delete this value record?" data-loading="Deleting value...">
                         <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
                     </form>
                 </td>

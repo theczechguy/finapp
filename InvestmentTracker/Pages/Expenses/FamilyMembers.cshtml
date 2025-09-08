@@ -42,7 +42,7 @@
                                     <td>@member.CreatedDate.ToString("dd/MM/yyyy")</td>
                                     <td>
                                         <button type="button" class="btn btn-sm btn-secondary me-1" onclick="editFamilyMember(@member.Id)">Edit</button>
-                                        <form method="post" asp-page-handler="ToggleStatus" asp-route-memberId="@member.Id" class="d-inline">
+                                        <form method="post" asp-page-handler="ToggleStatus" asp-route-memberId="@member.Id" class="d-inline" data-loading="Updating status...">
                                             <button type="submit" class="btn btn-sm btn-@(member.IsActive ? "warning" : "success")">
                                                 @(member.IsActive ? "Deactivate" : "Activate")
                                             </button>
@@ -85,7 +85,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="post" asp-page-handler="AddFamilyMember">
+                <form method="post" asp-page-handler="AddFamilyMember" data-loading="Adding family member...">
                     <div class="mb-3">
                         <label for="memberName" class="form-label">Name</label>
                         <input type="text" id="memberName" name="name" class="form-control" required />
@@ -117,7 +117,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="post" asp-page-handler="UpdateFamilyMember">
+                <form method="post" asp-page-handler="UpdateFamilyMember" data-loading="Updating family member...">
                     <input type="hidden" id="editMemberId" name="id" />
                     <div class="mb-3">
                         <label for="editMemberName" class="form-label">Name</label>

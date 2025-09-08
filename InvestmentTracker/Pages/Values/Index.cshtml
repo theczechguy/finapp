@@ -74,7 +74,7 @@
                 }
             </td>
             <td>
-                <form method="post" asp-page-handler="Delete" asp-route-id="@r.Id" data-confirm="Delete this value record?">
+                <form method="post" asp-page-handler="Delete" asp-route-id="@r.Id" data-confirm="Delete this value record?" data-loading="Deleting value...">
                     <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
                 </form>
             </td>

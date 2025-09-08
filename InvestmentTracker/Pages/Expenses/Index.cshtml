@@ -93,7 +93,7 @@
                         @foreach (var income in Model.ViewModel.Incomes)
                         {
                             <tr>
-                                <form method="post" asp-page-handler="UpdateIncome">
+                                <form method="post" asp-page-handler="UpdateIncome" data-loading="Updating income...">
                                     <td>@income.Name</td>
                                     <td>@income.ExpectedAmount.ToString("C", new System.Globalization.CultureInfo(income.Currency.ToCultureCode()))</td>
                                     <td>
@@ -142,7 +142,7 @@
                                     <td>@income.Amount.ToString("C", new System.Globalization.CultureInfo(income.Currency.ToCultureCode()))</td>
                                     <td>
                                         <button type="button" class="btn btn-sm btn-secondary me-1" onclick="editOneTimeIncome(@income.Id)">Edit</button>
-                                        <form method="post" asp-page-handler="DeleteOneTimeIncome" asp-route-incomeId="@income.Id" class="d-inline" data-confirm="Delete this one-time income? This action cannot be undone.">
+                                        <form method="post" asp-page-handler="DeleteOneTimeIncome" asp-route-incomeId="@income.Id" class="d-inline" data-confirm="Delete this one-time income? This action cannot be undone." data-loading="Deleting income...">
                                             <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                                         </form>
                                     </td>
@@ -172,48 +172,50 @@
                 </div>
             </div>
             <div class="card-body">
-                <table class="table mb-0">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Category</th>
-                            <th>Amount</th>
-                            <th>Type</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model.ViewModel.RegularExpenses.Any())
-                        {
-                            @foreach (var expense in Model.ViewModel.RegularExpenses)
+                <div id="regularExpensesContainer">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>Type</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.ViewModel.RegularExpenses.Any())
+                            {
+                                @foreach (var expense in Model.ViewModel.RegularExpenses)
+                                {
+                                    <tr class="fade-in">
+                                        <td>@expense.Name</td>
+                                        <td>@(expense.Category?.Name ?? "Uncategorized")</td>
+                                        <td>@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
+                                        <td>
+                                            <span class="badge bg-@(expense.ExpenseType == ExpenseType.Family ? "primary" : "secondary")">
+                                                @expense.ExpenseType
+                                            </span>
+                                            @if (expense.FamilyMember != null)
+                                            {
+                                                <small class="text-muted d-block">@expense.FamilyMember.Name</small>
+                                            }
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="editRegularExpense(@expense.Id)">Edit</button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
                             {
                                 <tr>
-                                    <td>@expense.Name</td>
-                                    <td>@(expense.Category?.Name ?? "Uncategorized")</td>
-                                    <td>@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
-                                    <td>
-                                        <span class="badge bg-@(expense.ExpenseType == ExpenseType.Family ? "primary" : "secondary")">
-                                            @expense.ExpenseType
-                                        </span>
-                                        @if (expense.FamilyMember != null)
-                                        {
-                                            <small class="text-muted d-block">@expense.FamilyMember.Name</small>
-                                        }
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-secondary" onclick="editRegularExpense(@expense.Id)">Edit</button>
-                                    </td>
+                                    <td colspan="5" class="text-center text-muted">No regular expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addRegularExpenseModal">Add your first expense</a></td>
                                 </tr>
                             }
-                        }
-                        else
-                        {
-                            <tr>
-                                <td colspan="5" class="text-center text-muted">No regular expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addRegularExpenseModal">Add your first expense</a></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -226,53 +228,55 @@
                 </div>
             </div>
             <div class="card-body">
-                <table class="table mb-0">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Name</th>
-                            <th>Category</th>
-                            <th>Amount</th>
-                            <th>Type</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model.ViewModel.IrregularExpenses.Any())
-                        {
-                            @foreach (var expense in Model.ViewModel.IrregularExpenses)
+                <div id="irregularExpensesContainer">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>Type</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.ViewModel.IrregularExpenses.Any())
+                            {
+                                @foreach (var expense in Model.ViewModel.IrregularExpenses)
+                                {
+                                    <tr class="fade-in">
+                                        <td>@expense.Date.ToString("dd/MM/yyyy")</td>
+                                        <td>@expense.Name</td>
+                                        <td>@(expense.Category?.Name ?? "Uncategorized")</td>
+                                        <td>@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
+                                        <td>
+                                            <span class="badge bg-@(expense.ExpenseType == ExpenseType.Family ? "primary" : "secondary")">
+                                                @expense.ExpenseType
+                                            </span>
+                                            @if (expense.FamilyMember != null)
+                                            {
+                                                <small class="text-muted d-block">@expense.FamilyMember.Name</small>
+                                            }
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-secondary me-1" onclick="editIrregularExpense(@expense.Id)">Edit</button>
+                                            <form method="post" asp-page-handler="DeleteIrregularExpense" asp-route-expenseId="@expense.Id" class="d-inline" data-confirm="Delete this irregular expense? This action cannot be undone." data-loading="Deleting expense...">
+                                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
                             {
                                 <tr>
-                                    <td>@expense.Date.ToString("dd/MM/yyyy")</td>
-                                    <td>@expense.Name</td>
-                                    <td>@(expense.Category?.Name ?? "Uncategorized")</td>
-                                    <td>@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
-                                    <td>
-                                        <span class="badge bg-@(expense.ExpenseType == ExpenseType.Family ? "primary" : "secondary")">
-                                            @expense.ExpenseType
-                                        </span>
-                                        @if (expense.FamilyMember != null)
-                                        {
-                                            <small class="text-muted d-block">@expense.FamilyMember.Name</small>
-                                        }
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-secondary me-1" onclick="editIrregularExpense(@expense.Id)">Edit</button>
-                                        <form method="post" asp-page-handler="DeleteIrregularExpense" asp-route-expenseId="@expense.Id" class="d-inline" data-confirm="Delete this irregular expense? This action cannot be undone.">
-                                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                        </form>
-                                    </td>
+                                    <td colspan="6" class="text-center text-muted">No irregular expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Add your first expense</a></td>
                                 </tr>
                             }
-                        }
-                        else
-                        {
-                            <tr>
-                                <td colspan="6" class="text-center text-muted">No irregular expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Add your first expense</a></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -287,7 +291,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="post" asp-page-handler="AddRegularExpense">
+                <form method="post" asp-page-handler="AddRegularExpense" data-loading="Adding expense...">
                     <div class="mb-3">
                         <label for="regularExpenseName" class="form-label">Name</label>
                         <input type="text" id="regularExpenseName" name="name" class="form-control" required />
@@ -379,7 +383,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="post" asp-page-handler="AddIrregularExpense">
+                <form method="post" asp-page-handler="AddIrregularExpense" data-loading="Adding expense...">
                     <div class="mb-3">
                         <label for="irregularExpenseName" class="form-label">Name</label>
                         <input type="text" id="irregularExpenseName" name="name" class="form-control" required />
@@ -443,7 +447,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="post" asp-page-handler="UpdateRegularExpense">
+                <form method="post" asp-page-handler="UpdateRegularExpense" data-loading="Updating expense...">
                     <input type="hidden" id="editExpenseId" name="id" />
                     <div class="mb-3">
                         <label for="editRegularExpenseName" class="form-label">Name</label>
@@ -563,7 +567,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="post" asp-page-handler="UpdateIrregularExpense">
+                <form method="post" asp-page-handler="UpdateIrregularExpense" data-loading="Updating expense...">
                     <input type="hidden" id="editIrregularExpenseId" name="id" />
                     <div class="mb-3">
                         <label for="editIrregularExpenseName" class="form-label">Name</label>
@@ -628,7 +632,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="post" asp-page-handler="AddOneTimeIncome">
+                <form method="post" asp-page-handler="AddOneTimeIncome" data-loading="Adding income...">
                     <div class="mb-3">
                         <label for="oneTimeIncomeName" class="form-label">Name</label>
                         <input type="text" id="oneTimeIncomeName" name="name" class="form-control" required />
@@ -675,7 +679,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="post" asp-page-handler="UpdateOneTimeIncome">
+                <form method="post" asp-page-handler="UpdateOneTimeIncome" data-loading="Updating income...">
                     <input type="hidden" id="editOneTimeIncomeId" name="id" />
                     <div class="mb-3">
                         <label for="editOneTimeIncomeName" class="form-label">Name</label>

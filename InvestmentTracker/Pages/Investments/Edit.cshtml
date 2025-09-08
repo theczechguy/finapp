@@ -5,7 +5,7 @@
 
 <h2>Edit Investment</h2>
 
-<form method="post" class="mt-3">
+<form method="post" class="mt-3" data-loading="Updating investment...">
     <input type="hidden" asp-for="Investment.Id" />
 
     <div class="mb-3">
@@ -82,7 +82,7 @@
                                 <input class="form-control form-control-sm w-auto" type="text" inputmode="decimal" name="amount" value="@s.Amount.ToString("F2", CultureInfo.InvariantCulture)" form="@formId" required />
                             </td>
                             <td>
-                                <form method="post" asp-page-handler="DeleteSchedule" asp-route-id="@Model.Investment.Id" asp-route-scheduleId="@s.Id" class="d-inline">
+                                <form method="post" asp-page-handler="DeleteSchedule" asp-route-id="@Model.Investment.Id" asp-route-scheduleId="@s.Id" class="d-inline" data-loading="Deleting schedule...">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
                                 </form>
                             </td>
@@ -97,7 +97,7 @@
             }
 
             <h6 class="mt-3">Add Schedule</h6>
-            <form method="post" asp-page-handler="AddSchedule" asp-route-id="@Model.Investment.Id" class="row g-2 align-items-end" id="addScheduleForm">
+            <form method="post" asp-page-handler="AddSchedule" asp-route-id="@Model.Investment.Id" class="row g-2 align-items-end" id="addScheduleForm" data-loading="Adding schedule...">
                 <div class="col-auto">
                     <label class="form-label" asp-for="NewSchedule.StartDate">Start</label>
                     <input class="form-control" asp-for="NewSchedule.StartDate" type="date" required />
@@ -125,7 +125,7 @@
 
             <div class="mt-4">
                 <h5>One-time Contributions</h5>
-                <form method="post" asp-page-handler="AddContribution" asp-route-id="@Model.Investment.Id" class="row g-2 align-items-end" id="addContributionForm">
+                <form method="post" asp-page-handler="AddContribution" asp-route-id="@Model.Investment.Id" class="row g-2 align-items-end" id="addContributionForm" data-loading="Adding contribution...">
                     <div class="col-auto">
                         <label class="form-label" for="NewContribution_Date">Date</label>
                         <input class="form-control" type="date" name="NewContribution.Date" id="NewContribution_Date" required />
@@ -150,7 +150,7 @@
                                 <td>@c.Date.ToShortDateString()</td>
                                 <td>@c.Amount.ToString("C", culture)</td>
                                 <td>
-                                    <form method="post" asp-page-handler="DeleteContribution" asp-route-id="@Model.Investment.Id" asp-route-contributionId="@c.Id" class="d-inline" data-confirm="Delete this one-time contribution?">
+                                    <form method="post" asp-page-handler="DeleteContribution" asp-route-id="@Model.Investment.Id" asp-route-contributionId="@c.Id" class="d-inline" data-confirm="Delete this one-time contribution?" data-loading="Deleting contribution...">
                                         <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
                                     </form>
                                 </td>

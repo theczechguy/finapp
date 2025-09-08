@@ -27,7 +27,7 @@
                         <td>@source.Currency</td>
                         <td>
                             <a asp-page="./EditIncomeSource" asp-route-id="@source.Id" class="btn btn-sm btn-secondary">Edit</a>
-                            <form method="post" asp-page-handler="Delete" asp-route-id="@source.Id" class="d-inline" data-confirm="Delete this income source? This will also remove all associated monthly income records.">
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@source.Id" class="d-inline" data-confirm="Delete this income source? This will also remove all associated monthly income records." data-loading="Deleting income source...">
                                 <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                             </form>
                         </td>
@@ -42,7 +42,7 @@
                 Add New Source
             </div>
             <div class="card-body">
-                <form method="post">
+                <form method="post" data-loading="Adding income source...">
                     <div class="mb-3">
                         <label asp-for="NewIncomeSource.Name" class="form-label"></label>
                         <input asp-for="NewIncomeSource.Name" class="form-control" />

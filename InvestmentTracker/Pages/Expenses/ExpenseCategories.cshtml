@@ -22,7 +22,7 @@
                         <td>@category.Name</td>
                         <td>
                             <a asp-page="./EditExpenseCategory" asp-route-id="@category.Id" class="btn btn-sm btn-secondary">Edit</a>
-                            <form method="post" asp-page-handler="Delete" asp-route-id="@category.Id" class="d-inline" data-confirm="Delete this expense category? This will affect all expenses using this category.">
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@category.Id" class="d-inline" data-confirm="Delete this expense category? This will affect all expenses using this category." data-loading="Deleting category...">
                                 <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                             </form>
                         </td>
@@ -37,7 +37,7 @@
                 Add New Category
             </div>
             <div class="card-body">
-                <form method="post">
+                <form method="post" data-loading="Adding category...">
                     <div class="mb-3">
                         <label asp-for="NewCategory.Name" class="form-label"></label>
                         <input asp-for="NewCategory.Name" class="form-control" />
