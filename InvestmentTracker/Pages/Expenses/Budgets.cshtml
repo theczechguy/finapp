@@ -34,14 +34,14 @@
         </div>
         <div class="col-auto">
             <div class="btn-group ms-2" role="group">
-                <button type="button" class="btn btn-outline-secondary" onclick="navigateMonth(-1)" title="Previous Month">
+                <button type="button" class="btn btn-outline-secondary" onclick="navigateMonth(-1)" title="Previous Month (← or P)">
                     <i class="bi bi-chevron-left"></i> Previous
                 </button>
-                <button type="button" class="btn btn-outline-primary" onclick="navigateToCurrentMonth()" title="Current Month">
+                <button type="button" class="btn btn-outline-primary" onclick="navigateToCurrentMonth()" title="Current Month (C, T, or Home)">
                     <i class="bi bi-calendar-event"></i>
                     <span class="d-none d-sm-inline ms-1">Current</span>
                 </button>
-                <button type="button" class="btn btn-outline-secondary" onclick="navigateMonth(1)" title="Next Month">
+                <button type="button" class="btn btn-outline-secondary" onclick="navigateMonth(1)" title="Next Month (→ or N)">
                     Next <i class="bi bi-chevron-right"></i>
                 </button>
             </div>
@@ -183,6 +183,8 @@
         <strong>Budget Scope:</strong> All budgets apply to the current month and all future months.
         <br>
         <em>Historical budgets remain unchanged for data integrity.</em>
+        <br>
+        <strong class="text-primary">Keyboard Shortcuts:</strong> ←/P (Previous), →/N (Next), C/T/Home (Current Month)
     </div>
 </div>
 
@@ -340,5 +342,48 @@
             const url = `?year=${currentYear}&month=${currentMonth}`;
             window.location.href = url;
         };
+
+        // Keyboard shortcuts for month navigation
+        document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('keydown', function(event) {
+                // Don't trigger shortcuts when user is typing in input fields
+                if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.tagName === 'SELECT') {
+                    return;
+                }
+
+                // Don't trigger shortcuts when modal is open
+                if (document.querySelector('.modal.show')) {
+                    return;
+                }
+
+                switch(event.key) {
+                    case 'ArrowLeft':
+                    case 'p':
+                    case 'P':
+                        event.preventDefault();
+                        navigateMonth(-1);
+                        break;
+                    case 'ArrowRight':
+                    case 'n':
+                    case 'N':
+                        event.preventDefault();
+                        navigateMonth(1);
+                        break;
+                    case 'c':
+                    case 'C':
+                    case 't':
+                    case 'T':
+                    case 'Home':
+                        event.preventDefault();
+                        navigateToCurrentMonth();
+                        break;
+                    case 'h':
+                    case 'H':
+                        event.preventDefault();
+                        navigateToCurrentMonth();
+                        break;
+                }
+            });
+        });
     </script>
 }
