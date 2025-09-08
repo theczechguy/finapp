@@ -1,17 +1,17 @@
 @page "/expenses/regular"
 @model InvestmentTracker.Pages.Expenses.RegularModel
 @{
-    ViewData["Title"] = "Regular Expenses";
+    ViewData["Title"] = "Recurring Expenses";
 }
 
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2><i class="bi bi-calendar-check text-primary me-2"></i>Regular Expenses</h2>
+                <h2><i class="bi bi-calendar-check text-primary me-2"></i>Recurring Expenses</h2>
                 <div>
                     <a href="/expenses" class="btn btn-outline-secondary me-2">
-                        <i class="bi bi-arrow-left me-1"></i>Back to Monthly View
+                        <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
                     </a>
                     <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addExpenseModal" title="Add Expense" aria-label="Add Expense">
                         <i class="bi bi-plus-lg"></i>
@@ -78,7 +78,7 @@
                         <div class="card text-center">
                             <div class="card-body">
                                 <h5 class="card-title text-primary">@Model.RegularExpenses.Count</h5>
-                                <p class="card-text">Total Regular Expenses</p>
+                                <p class="card-text">Total Recurring Expenses</p>
                             </div>
                         </div>
                     </div>
@@ -240,7 +240,7 @@
             <form id="expenseForm">
                 @Html.AntiForgeryToken()
                 <div class="modal-header">
-                    <h5 class="modal-title">Add Regular Expense</h5>
+                    <h5 class="modal-title">Add Recurring Expense</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -461,7 +461,7 @@
                         document.getElementById('expenseDescription').value = data.expense.description || '';
                         
                         // Update modal title and toggle starting month visibility
-                        document.querySelector('#addExpenseModal .modal-title').textContent = 'Edit Regular Expense';
+                        document.querySelector('#addExpenseModal .modal-title').textContent = 'Edit Recurring Expense';
                         toggleStartingMonth();
                         
                         // Show the modal
@@ -543,7 +543,7 @@
         document.getElementById('addExpenseModal').addEventListener('hidden.bs.modal', function() {
             document.getElementById('expenseForm').reset();
             document.getElementById('expenseId').value = '0';
-            document.querySelector('#addExpenseModal .modal-title').textContent = 'Add Regular Expense';
+            document.querySelector('#addExpenseModal .modal-title').textContent = 'Add Recurring Expense';
             document.getElementById('startingMonthContainer').style.display = 'none';
         });
     </script>
