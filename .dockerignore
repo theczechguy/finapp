@@ -26,6 +26,11 @@ logs/
 .DS_Store
 Thumbs.db
 
+# macOS resource fork files (these are the culprits!)
+._*
+**/.DS_Store
+**/._*
+
 # Git
 .git/
 .gitignore
