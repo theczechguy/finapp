@@ -75,6 +75,9 @@ ssh $DOCKER_HOST << EOF
     # Ensure data directory exists
     mkdir -p data logs
     
+    # Set proper permissions for data directory (SQLite needs write access)
+    chmod 755 data logs
+    
     echo "🏗️  Building and starting application..."
     docker compose up -d --build
     
