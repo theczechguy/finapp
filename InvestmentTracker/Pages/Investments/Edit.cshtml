@@ -42,7 +42,10 @@
     </div>
 
     <div class="mt-4">
-        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="submit" class="btn btn-primary" title="Save" aria-label="Save">
+            <i class="bi bi-save"></i>
+            <span class="d-none d-sm-inline ms-1">Save</span>
+        </button>
         <a class="btn btn-secondary" asp-page="List">Cancel</a>
     </div>
 </form>
@@ -119,7 +122,10 @@
                     <span class="text-danger" asp-validation-for="NewSchedule.Amount"></span>
                 </div>
                 <div class="col-auto">
-                    <button type="submit" class="btn btn-outline-primary">Add</button>
+                    <button type="submit" class="btn btn-outline-primary" title="Add" aria-label="Add">
+                        <i class="bi bi-plus-lg"></i>
+                        <span class="d-none d-sm-inline ms-1">Add</span>
+                    </button>
                 </div>
             </form>
 
@@ -135,7 +141,10 @@
                         <input class="form-control" type="text" inputmode="decimal" name="NewContribution.Amount" id="NewContribution_Amount" value="" placeholder="0.00" required />
                     </div>
                     <div class="col-auto">
-                        <button type="submit" class="btn btn-outline-primary">Add Contribution</button>
+                        <button type="submit" class="btn btn-outline-primary" title="Add Contribution" aria-label="Add Contribution">
+                            <i class="bi bi-plus-lg"></i>
+                            <span class="d-none d-sm-inline ms-1">Add Contribution</span>
+                        </button>
                     </div>
                 </form>
 

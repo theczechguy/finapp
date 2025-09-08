@@ -26,7 +26,10 @@
     <input type="number" id="PageSize" name="PageSize" class="form-control" min="1" max="200" value="@Model.PageSize" />
     </div>
     <div class="col-auto">
-        <button type="submit" class="btn btn-primary">Apply</button>
+        <button type="submit" class="btn btn-primary" title="Apply" aria-label="Apply">
+            <i class="bi bi-funnel"></i>
+            <span class="d-none d-sm-inline ms-1">Apply</span>
+        </button>
         <a class="btn btn-outline-secondary" asp-page="/Values/Index">Reset</a>
         <a class="btn btn-secondary" asp-page="/Investments/List">Back to Investments</a>
     </div>
@@ -76,7 +79,7 @@
             </td>
             <td>
                 <form method="post" asp-page-handler="Delete" asp-route-id="@r.Id" data-confirm="Delete this value record?" data-loading="Deleting value...">
-                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
                 </form>
             </td>
         </tr>

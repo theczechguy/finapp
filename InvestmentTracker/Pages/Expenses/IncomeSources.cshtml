@@ -28,9 +28,13 @@
                         <td>@source.Currency</td>
                         <td>
                             <div class="d-flex flex-wrap align-items-center gap-2">
-                                <a asp-page="./EditIncomeSource" asp-route-id="@source.Id" class="btn btn-sm btn-secondary">Edit</a>
+                                <a asp-page="./EditIncomeSource" asp-route-id="@source.Id" class="btn btn-sm btn-secondary" title="Edit" aria-label="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
                                 <form method="post" asp-page-handler="Delete" asp-route-id="@source.Id" class="d-inline" data-confirm="Delete this income source? This will also remove all associated monthly income records." data-loading="Deleting income source...">
-                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Delete" aria-label="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 </form>
                             </div>
                         </td>
@@ -59,7 +63,10 @@
                         <label asp-for="NewIncomeSource.Currency" class="form-label"></label>
                         <select asp-for="NewIncomeSource.Currency" asp-items="Html.GetEnumSelectList<Currency>()" class="form-control"></select>
                     </div>
-                    <button type="submit" class="btn btn-primary">Add Source</button>
+                    <button type="submit" class="btn btn-primary" title="Add Source" aria-label="Add Source">
+                        <i class="bi bi-plus-lg"></i>
+                        <span class="d-none d-sm-inline ms-1">Add Source</span>
+                    </button>
                 </form>
             </div>
         </div>

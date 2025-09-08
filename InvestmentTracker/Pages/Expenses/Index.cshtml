@@ -104,7 +104,10 @@
                                         <input type="hidden" name="month" value="@Model.ViewModel.Month" />
                                     </td>
                                     <td>
-                                        <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                                        <button type="submit" class="btn btn-sm btn-primary" title="Update" aria-label="Update">
+                                            <i class="bi bi-save"></i>
+                                            <span class="d-none d-sm-inline ms-1">Update</span>
+                                        </button>
                                     </td>
                                 </form>
                             </tr>
@@ -119,7 +122,10 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 One-Time Incomes
-                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addOneTimeIncomeModal">Add Income <kbd>O</kbd></button>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addOneTimeIncomeModal" title="Add Income" aria-label="Add Income">
+                    <i class="bi bi-plus-lg"></i>
+                    <span class="d-none d-sm-inline ms-1">Add Income <kbd>O</kbd></span>
+                </button>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -145,9 +151,13 @@
                                     <td>@income.Amount.ToString("C", new System.Globalization.CultureInfo(income.Currency.ToCultureCode()))</td>
                                     <td>
                                         <div class="d-flex flex-wrap align-items-center gap-2">
-                                            <button type="button" class="btn btn-sm btn-secondary align-middle" onclick="editOneTimeIncome(@income.Id)">Edit</button>
+                                            <button type="button" class="btn btn-sm btn-secondary align-middle" onclick="editOneTimeIncome(@income.Id)" title="Edit" aria-label="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
                                             <form method="post" asp-page-handler="DeleteOneTimeIncome" asp-route-incomeId="@income.Id" class="d-inline" data-confirm="Delete this one-time income? This action cannot be undone." data-loading="Deleting income...">
-                                                <button type="submit" class="btn btn-sm btn-danger align-middle">Delete</button>
+                                                <button type="submit" class="btn btn-sm btn-danger align-middle" title="Delete" aria-label="Delete">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
                                             </form>
                                         </div>
                                     </td>
@@ -174,7 +184,10 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 Regular Expenses
                 <div>
-                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addRegularExpenseModal">Add Expense <kbd>A</kbd></button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addRegularExpenseModal" title="Add Expense" aria-label="Add Expense">
+                        <i class="bi bi-plus-lg"></i>
+                        <span class="d-none d-sm-inline ms-1">Add Expense <kbd>A</kbd></span>
+                    </button>
                 </div>
             </div>
             <div class="card-body">
@@ -209,7 +222,9 @@
                                             }
                                         </td>
                                         <td>
-                                            <button type="button" class="btn btn-sm btn-secondary" onclick="editRegularExpense(@expense.Id)">Edit</button>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="editRegularExpense(@expense.Id)" title="Edit" aria-label="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
                                         </td>
                                     </tr>
                                 }
@@ -270,9 +285,13 @@
                                         </td>
                                         <td>
                                             <div class="d-flex flex-wrap align-items-center gap-2">
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="editIrregularExpense(@expense.Id)">Edit</button>
+                                                <button type="button" class="btn btn-sm btn-secondary" onclick="editIrregularExpense(@expense.Id)" title="Edit" aria-label="Edit">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
                                                 <form method="post" asp-page-handler="DeleteIrregularExpense" asp-route-expenseId="@expense.Id" class="d-inline" data-confirm="Delete this irregular expense? This action cannot be undone." data-loading="Deleting expense...">
-                                                    <button type="submit" class="btn btn-sm btn-danger align-middle">Delete</button>
+                                                    <button type="submit" class="btn btn-sm btn-danger align-middle" title="Delete" aria-label="Delete">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
                                                 </form>
                                             </div>
                                         </td>
@@ -296,7 +315,7 @@
 
 <!-- Add Regular Expense Modal -->
 <div class="modal fade" id="addRegularExpenseModal" tabindex="-1" aria-labelledby="addRegularExpenseModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="addRegularExpenseModalLabel">Add Regular Expense</h5>
@@ -379,7 +398,10 @@
                             </div>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary">Add Expense</button>
+                    <button type="submit" class="btn btn-primary" title="Add Expense" aria-label="Add Expense">
+                        <i class="bi bi-plus-lg"></i>
+                        <span class="d-none d-sm-inline ms-1">Add Expense</span>
+                    </button>
                 </form>
             </div>
         </div>
@@ -388,7 +410,7 @@
 
 <!-- Add Irregular Expense Modal -->
 <div class="modal fade" id="addIrregularExpenseModal" tabindex="-1" aria-labelledby="addIrregularExpenseModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="addIrregularExpenseModalLabel">Quick Add Irregular Expense</h5>
@@ -443,7 +465,10 @@
                         <label for="irregularExpenseDate" class="form-label">Date</label>
                         <input type="date" id="irregularExpenseDate" name="date" class="form-control" required value="@DateTime.Today.ToString("yyyy-MM-dd")" />
                     </div>
-                    <button type="submit" class="btn btn-primary">Add Expense</button>
+                    <button type="submit" class="btn btn-primary" title="Add Expense" aria-label="Add Expense">
+                        <i class="bi bi-plus-lg"></i>
+                        <span class="d-none d-sm-inline ms-1">Add Expense</span>
+                    </button>
                 </form>
             </div>
         </div>
@@ -452,7 +477,7 @@
 
 <!-- Edit Regular Expense Modal -->
 <div class="modal fade" id="editRegularExpenseModal" tabindex="-1" aria-labelledby="editRegularExpenseModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="editRegularExpenseModalLabel">Edit Regular Expense</h5>
@@ -563,7 +588,10 @@
                     <div class="alert alert-info">
                         <small><strong>Note:</strong> Changes will only apply from the selected month forward. Historical data will remain unchanged.</small>
                     </div>
-                    <button type="submit" class="btn btn-primary">Update Expense</button>
+                    <button type="submit" class="btn btn-primary" title="Update Expense" aria-label="Update Expense">
+                        <i class="bi bi-save"></i>
+                        <span class="d-none d-sm-inline ms-1">Update Expense</span>
+                    </button>
                 </form>
             </div>
         </div>
@@ -572,7 +600,7 @@
 
 <!-- Edit Irregular Expense Modal -->
 <div class="modal fade" id="editIrregularExpenseModal" tabindex="-1" aria-labelledby="editIrregularExpenseModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="editIrregularExpenseModalLabel">Edit Irregular Expense</h5>
@@ -628,7 +656,10 @@
                         <label for="editIrregularExpenseDate" class="form-label">Date</label>
                         <input type="date" id="editIrregularExpenseDate" name="date" class="form-control" required />
                     </div>
-                    <button type="submit" class="btn btn-primary">Update Expense</button>
+                    <button type="submit" class="btn btn-primary" title="Update Expense" aria-label="Update Expense">
+                        <i class="bi bi-save"></i>
+                        <span class="d-none d-sm-inline ms-1">Update Expense</span>
+                    </button>
                 </form>
             </div>
         </div>
@@ -637,7 +668,7 @@
 
 <!-- Add One-Time Income Modal -->
 <div class="modal fade" id="addOneTimeIncomeModal" tabindex="-1" aria-labelledby="addOneTimeIncomeModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="addOneTimeIncomeModalLabel">Add One-Time Income</h5>
@@ -675,7 +706,10 @@
                         <label for="oneTimeIncomeDate" class="form-label">Date</label>
                         <input type="date" id="oneTimeIncomeDate" name="date" class="form-control" required value="@DateTime.Today.ToString("yyyy-MM-dd")" />
                     </div>
-                    <button type="submit" class="btn btn-primary">Add Income</button>
+                    <button type="submit" class="btn btn-primary" title="Add Income" aria-label="Add Income">
+                        <i class="bi bi-plus-lg"></i>
+                        <span class="d-none d-sm-inline ms-1">Add Income</span>
+                    </button>
                 </form>
             </div>
         </div>
@@ -684,7 +718,7 @@
 
 <!-- Edit One-Time Income Modal -->
 <div class="modal fade" id="editOneTimeIncomeModal" tabindex="-1" aria-labelledby="editOneTimeIncomeModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="editOneTimeIncomeModalLabel">Edit One-Time Income</h5>
@@ -723,7 +757,10 @@
                         <label for="editOneTimeIncomeDate" class="form-label">Date</label>
                         <input type="date" id="editOneTimeIncomeDate" name="date" class="form-control" required />
                     </div>
-                    <button type="submit" class="btn btn-primary">Update Income</button>
+                    <button type="submit" class="btn btn-primary" title="Update Income" aria-label="Update Income">
+                        <i class="bi bi-save"></i>
+                        <span class="d-none d-sm-inline ms-1">Update Income</span>
+                    </button>
                 </form>
             </div>
         </div>

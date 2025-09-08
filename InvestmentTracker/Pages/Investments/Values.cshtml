@@ -30,7 +30,9 @@
             {
                 <p class="text-muted mb-2">No schedules.</p>
             }
-            <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@Model.Investment.Id">Edit Schedules</a>
+            <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@Model.Investment.Id" title="Edit Schedules" aria-label="Edit Schedules">
+                <i class="bi bi-pencil"></i>
+            </a>
         </div>
     </div>
 
@@ -55,7 +57,10 @@
             <span asp-validation-for="NewValue.Value" class="text-danger"></span>
         </div>
         <div class="col-auto align-self-end">
-            <button type="submit" class="btn btn-primary">Add</button>
+            <button type="submit" class="btn btn-primary" title="Add" aria-label="Add">
+                <i class="bi bi-plus-lg"></i>
+                <span class="d-none d-sm-inline ms-1">Add</span>
+            </button>
         </div>
     </form>
 
@@ -79,7 +84,10 @@
             <span asp-validation-for="NewContribution.Amount" class="text-danger"></span>
         </div>
         <div class="col-auto align-self-end">
-            <button type="submit" class="btn btn-outline-primary">Add Contribution</button>
+            <button type="submit" class="btn btn-outline-primary" title="Add Contribution" aria-label="Add Contribution">
+                <i class="bi bi-plus-lg"></i>
+                <span class="d-none d-sm-inline ms-1">Add Contribution</span>
+            </button>
         </div>
     </form>
 
@@ -96,7 +104,7 @@
                     <td>@c.Amount.ToString("C", culture)</td>
                     <td>
                         <form method="post" asp-page-handler="DeleteContribution" asp-route-id="@Model.Investment.Id" asp-route-contributionId="@c.Id" data-confirm="Delete this one-time contribution?" data-loading="Deleting contribution...">
-                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
                         </form>
                     </td>
                 </tr>
@@ -124,7 +132,7 @@
                 <td>@v.Value.ToString("C", culture)</td>
                 <td>
                     <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Investment.Id" asp-route-valueId="@v.Id" data-confirm="Delete this value record?" data-loading="Deleting value...">
-                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
                     </form>
                 </td>
             </tr>

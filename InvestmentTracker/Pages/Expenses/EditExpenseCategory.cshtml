@@ -19,7 +19,10 @@
                         <input asp-for="Category.Name" class="form-control" />
                         <span asp-validation-for="Category.Name" class="text-danger"></span>
                     </div>
-                    <button type="submit" class="btn btn-primary">Update Category</button>
+                    <button type="submit" class="btn btn-primary" title="Update Category" aria-label="Update Category">
+                        <i class="bi bi-save"></i>
+                        <span class="d-none d-sm-inline ms-1">Update Category</span>
+                    </button>
                     <a asp-page="./ExpenseCategories" class="btn btn-secondary">Cancel</a>
                 </form>
             </div>

@@ -26,7 +26,10 @@
                 <select asp-for="IncomeSource.Currency" asp-items="Html.GetEnumSelectList<Currency>()" class="form-control"></select>
                 <span asp-validation-for="IncomeSource.Currency" class="text-danger"></span>
             </div>
-            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <button type="submit" class="btn btn-primary" title="Save Changes" aria-label="Save Changes">
+                <i class="bi bi-save"></i>
+                <span class="d-none d-sm-inline ms-1">Save Changes</span>
+            </button>
             <a asp-page="./IncomeSources" class="btn btn-secondary">Cancel</a>
         </form>
     </div>

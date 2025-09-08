@@ -23,9 +23,13 @@
                         <td>@category.Name</td>
                         <td>
                             <div class="d-flex flex-wrap align-items-center gap-2">
-                                <a asp-page="./EditExpenseCategory" asp-route-id="@category.Id" class="btn btn-sm btn-secondary">Edit</a>
+                                <a asp-page="./EditExpenseCategory" asp-route-id="@category.Id" class="btn btn-sm btn-secondary" title="Edit" aria-label="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
                                 <form method="post" asp-page-handler="Delete" asp-route-id="@category.Id" class="d-inline" data-confirm="Delete this expense category? This will affect all expenses using this category." data-loading="Deleting category...">
-                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Delete" aria-label="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 </form>
                             </div>
                         </td>
@@ -47,7 +51,10 @@
                         <input asp-for="NewCategory.Name" class="form-control" />
                         <span asp-validation-for="NewCategory.Name" class="text-danger"></span>
                     </div>
-                    <button type="submit" class="btn btn-primary">Add Category</button>
+                    <button type="submit" class="btn btn-primary" title="Add Category" aria-label="Add Category">
+                        <i class="bi bi-plus-lg"></i>
+                        <span class="d-none d-sm-inline ms-1">Add Category</span>
+                    </button>
                 </form>
             </div>
         </div>

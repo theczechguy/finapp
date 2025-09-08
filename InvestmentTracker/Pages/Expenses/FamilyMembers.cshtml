@@ -13,7 +13,10 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 Family Members
-                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addFamilyMemberModal">Add Member</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addFamilyMemberModal" title="Add Member" aria-label="Add Member">
+                    <i class="bi bi-person-plus"></i>
+                    <span class="d-none d-sm-inline ms-1">Add Member</span>
+                </button>
             </div>
             <div class="card-body">
                 <table class="table mb-0">
@@ -42,10 +45,12 @@
                                     <td>@member.CreatedDate.ToString("dd/MM/yyyy")</td>
                                     <td>
                                         <div class="d-flex flex-wrap align-items-center gap-2">
-                                            <button type="button" class="btn btn-sm btn-secondary" onclick="editFamilyMember(@member.Id)">Edit</button>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="editFamilyMember(@member.Id)" title="Edit" aria-label="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
                                             <form method="post" asp-page-handler="ToggleStatus" asp-route-memberId="@member.Id" class="d-inline" data-loading="Updating status...">
-                                                <button type="submit" class="btn btn-sm btn-@(member.IsActive ? "warning" : "success")">
-                                                    @(member.IsActive ? "Deactivate" : "Activate")
+                                                <button type="submit" class="btn btn-sm btn-@(member.IsActive ? "warning" : "success")" title="@(member.IsActive ? "Deactivate" : "Activate")" aria-label="@(member.IsActive ? "Deactivate" : "Activate")">
+                                                    <i class="bi bi-toggle-@(member.IsActive ? "off" : "on")"></i>
                                                 </button>
                                             </form>
                                         </div>
@@ -103,7 +108,10 @@
                             <option value="Other">Other</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary">Add Member</button>
+                    <button type="submit" class="btn btn-primary" title="Add Member" aria-label="Add Member">
+                        <i class="bi bi-person-plus"></i>
+                        <span class="d-none d-sm-inline ms-1">Add Member</span>
+                    </button>
                 </form>
             </div>
         </div>
@@ -136,7 +144,10 @@
                             <option value="Other">Other</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary">Update Member</button>
+                    <button type="submit" class="btn btn-primary" title="Update Member" aria-label="Update Member">
+                        <i class="bi bi-save"></i>
+                        <span class="d-none d-sm-inline ms-1">Update Member</span>
+                    </button>
                 </form>
             </div>
         </div>

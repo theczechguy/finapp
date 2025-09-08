@@ -375,6 +375,16 @@ body {
   white-space: nowrap;
   line-height: 60px;
   margin-top: auto; /* Push footer to bottom */
+  background-color: var(--bs-body-bg, #ffffff); /* ensure backdrop behind doesn't double-darken */
+}
+
+/* Dim footer during modal using overlay; layer above backdrop, below modal */
+body.modal-open .footer {
+  position: static; /* keep default stacking under .modal-backdrop */
+  z-index: auto;
+}
+body.modal-open footer.footer.border-top {
+  border-top: 0 !important;
 }
 
 /* Keyboard Shortcuts Help Overlay */
@@ -441,6 +451,8 @@ body {
   background-color: #f8f9fa;
   color: #495057;
 }
+
+/* (removed brightness filter; using overlay instead to match backdrop) */
 
 .keyboard-shortcuts-close.dark:hover {
   background-color: #495057;
