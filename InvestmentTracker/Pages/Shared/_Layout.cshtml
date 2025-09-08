@@ -61,7 +61,12 @@
 </div>
 
 <footer class="border-top footer text-muted">
-    <div class="container">&copy; 2025 - Fin App</div>
+    <div class="container">
+        &copy; 2025 - Fin App
+        <span class="float-end keyboard-shortcut-indicator" style="font-size: 0.8rem; opacity: 0.7;">
+            Press <kbd style="font-size: 0.7rem;">?</kbd> for shortcuts
+        </span>
+    </div>
 </footer>
 
 <!-- Global Confirm Modal -->
@@ -82,6 +87,94 @@
         </div>
     </div>
     </div>
+
+<!-- Keyboard Shortcuts Help Overlay -->
+<div id="keyboardShortcutsOverlay" class="keyboard-shortcuts-overlay" style="display: none;" onclick="hideKeyboardShortcuts()">
+    <div class="keyboard-shortcuts-modal" onclick="event.stopPropagation()">
+        <div class="keyboard-shortcuts-header">
+            <h5 class="keyboard-shortcuts-title">Keyboard Shortcuts</h5>
+            <button type="button" class="keyboard-shortcuts-close" onclick="hideKeyboardShortcuts()">&times;</button>
+        </div>
+        <div class="keyboard-shortcuts-body">
+            <div class="keyboard-shortcuts-section">
+                <h6 class="keyboard-shortcuts-section-title">Navigation</h6>
+                <div class="keyboard-shortcuts-list">
+                    <div class="keyboard-shortcut-item">
+                        <span class="keyboard-shortcut-key">H</span>
+                        <span class="keyboard-shortcut-description">Go to Home/Dashboard</span>
+                    </div>
+                    <div class="keyboard-shortcut-item">
+                        <span class="keyboard-shortcut-key">E</span>
+                        <span class="keyboard-shortcut-description">Go to Expenses</span>
+                    </div>
+                    <div class="keyboard-shortcut-item">
+                        <span class="keyboard-shortcut-key">I</span>
+                        <span class="keyboard-shortcut-description">Go to Investments</span>
+                    </div>
+                    <div class="keyboard-shortcut-item">
+                        <span class="keyboard-shortcut-key">P</span>
+                        <span class="keyboard-shortcut-description">Go to Portfolio</span>
+                    </div>
+                    <div class="keyboard-shortcut-item">
+                        <span class="keyboard-shortcut-key">V</span>
+                        <span class="keyboard-shortcut-description">Go to Values</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="keyboard-shortcuts-section">
+                <h6 class="keyboard-shortcuts-section-title">Expense Management</h6>
+                <div class="keyboard-shortcuts-list">
+                    <div class="keyboard-shortcut-item">
+                        <span class="keyboard-shortcut-key">A</span>
+                        <span class="keyboard-shortcut-description">Add Regular Expense</span>
+                    </div>
+                    <div class="keyboard-shortcut-item">
+                        <span class="keyboard-shortcut-key">Q</span>
+                        <span class="keyboard-shortcut-description">Quick Add Irregular Expense</span>
+                    </div>
+                    <div class="keyboard-shortcut-item">
+                        <span class="keyboard-shortcut-key">O</span>
+                        <span class="keyboard-shortcut-description">Add One-Time Income</span>
+                    </div>
+                    <div class="keyboard-shortcut-item">
+                        <span class="keyboard-shortcut-key">[</span>
+                        <span class="keyboard-shortcut-description">Previous Month</span>
+                    </div>
+                    <div class="keyboard-shortcut-item">
+                        <span class="keyboard-shortcut-key">]</span>
+                        <span class="keyboard-shortcut-description">Next Month</span>
+                    </div>
+                    <div class="keyboard-shortcut-item">
+                        <span class="keyboard-shortcut-key">U</span>
+                        <span class="keyboard-shortcut-description">Update Income</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="keyboard-shortcuts-section">
+                <h6 class="keyboard-shortcuts-section-title">General</h6>
+                <div class="keyboard-shortcuts-list">
+                    <div class="keyboard-shortcut-item">
+                        <span class="keyboard-shortcut-key">?</span>
+                        <span class="keyboard-shortcut-description">Show this help</span>
+                    </div>
+                    <div class="keyboard-shortcut-item">
+                        <span class="keyboard-shortcut-key">Esc</span>
+                        <span class="keyboard-shortcut-description">Close modal/cancel</span>
+                    </div>
+                    <div class="keyboard-shortcut-item">
+                        <span class="keyboard-shortcut-key">Enter</span>
+                        <span class="keyboard-shortcut-description">Submit form</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="keyboard-shortcuts-footer">
+            Press <kbd>Esc</kbd> or click outside to close
+        </div>
+    </div>
+</div>
 
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>

@@ -337,3 +337,240 @@
         }
     };
 })();
+
+// Keyboard Shortcuts Manager
+class KeyboardShortcutsManager {
+    constructor() {
+        this.shortcuts = new Map();
+        this.isHelpVisible = false;
+        this.init();
+    }
+
+    init() {
+        document.addEventListener('keydown', (e) => this.handleKeyPress(e));
+        this.registerShortcuts();
+        this.showHint();
+        
+        // Make hide function globally available for HTML onclick
+        window.hideKeyboardShortcuts = () => this.hideHelp();
+    }
+
+    registerShortcuts() {
+        // Navigation shortcuts (global)
+        this.shortcuts.set('h', () => this.navigateTo('/'));
+        this.shortcuts.set('e', () => this.navigateTo('/Expenses/Index'));
+        this.shortcuts.set('i', () => this.navigateTo('/Investments/List'));
+        this.shortcuts.set('p', () => this.navigateTo('/Portfolio/Index'));
+        this.shortcuts.set('v', () => this.navigateTo('/Values/Index'));
+
+        // Help shortcut
+        this.shortcuts.set('?', () => this.toggleHelp());
+
+        // Escape to close modals/help
+        this.shortcuts.set('Escape', () => this.handleEscape());
+
+        // Register page-specific shortcuts
+        this.registerPageSpecificShortcuts();
+    }
+
+    registerPageSpecificShortcuts() {
+        const currentPath = window.location.pathname;
+
+        // Expense page shortcuts
+        if (currentPath.includes('/Expenses/Index') || currentPath === '/Expenses') {
+            this.shortcuts.set('a', () => this.openModal('addRegularExpenseModal'));
+            this.shortcuts.set('q', () => this.openModal('addIrregularExpenseModal'));
+            this.shortcuts.set('o', () => this.openModal('addOneTimeIncomeModal'));
+            this.shortcuts.set('[', () => this.navigateMonth(-1));
+            this.shortcuts.set(']', () => this.navigateMonth(1));
+            this.shortcuts.set('u', () => this.focusFirstIncomeField());
+        }
+
+        // Investment pages shortcuts
+        if (currentPath.includes('/Investments')) {
+            this.shortcuts.set('n', () => this.navigateTo('/Investments/Create'));
+        }
+
+        // Values page shortcuts
+        if (currentPath.includes('/Values')) {
+            this.shortcuts.set('f', () => this.focusSearchField());
+        }
+    }
+
+    handleKeyPress(e) {
+        // Don't trigger shortcuts when user is typing in input fields
+        if (this.isInputField(e.target)) {
+            // Allow Escape and ? even in input fields
+            if (e.key !== 'Escape' && e.key !== '?') {
+                return;
+            }
+        }
+
+        const key = e.key.toLowerCase();
+        const shortcut = this.shortcuts.get(key);
+
+        if (shortcut) {
+            e.preventDefault();
+            shortcut();
+        }
+    }
+
+    isInputField(element) {
+        return element.tagName === 'INPUT' ||
+               element.tagName === 'TEXTAREA' ||
+               element.tagName === 'SELECT' ||
+               element.contentEditable === 'true';
+    }
+
+    navigateTo(path) {
+        window.location.href = path;
+    }
+
+    toggleHelp() {
+        if (this.isHelpVisible) {
+            this.hideHelp();
+        } else {
+            this.showHelp();
+        }
+    }
+
+    showHelp() {
+        const overlay = document.getElementById('keyboardShortcutsOverlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            overlay.tabIndex = -1; // Make it focusable
+            overlay.focus(); // Set focus to the overlay
+            this.isHelpVisible = true;
+            
+            // Add ESC key listener to the overlay
+            this.overlayKeydownHandler = (e) => {
+                if (e.key === 'Escape') {
+                    this.hideHelp();
+                }
+            };
+            overlay.addEventListener('keydown', this.overlayKeydownHandler);
+        }
+    }
+
+    hideHelp() {
+        const overlay = document.getElementById('keyboardShortcutsOverlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+            this.isHelpVisible = false;
+            
+            // Remove the keydown listener
+            if (this.overlayKeydownHandler) {
+                overlay.removeEventListener('keydown', this.overlayKeydownHandler);
+                this.overlayKeydownHandler = null;
+            }
+        }
+    }
+
+    handleEscape() {
+        // Close help overlay if visible
+        if (this.isHelpVisible) {
+            this.hideHelp();
+            return;
+        }
+
+        // Close any open Bootstrap modals
+        const openModals = document.querySelectorAll('.modal.show');
+        if (openModals.length > 0) {
+            const lastModal = openModals[openModals.length - 1];
+            const modalInstance = bootstrap.Modal.getInstance(lastModal);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+            return;
+        }
+    }
+
+    showHint() {
+        // Show a subtle hint about keyboard shortcuts after a delay
+        setTimeout(() => {
+            if (!localStorage.getItem('keyboardHintsDismissed')) {
+                this.createHint();
+            }
+        }, 3000);
+    }
+
+    createHint() {
+        const hint = document.createElement('div');
+        hint.className = 'keyboard-hint';
+        hint.innerHTML = '💡 Press <kbd>?</kbd> for keyboard shortcuts';
+        hint.onclick = () => {
+            this.showHelp();
+            hint.remove();
+        };
+
+        // Auto-remove after 10 seconds
+        setTimeout(() => {
+            if (hint.parentNode) {
+                hint.remove();
+            }
+        }, 10000);
+
+        document.body.appendChild(hint);
+    }
+
+    openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            const modalInstance = new bootstrap.Modal(modal);
+            modalInstance.show();
+            
+            // Focus the first input field in the modal after it's shown
+            modal.addEventListener('shown.bs.modal', () => {
+                const firstInput = modal.querySelector('input, select, textarea');
+                if (firstInput) {
+                    firstInput.focus();
+                }
+                
+                // Add Enter key handler to submit the form from any field
+                const form = modal.querySelector('form');
+                if (form) {
+                    this.modalEnterHandler = (e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            form.requestSubmit();
+                        }
+                    };
+                    modal.addEventListener('keydown', this.modalEnterHandler);
+                }
+            }, { once: true });
+            
+            // Remove the handler when modal is hidden
+            modal.addEventListener('hidden.bs.modal', () => {
+                if (this.modalEnterHandler) {
+                    modal.removeEventListener('keydown', this.modalEnterHandler);
+                    this.modalEnterHandler = null;
+                }
+            }, { once: true });
+        }
+    }
+
+    navigateMonth(direction) {
+        if (typeof window.navigateMonth === 'function') {
+            window.navigateMonth(direction);
+        }
+    }
+
+    focusFirstIncomeField() {
+        // Find the first income update input field
+        const firstIncomeInput = document.querySelector('input[name="actualAmount"]');
+        if (firstIncomeInput) {
+            firstIncomeInput.focus();
+            firstIncomeInput.select();
+        }
+    }
+
+    focusSearchField() {
+        // Focus the first search/filter input
+        const searchInput = document.querySelector('input[type="search"], input[name*="search"], #Provider, #InvestmentId');
+        if (searchInput) {
+            searchInput.focus();
+        }
+    }
+}
+
+new KeyboardShortcutsManager();
