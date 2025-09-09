@@ -191,9 +191,9 @@
                 // Update active button
                 document.querySelectorAll('.time-range-btn').forEach(btn => {
                     btn.classList.remove('btn-primary');
-                    btn.classList.add('btn-outline-primary');
+                    btn.classList.add('btn-primary');
                 });
-                this.classList.remove('btn-outline-primary');
+                this.classList.remove('btn-primary');
                 this.classList.add('btn-primary');
 
                 fetch(`?handler=ChartData&timeRange=${range}`)
@@ -213,9 +213,9 @@
         Historical Value
         <div class="float-end">
             <div class="btn-group btn-group-sm" role="group" aria-label="Time range selector">
-                <button type="button" data-range="12m" class="btn time-range-btn @(Model.TimeRange == "12m" ? "btn-primary" : "btn-outline-primary")">12M</button>
-                <button type="button" data-range="6m" class="btn time-range-btn @(Model.TimeRange == "6m" ? "btn-primary" : "btn-outline-primary")">6M</button>
-                <button type="button" data-range="2m" class="btn time-range-btn @(Model.TimeRange == "2m" ? "btn-primary" : "btn-outline-primary")">2M</button>
+                <button type="button" data-range="12m" class="btn time-range-btn @(Model.TimeRange == "12m" ? "btn-primary" : "btn-secondary")">12M</button>
+                <button type="button" data-range="6m" class="btn time-range-btn @(Model.TimeRange == "6m" ? "btn-primary" : "btn-secondary")">6M</button>
+                <button type="button" data-range="2m" class="btn time-range-btn @(Model.TimeRange == "2m" ? "btn-primary" : "btn-secondary")">2M</button>
             </div>
         </div>
     </div>

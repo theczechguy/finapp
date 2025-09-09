@@ -86,7 +86,7 @@
                             </td>
                             <td>
                                 <form method="post" asp-page-handler="DeleteSchedule" asp-route-id="@Model.Investment.Id" asp-route-scheduleId="@s.Id" class="d-inline" data-loading="Deleting schedule...">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                                 </form>
                             </td>
                         </tr>
@@ -122,7 +122,7 @@
                     <span class="text-danger" asp-validation-for="NewSchedule.Amount"></span>
                 </div>
                 <div class="col-auto">
-                    <button type="submit" class="btn btn-outline-primary" title="Add" aria-label="Add">
+                    <button type="submit" class="btn btn-primary" title="Add" aria-label="Add">
                         <i class="bi bi-plus-lg"></i>
                         <span class="d-none d-sm-inline ms-1">Add</span>
                     </button>
@@ -141,7 +141,7 @@
                         <input class="form-control" type="text" inputmode="decimal" name="NewContribution.Amount" id="NewContribution_Amount" value="" placeholder="0.00" required />
                     </div>
                     <div class="col-auto">
-                        <button type="submit" class="btn btn-outline-primary" title="Add Contribution" aria-label="Add Contribution">
+                        <button type="submit" class="btn btn-primary" title="Add Contribution" aria-label="Add Contribution">
                             <i class="bi bi-plus-lg"></i>
                             <span class="d-none d-sm-inline ms-1">Add Contribution</span>
                         </button>
@@ -160,7 +160,7 @@
                                 <td>@c.Amount.ToString("C", culture)</td>
                                 <td>
                                     <form method="post" asp-page-handler="DeleteContribution" asp-route-id="@Model.Investment.Id" asp-route-contributionId="@c.Id" class="d-inline" data-confirm="Delete this one-time contribution?" data-loading="Deleting contribution...">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                                     </form>
                                 </td>
                             </tr>

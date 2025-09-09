@@ -34,14 +34,14 @@
         </div>
         <div class="col-auto">
             <div class="btn-group ms-2" role="group">
-                <button type="button" class="btn btn-outline-secondary" onclick="navigateMonth(-1)" title="Previous Month">
+                <button type="button" class="btn btn-secondary" onclick="navigateMonth(-1)" title="Previous Month">
                     <i class="bi bi-chevron-left"></i> Previous
                 </button>
-                <button type="button" class="btn btn-outline-primary" onclick="navigateToCurrentMonth()" title="Current Month">
+                <button type="button" class="btn btn-primary" onclick="navigateToCurrentMonth()" title="Current Month">
                     <i class="bi bi-calendar-event"></i>
                     <span class="d-none d-sm-inline ms-1">Current</span>
                 </button>
-                <button type="button" class="btn btn-outline-secondary" onclick="navigateMonth(1)" title="Next Month">
+                <button type="button" class="btn btn-secondary" onclick="navigateMonth(1)" title="Next Month">
                     Next <i class="bi bi-chevron-right"></i>
                 </button>
             </div>
@@ -81,7 +81,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 Regular Incomes
-                <a asp-page="./IncomeSources" class="btn btn-sm btn-outline-primary">Manage Sources</a>
+                <a asp-page="./IncomeSources" class="btn btn-sm btn-primary">Manage Sources</a>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -126,7 +126,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 One-Time Incomes
-                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addOneTimeIncomeModal" title="Add Income" aria-label="Add Income">
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addOneTimeIncomeModal" title="Add Income" aria-label="Add Income">
                     <i class="bi bi-plus-lg"></i>
                     <span class="d-none d-sm-inline ms-1">Add Income <kbd>O</kbd></span>
                 </button>
@@ -186,7 +186,7 @@
 <div class="card mb-4">
     <div class="card-header">
         <span>Budgets</span>
-        <a href="./Budgets?year=@Model.ViewModel.Year&month=@Model.ViewModel.Month" class="btn btn-sm btn-outline-primary float-end">
+        <a href="./Budgets?year=@Model.ViewModel.Year&month=@Model.ViewModel.Month" class="btn btn-sm btn-primary float-end">
             <i class="bi bi-gear"></i>
             <span class="d-none d-sm-inline ms-1">Manage</span>
         </a>
@@ -258,7 +258,7 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 Regular Expenses
                 <div>
-                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addRegularExpenseModal" title="Add Expense" aria-label="Add Expense">
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addRegularExpenseModal" title="Add Expense" aria-label="Add Expense">
                         <i class="bi bi-plus-lg"></i>
                         <span class="d-none d-sm-inline ms-1">Add Expense <kbd>A</kbd></span>
                     </button>
@@ -347,7 +347,7 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 Irregular Expenses
                 <div>
-                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Quick Add <kbd>Q</kbd></button>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Quick Add <kbd>Q</kbd></button>
                 </div>
             </div>
             <div class="card-body">
