@@ -1,0 +1,43 @@
+@{
+    var path = ViewContext.HttpContext.Request.Path;
+    var isExpensesSection = path.StartsWithSegments("/Expenses");
+    var isInvestmentsSection = path.StartsWithSegments("/Investments") ||
+                              path.StartsWithSegments("/Values") ||
+                              path.StartsWithSegments("/Portfolio");
+}
+
+<ul class="navbar-nav flex-grow-1">
+    @if (isExpensesSection)
+    {
+        <li class="nav-item">
+            <a class="nav-link" asp-area="" asp-page="/Expenses/Index">Dashboard</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" asp-area="" asp-page="/Expenses/Regular">Recurring Expenses</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" asp-area="" asp-page="/Expenses/FamilyMembers">Family Members</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" asp-area="" asp-page="/Expenses/ExpenseCategories">Categories</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" asp-area="" asp-page="/Expenses/IncomeSources">Income Sources</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" asp-area="" asp-page="/Expenses/Budgets">Budgets</a>
+        </li>
+    }
+    else if (isInvestmentsSection)
+    {
+        <li class="nav-item">
+            <a class="nav-link" asp-area="" asp-page="/Portfolio/Index">Portfolio</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" asp-area="" asp-page="/Investments/List">Investments</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" asp-area="" asp-page="/Values/Index">Values</a>
+        </li>
+    }
+</ul>
