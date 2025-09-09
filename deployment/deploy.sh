@@ -33,6 +33,8 @@ echo "� Deploying FinApp to Docker host: $DOCKER_HOST"
 
 # Create deployment package (exclude unnecessary files)
 echo "📦 Creating deployment package..."
+# Create tar in /tmp to avoid packaging the archive into itself
+TMP_TAR="/tmp/finapp-deploy.tar.gz"
 tar --exclude='.git' \
     --exclude='bin' \
     --exclude='obj' \
@@ -41,14 +43,14 @@ tar --exclude='.git' \
     --exclude='.vs' \
     --exclude='.vscode' \
     --exclude='logs' \
-    --exclude='deployment' \
-    -czf finapp-deploy.tar.gz -C .. .
+    --no-xattrs \
+    -czf "$TMP_TAR" -C .. FinApp
 
 echo "📤 Uploading to Docker host..."
-scp finapp-deploy.tar.gz $DOCKER_HOST:/tmp/
+scp "$TMP_TAR" $DOCKER_HOST:/tmp/finapp-deploy.tar.gz
 
 echo "🐳 Deploying with Docker and PostgreSQL..."
-ssh $DOCKER_HOST << EOF
+ssh -T $DOCKER_HOST << EOF
     set -e
     
     # Prepare deployment directory
@@ -60,43 +62,56 @@ ssh $DOCKER_HOST << EOF
     
     # Extract new version
     cd $DEPLOY_PATH
-    
+
     # Clean old files but preserve postgres data
     find . -mindepth 1 -maxdepth 1 ! -name 'postgres_data' -exec rm -rf {} +
-    
+
     # Extract new files
     tar -xzf /tmp/finapp-deploy.tar.gz
-    
+
+    # Diagnostic: verify extracted structure
+    if [ ! -d "$DEPLOY_PATH/FinApp/deployment" ]; then
+        echo "❌ Expected directory not found: $DEPLOY_PATH/FinApp/deployment"
+        echo "📦 Archive contents:"
+        tar -tf /tmp/finapp-deploy.tar.gz | sed -n '1,200p'
+        echo "📂 Current /opt/finapp contents:"
+        ls -la "$DEPLOY_PATH" || true
+        echo "📂 Recursive tree (maxdepth 3):"
+        find "$DEPLOY_PATH" -maxdepth 3 -print || true
+        exit 1
+    fi
+
     echo "🏗️  Building and starting application with PostgreSQL..."
-    docker compose up -d --build
+    cd "$DEPLOY_PATH/FinApp/deployment" && docker compose up -d --build
     
     echo "⏳ Waiting for PostgreSQL and application to start..."
     sleep 30
     
     # Check if application is running
-    if docker compose ps | grep -q "Up"; then
+    if cd "$DEPLOY_PATH/FinApp/deployment" && docker compose ps | grep -q "Up"; then
         echo "✅ Deployment successful!"
         echo "🌐 Application should be available at: http://$(echo $DOCKER_HOST | cut -d'@' -f2):5000"
         echo "🐘 PostgreSQL database running on port 5432"
         echo "📋 Container status:"
-        docker compose ps
+        cd "$DEPLOY_PATH/FinApp/deployment" && docker compose ps
         echo "📝 Recent logs:"
-        docker compose logs --tail=10 finapp
+        cd "$DEPLOY_PATH/FinApp/deployment" && docker compose logs --tail=10 finapp
     else
         echo "❌ Deployment failed!"
         echo "📋 Container status:"
-        docker compose ps
+        cd "$DEPLOY_PATH/FinApp/deployment" && docker compose ps
         echo "📝 Error logs:"
-        docker compose logs
+        cd "$DEPLOY_PATH/FinApp/deployment" && docker compose logs
         exit 1
     fi
     
     # Cleanup
-    rm /tmp/finapp-deploy.tar.gz
+    # Remove uploaded tarball from remote host
+    rm /tmp/finapp-deploy.tar.gz || true
 EOF
 
 # Cleanup local files
-rm finapp-deploy.tar.gz
+rm -f "$TMP_TAR"
 
 echo "✨ Deployment complete!"
 echo "🌐 Your FinApp should be accessible at: http://$(echo $DOCKER_HOST | cut -d'@' -f2):5000"
