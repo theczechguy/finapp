@@ -48,13 +48,9 @@ namespace InvestmentTracker.Pages.Portfolio
                     break;
             }
 
-            // Prepare time series data first (before filtering values)
+            // Prepare time series data with forward-filling for missing values
             var valuesForChart = await _investmentService.GetInvestmentValuesFromDateAsync(fromDate);
-            TotalsByDate = valuesForChart
-                .GroupBy(v => v.AsOf.Date)
-                .ToDictionary(g => g.Key, g => g.Sum(v => v.Value))
-                .OrderBy(kv => kv.Key)
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
+            TotalsByDate = CalculatePortfolioValuesWithForwardFill(valuesForChart, fromDate);
             ChartTimeSeriesJson = JsonSerializer.Serialize(TotalsByDate.ToDictionary(kv => kv.Key.ToString("yyyy-MM-dd"), kv => kv.Value));
 
             var investmentsWithValues = new List<InvestmentWithLatestValue>();
@@ -142,15 +138,66 @@ namespace InvestmentTracker.Pages.Portfolio
             }
 
             var valuesForChart = await _investmentService.GetInvestmentValuesFromDateAsync(fromDate);
-            var totalsByDate = valuesForChart
-                .GroupBy(v => v.AsOf.Date)
-                .ToDictionary(g => g.Key, g => g.Sum(v => v.Value))
-                .OrderBy(kv => kv.Key)
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
+            var totalsByDate = CalculatePortfolioValuesWithForwardFill(valuesForChart, fromDate);
     
             var chartTimeSeriesJson = totalsByDate.ToDictionary(kv => kv.Key.ToString("yyyy-MM-dd"), kv => kv.Value);
 
             return new JsonResult(chartTimeSeriesJson);
+        }
+
+        private Dictionary<DateTime, decimal> CalculatePortfolioValuesWithForwardFill(List<InvestmentValue> allValues, DateTime fromDate)
+        {
+            // Group values by investment ID and sort by date
+            var valuesByInvestment = allValues
+                .GroupBy(v => v.InvestmentId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.OrderBy(v => v.AsOf.Date).ToList()
+                );
+
+            // Get all unique dates in the range
+            var allDates = new HashSet<DateTime>();
+            foreach (var investmentValues in valuesByInvestment.Values)
+            {
+                foreach (var value in investmentValues)
+                {
+                    if (value.AsOf.Date >= fromDate)
+                    {
+                        allDates.Add(value.AsOf.Date);
+                    }
+                }
+            }
+
+            var sortedDates = allDates.OrderBy(d => d).ToList();
+            var result = new Dictionary<DateTime, decimal>();
+
+            foreach (var date in sortedDates)
+            {
+                decimal totalValue = 0;
+
+                foreach (var investmentId in valuesByInvestment.Keys)
+                {
+                    var investmentValues = valuesByInvestment[investmentId];
+                    
+                    // Find the most recent value for this investment up to and including this date
+                    var mostRecentValue = investmentValues
+                        .Where(v => v.AsOf.Date <= date)
+                        .OrderByDescending(v => v.AsOf.Date)
+                        .FirstOrDefault();
+
+                    if (mostRecentValue != null)
+                    {
+                        totalValue += mostRecentValue.Value;
+                    }
+                }
+
+                if (totalValue > 0) // Only include dates where we have at least some data
+                {
+                    result[date] = totalValue;
+                }
+            }
+
+            return result;
         }
     }
 }
