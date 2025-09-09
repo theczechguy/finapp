@@ -377,8 +377,9 @@ class KeyboardShortcutsManager {
 
     registerPageSpecificShortcuts() {
         const currentPath = window.location.pathname;
+        const lowerPath = currentPath.toLowerCase();
 
-        // Expense page shortcuts
+        // Expense dashboard shortcuts
         if (currentPath.includes('/Expenses/Index') || currentPath === '/Expenses') {
             this.shortcuts.set('a', () => this.openModal('addRegularExpenseModal'));
             this.shortcuts.set('q', () => this.openModal('addIrregularExpenseModal'));
@@ -386,6 +387,11 @@ class KeyboardShortcutsManager {
             this.shortcuts.set('[', () => this.navigateMonth(-1));
             this.shortcuts.set(']', () => this.navigateMonth(1));
             this.shortcuts.set('u', () => this.focusFirstIncomeField());
+        }
+
+        // Recurring expenses page shortcuts
+        if (lowerPath.includes('/expenses/regular')) {
+            this.shortcuts.set('a', () => this.openModal('addExpenseModal'));
         }
 
         // Investment pages shortcuts
@@ -504,6 +510,12 @@ class KeyboardShortcutsManager {
     handleFormCancel() {
         const currentPath = window.location.pathname;
 
+        // Do not navigate away from any Expenses pages when pressing ESC
+        // Listing pages should remain in place; modals are handled separately.
+        if (currentPath.toLowerCase().startsWith('/expenses')) {
+            return;
+        }
+
         // First, try to find any cancel/back button on the current page
         const cancelSelectors = [
             'a.btn-secondary[href*="List"]',  // Cancel links to List
@@ -544,10 +556,8 @@ class KeyboardShortcutsManager {
             return;
         }
 
-        // If no specific cancel action found, navigate back in history
-        if (window.history.length > 1) {
-            window.history.back();
-        }
+        // If no specific cancel action found, go to Expenses page (not dashboard)
+        this.navigateTo('/Expenses/Index');
     }
 
     showHint() {

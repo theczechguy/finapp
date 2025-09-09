@@ -39,6 +39,19 @@ namespace InvestmentTracker.Pages.Expenses
                 .OrderBy(e => e.Name)
                 .ToListAsync();
 
+            // Ensure display values reflect the defined schedule (even if starting in future)
+            foreach (var e in RegularExpenses)
+            {
+                var latest = e.Schedules
+                    .OrderByDescending(s => s.StartYear * 12 + s.StartMonth)
+                    .FirstOrDefault();
+                if (latest != null)
+                {
+                    e.DisplayFrequency = latest.Frequency;
+                    e.DisplayAmount = latest.Amount;
+                }
+            }
+
             // Load all categories for filtering
             Categories = await _context.ExpenseCategories
                 .AsNoTracking()
@@ -86,7 +99,9 @@ namespace InvestmentTracker.Pages.Expenses
         public DateTime? GetNextDueDate(RegularExpense expense)
         {
             var currentDate = DateTime.Now;
-            var currentSchedule = expense.Schedules.FirstOrDefault();
+            var currentSchedule = expense.Schedules
+                .OrderByDescending(s => s.StartYear * 12 + s.StartMonth)
+                .FirstOrDefault();
             
             if (currentSchedule == null)
                 return null;

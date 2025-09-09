@@ -265,26 +265,69 @@
                 </div>
             </div>
             <div class="card-body">
-                @if (Model.ViewModel.RegularExpenses.Any(e => e.IsAlternativeSchedule))
+                @{
+                    var selectedMonth = new DateTime(Model.ViewModel.Year, Model.ViewModel.Month, 1);
+                    var lastIncluded = selectedMonth.AddMonths(2); // next 2 months window
+                    var allRegular = await Model.GetAllRegularExpensesAsync();
+                    var upcoming = allRegular
+                        .Where(e => e.Schedules.Any())
+                        .Where(e => e.Schedules.OrderByDescending(s => s.StartYear * 12 + s.StartMonth).First().Frequency != InvestmentTracker.Models.Frequency.Monthly)
+                        .Select(e => new { Expense = e, Next = GetNextOccurrenceFrom(selectedMonth, e) })
+                        .Where(x => x.Next.HasValue && x.Next.Value >= selectedMonth && x.Next.Value <= lastIncluded)
+                        .OrderBy(x => x.Next)
+                        .ToList();
+
+                    DateTime? GetNextOccurrenceFrom(DateTime fromMonth, InvestmentTracker.Models.RegularExpense exp)
+                    {
+                        var latest = exp.Schedules.OrderByDescending(s => s.StartYear * 12 + s.StartMonth).First();
+                        var interval = latest.Frequency switch
+                        {
+                            InvestmentTracker.Models.Frequency.Quarterly => 3,
+                            InvestmentTracker.Models.Frequency.SemiAnnually => 6,
+                            InvestmentTracker.Models.Frequency.Annually => 12,
+                            _ => 1
+                        };
+
+                        if (interval == 1)
+                            return null; // monthly not considered here
+
+                        // compute next month >= fromMonth based on schedule start month cadence
+                        var start = new DateTime(latest.StartYear, latest.StartMonth, 1);
+                        // If fromMonth is before start, next is start
+                        if (fromMonth <= start)
+                            return start;
+
+                        var monthsDiff = (fromMonth.Year - start.Year) * 12 + fromMonth.Month - start.Month;
+                        var remainder = monthsDiff % interval;
+                        var add = remainder == 0 ? 0 : interval - remainder;
+                        return fromMonth.AddMonths(add);
+                    }
+                }
+                @if (upcoming.Any())
                 {
                     <div class="alert alert-info py-2 mb-3" role="alert">
                         <small>
                             <i class="bi bi-info-circle me-1"></i>
-                            <strong>Alternative Schedules:</strong> Some expenses use quarterly, semi-annual, or annual schedules and only appear in specific months.
-                            <i class="bi bi-calendar-event text-info"></i> indicates when these expenses are active this month.
+                            <strong>Upcoming non-monthly expenses:</strong>
+                            @{
+                                var preview = upcoming.Take(5).Select(x => $"{x.Expense.Name} ({x.Next:MMM yyyy})");
+                                var list = string.Join(", ", preview);
+                                var extra = Math.Max(0, upcoming.Count - 5);
+                            }
+                            @list@if (extra > 0) { <text> + @extra more</text>; }
                         </small>
                     </div>
                 }
                 <div id="regularExpensesContainer">
                     <div class="table-responsive">
-                    <table class="table mb-0">
+                    <table class="table mb-0" id="regularExpensesTable">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Category</th>
-                                <th>Amount</th>
-                                <th>Schedule</th>
-                                <th>Type</th>
+                                <th data-sort="text">Name</th>
+                                <th data-sort="text">Category</th>
+                                <th data-sort="number">Amount</th>
+                                <th data-sort="text">Schedule</th>
+                                <th data-sort="text">Type</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -302,7 +345,7 @@
                                             @expense.Name
                                         </td>
                                         <td>@(expense.Category?.Name ?? "Uncategorized")</td>
-                                        <td>@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
+                                        <td data-sort-value="@expense.Amount">@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
                                         <td>
                                             <span class="badge @expense.FrequencyBadgeClass" title="@expense.FrequencyDisplay schedule">
                                                 @expense.FrequencyDisplay
@@ -353,14 +396,14 @@
             <div class="card-body">
                 <div id="irregularExpensesContainer">
                     <div class="table-responsive">
-                    <table class="table mb-0">
+                    <table class="table mb-0" id="irregularExpensesTable">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Name</th>
-                                <th>Category</th>
-                                <th>Amount</th>
-                                <th>Type</th>
+                                <th data-sort="date">Date</th>
+                                <th data-sort="text">Name</th>
+                                <th data-sort="text">Category</th>
+                                <th data-sort="number">Amount</th>
+                                <th data-sort="text">Type</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -370,10 +413,10 @@
                                 @foreach (var expense in Model.ViewModel.IrregularExpenses)
                                 {
                                     <tr class="fade-in">
-                                        <td>@expense.Date.ToString("dd/MM/yyyy")</td>
+                                        <td data-sort-value="@expense.Date.ToString("yyyy-MM-dd")">@expense.Date.ToString("dd/MM/yyyy")</td>
                                         <td>@expense.Name</td>
                                         <td>@(expense.Category?.Name ?? "Uncategorized")</td>
-                                        <td>@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
+                                        <td data-sort-value="@expense.Amount">@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
                                         <td>
                                             <span class="badge bg-@(expense.ExpenseType == ExpenseType.Family ? "primary" : "secondary")">
                                                 @expense.ExpenseType
@@ -1230,5 +1273,97 @@
                 return new bootstrap.Tooltip(tooltipTriggerEl);
             });
         });
+    </script>
+    <script>
+        (function () {
+            function parseValue(type, value) {
+                if (value == null) return '';
+                if (type === 'number') {
+                    const n = parseFloat(value);
+                    return isNaN(n) ? 0 : n;
+                }
+                if (type === 'date') {
+                    // Expect yyyy-MM-dd
+                    const t = Date.parse(value);
+                    return isNaN(t) ? 0 : t;
+                }
+                return ('' + value).toLowerCase();
+            }
+
+            function getCellValue(td, type) {
+                const raw = td ? (td.getAttribute('data-sort-value') ?? td.textContent.trim()) : '';
+                return parseValue(type, raw);
+            }
+
+            function clearOtherHeaders(ths, current) {
+                ths.forEach(th => {
+                    if (th !== current) {
+                        th.removeAttribute('aria-sort');
+                        const ind = th.querySelector('.sort-indicator');
+                        if (ind) ind.remove();
+                        th.dataset.order = '';
+                    }
+                });
+            }
+
+            function setIndicator(th, order) {
+                let ind = th.querySelector('.sort-indicator');
+                if (!ind) {
+                    ind = document.createElement('span');
+                    ind.className = 'sort-indicator ms-1';
+                    th.appendChild(ind);
+                }
+                ind.innerHTML = order === 'asc' ? '<i class="bi bi-chevron-up"></i>' : '<i class="bi bi-chevron-down"></i>';
+            }
+
+            function makeTableSortable(tableId) {
+                const table = document.getElementById(tableId);
+                if (!table || !table.tHead) return;
+                const ths = Array.from(table.tHead.querySelectorAll('th'));
+                ths.forEach((th, idx) => {
+                    const type = th.dataset.sort;
+                    if (!type) return;
+                    th.setAttribute('role', 'button');
+                    th.tabIndex = 0;
+                    th.title = 'Sort';
+                    th.addEventListener('click', () => {
+                        const tbody = table.tBodies[0];
+                        if (!tbody) return;
+                        const rows = Array.from(tbody.rows);
+                        const currentOrder = th.dataset.order === 'asc' ? 'asc' : th.dataset.order === 'desc' ? 'desc' : '';
+                        const newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+
+                        clearOtherHeaders(ths, th);
+                        th.dataset.order = newOrder;
+                        th.setAttribute('aria-sort', newOrder === 'asc' ? 'ascending' : 'descending');
+                        setIndicator(th, newOrder);
+
+                        rows.sort((a, b) => {
+                            const av = getCellValue(a.cells[idx], type);
+                            const bv = getCellValue(b.cells[idx], type);
+                            if (av < bv) return newOrder === 'asc' ? -1 : 1;
+                            if (av > bv) return newOrder === 'asc' ? 1 : -1;
+                            return 0;
+                        });
+
+                        // Re-append rows in new order
+                        const frag = document.createDocumentFragment();
+                        rows.forEach(r => frag.appendChild(r));
+                        tbody.appendChild(frag);
+                    });
+                    th.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            th.click();
+                        }
+                    });
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                makeTableSortable('regularExpensesTable');
+                makeTableSortable('irregularExpensesTable');
+            });
+        })();
     </script>
 }

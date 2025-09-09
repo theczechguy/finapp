@@ -111,9 +111,42 @@
                 <!-- Expenses Table -->
                 <div class="card">
                     <div class="card-body">
+                        @{
+                            var today = DateTime.Now;
+                            var upcoming = Model.RegularExpenses
+                                .Where(e => e.Recurrence != InvestmentTracker.Models.Frequency.Monthly)
+                                .Select(e => new { Expense = e, Next = Model.GetNextDueDate(e) })
+                                .Where(x => x.Next.HasValue)
+                                .Select(x => new
+                                {
+                                    x.Expense,
+                                    Next = x.Next!.Value,
+                                    MonthsUntil = (x.Next!.Value.Year - today.Year) * 12 + x.Next!.Value.Month - today.Month
+                                })
+                                .Where(x => x.MonthsUntil >= 0 && x.MonthsUntil <= 2)
+                                .OrderBy(x => x.Next)
+                                .ToList();
+                        }
+
+                        @if (upcoming.Any())
+                        {
+                            <div class="alert alert-info py-2 mb-3" role="alert">
+                                <small>
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    <strong>Upcoming non-monthly expenses:</strong>
+                                    @{
+                                        var items = upcoming
+                                            .Select(x => $"{x.Expense.Name} ({x.Next:MMM yyyy})");
+                                        var list = string.Join(", ", items.Take(5));
+                                        var extra = Math.Max(0, items.Count() - 5);
+                                    }
+                                    @list@if (extra > 0) { <text> + @extra more</text>; }
+                                </small>
+                            </div>
+                        }
                         <div class="table-responsive" style="max-height: calc(100vh - 400px); overflow-y: auto;">
-                            <table class="table table-hover table-sticky-header" id="expensesTable">
-                                <thead class="table-light sticky-top">
+                            <table class="table mb-0" id="expensesTable">
+                                <thead>
                                     <tr>
                                         <th>Expense</th>
                                         <th>Category</th>
@@ -302,19 +335,12 @@
 
 @section Scripts {
     <style>
-        /* Scrollable table with fixed header */
-        .table-sticky-header {
-            position: relative;
+        /* Match dashboard table look */
+        #expensesTable thead th {
+            background-color: transparent; /* let Bootstrap defaults apply */
+            color: inherit;
         }
-        
-        .table-sticky-header thead th {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background-color: var(--bs-gray-100) !important;
-            border-bottom: 2px solid var(--bs-border-color);
-        }
-        
+
         /* Custom scrollbar for better UX */
         .table-responsive::-webkit-scrollbar {
             width: 8px;

@@ -113,6 +113,7 @@ namespace InvestmentTracker.Services
                 {
                     // Set the display amount for this month
                     expense.DisplayAmount = applicableSchedule.Amount;
+                    expense.DisplayFrequency = applicableSchedule.Frequency;
                     applicableRegularExpenses.Add(expense);
                     expenseAmounts[expense.Id] = applicableSchedule.Amount;
                 }

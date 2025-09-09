@@ -32,8 +32,12 @@ public class RegularExpense
     [NotMapped]
     public decimal Amount => DisplayAmount ?? GetCurrentAmount();
 
+    // Context-aware display frequency (set by service for selected month)
     [NotMapped]
-    public Frequency Recurrence => GetCurrentFrequency();
+    public Frequency? DisplayFrequency { get; set; }
+
+    [NotMapped]
+    public Frequency Recurrence => DisplayFrequency ?? GetCurrentFrequency();
 
     [NotMapped]
     public DateTime StartDate => GetStartDate();
@@ -82,7 +86,7 @@ public class RegularExpense
     {
         get
         {
-            var frequency = GetCurrentFrequency();
+            var frequency = Recurrence;
             return frequency switch
             {
                 Frequency.Monthly => "Monthly",
@@ -95,14 +99,14 @@ public class RegularExpense
     }
 
     [NotMapped]
-    public bool IsAlternativeSchedule => GetCurrentFrequency() != Frequency.Monthly;
+    public bool IsAlternativeSchedule => Recurrence != Frequency.Monthly;
 
     [NotMapped] 
     public string FrequencyBadgeClass
     {
         get
         {
-            return GetCurrentFrequency() switch
+            return Recurrence switch
             {
                 Frequency.Monthly => "bg-primary",
                 Frequency.Quarterly => "bg-info",
