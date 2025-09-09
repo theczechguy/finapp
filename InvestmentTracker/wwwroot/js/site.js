@@ -402,6 +402,12 @@ class KeyboardShortcutsManager {
     }
 
     handleKeyPress(e) {
+        // Ignore shortcuts when modifier keys are held (Ctrl/Meta/Alt/Shift),
+        // but allow Shift+? (help) and Escape to pass through.
+        if ((e.ctrlKey || e.metaKey || e.altKey || (e.shiftKey && e.key !== '?')) && e.key !== 'Escape') {
+            return;
+        }
+
         // Don't trigger shortcuts when user is typing in input fields
         if (this.isInputField(e.target)) {
             // Allow Escape and ? even in input fields
