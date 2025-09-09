@@ -84,14 +84,45 @@ function New-Investment {
         [string]$Provider
     )
 
-    $body = @{
+    # Map textual values to numeric enums expected by the API
+    function Map-CategoryToEnum([string]$cat) {
+        switch ($cat) {
+            'Stocks' { return 0 }
+            'RealEstate' { return 1 }
+            'Crypto' { return 2 }
+            'Bonds' { return 3 }
+            default { return 0 }
+        }
+    }
+
+    function Map-TypeToEnum([string]$t) {
+        switch ($t) {
+            'OneTime' { return 0 }
+            'Recurring' { return 1 }
+            default { return 0 }
+        }
+    }
+
+    function Map-CurrencyToEnum([string]$c) {
+        switch ($c) {
+            'CZK' { return 0 }
+            'EUR' { return 1 }
+            'USD' { return 2 }
+            default { return 0 }
+        }
+    }
+
+    $bodyObj = [ordered]@{
         name = $Name
-        category = $Category
-        type = $Type
-        currency = $Currency
+        category = (Map-CategoryToEnum $Category)
+        type = (Map-TypeToEnum $Type)
+        currency = (Map-CurrencyToEnum $Currency)
         provider = $Provider
         chargeAmount = 0
-    } | ConvertTo-Json
+    }
+
+    $body = $bodyObj | ConvertTo-Json
+    Write-Host "➡️  POST payload: $body" -ForegroundColor DarkCyan
 
     try {
         $response = Invoke-RestMethod -Uri $ApiBase -Method Post -Body $body -ContentType "application/json"
