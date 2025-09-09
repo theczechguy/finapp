@@ -351,6 +351,7 @@ class KeyboardShortcutsManager {
         this.registerShortcuts();
         this.showHint();
         this.initFormEnterHandling();
+        this.initEscapeKeyHandling();  // Add direct ESC key handling
         
         // Make hide function globally available for HTML onclick
         window.hideKeyboardShortcuts = () => this.hideHelp();
@@ -415,6 +416,9 @@ class KeyboardShortcutsManager {
         if (shortcut) {
             e.preventDefault();
             shortcut();
+        } else if (key === 'escape') {
+            e.preventDefault();
+            this.handleEscape();
         }
     }
 
@@ -485,6 +489,58 @@ class KeyboardShortcutsManager {
                 modalInstance.hide();
             }
             return;
+        }
+
+        // Handle ESC on form pages as cancel/back action
+        this.handleFormCancel();
+    }
+
+    handleFormCancel() {
+        const currentPath = window.location.pathname;
+
+        // First, try to find any cancel/back button on the current page
+        const cancelSelectors = [
+            'a.btn-secondary[href*="List"]',  // Cancel links to List
+            'a.btn-secondary',                // Any secondary button link
+            'button.btn-secondary',           // Secondary buttons
+            'a[title*="cancel" i]',          // Links with cancel in title
+            'a[title*="back" i]',            // Links with back in title
+            '.cancel-btn',                    // Cancel class
+            '.back-btn'                       // Back class
+        ];
+
+        for (const selector of cancelSelectors) {
+            const buttons = document.querySelectorAll(selector);
+            for (const btn of buttons) {
+                // Skip buttons that are for deleting or other destructive actions
+                const text = btn.textContent.toLowerCase();
+                const title = (btn.title || '').toLowerCase();
+                const href = (btn.href || '').toLowerCase();
+
+                if (!text.includes('delete') && !text.includes('remove') &&
+                    !title.includes('delete') && !title.includes('remove') &&
+                    !href.includes('delete') && !href.includes('remove')) {
+                    btn.click();
+                    return;
+                }
+            }
+        }
+
+        // Specific handling for investment pages
+        if (currentPath.includes('/Investments/Create') || currentPath.includes('/Investments/Edit')) {
+            this.navigateTo('/Investments/List');
+            return;
+        }
+
+        // Values page - go back to investment list
+        if (currentPath.includes('/Values')) {
+            this.navigateTo('/Investments/List');
+            return;
+        }
+
+        // If no specific cancel action found, navigate back in history
+        if (window.history.length > 1) {
+            window.history.back();
         }
     }
 
@@ -631,32 +687,40 @@ class KeyboardShortcutsManager {
         }
     }
 
-    initFormEnterHandling() {
-        // Handle Enter key for form submission (excluding textareas and when Ctrl/Shift is pressed)
+    initEscapeKeyHandling() {
+        // Direct ESC key handler as backup to main keyboard shortcut system
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            if (e.key === 'Escape' || e.key === 'Esc') {
+                // Don't interfere if user is in an input field and it's not for navigation
                 const activeElement = document.activeElement;
-                
-                // Don't handle Enter in textareas or when typing in input fields that shouldn't submit
-                if (activeElement.tagName === 'TEXTAREA') {
+                if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'SELECT')) {
+                    // Allow ESC in form fields for navigation/cancellation
+                }
+
+                // Check if help overlay is visible
+                if (this.isHelpVisible) {
+                    this.hideHelp();
+                    e.preventDefault();
                     return;
                 }
-                
-                // If we're in a form input and it's not a submit button, try to submit the form
-                if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'SELECT') {
-                    const form = activeElement.closest('form');
-                    if (form && !activeElement.classList.contains('no-enter-submit')) {
-                        // Check if there's a submit button in the form
-                        const submitButton = form.querySelector('button[type="submit"]');
-                        if (submitButton && !submitButton.disabled) {
-                            e.preventDefault();
-                            form.requestSubmit();
-                            return;
-                        }
+
+                // Check for open modals
+                const openModals = document.querySelectorAll('.modal.show');
+                if (openModals.length > 0) {
+                    const lastModal = openModals[openModals.length - 1];
+                    const modalInstance = bootstrap.Modal.getInstance(lastModal);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                        e.preventDefault();
+                        return;
                     }
                 }
+
+                // Handle form cancellation
+                this.handleFormCancel();
+                e.preventDefault();
             }
-        });
+        }, true); // Use capture phase to ensure we get the event first
     }
 }
 
