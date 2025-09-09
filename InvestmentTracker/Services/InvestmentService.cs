@@ -45,6 +45,7 @@ public class InvestmentService : IInvestmentService
         if (investment == null)
         {
             _logger.LogWarning("Investment with ID: {InvestmentId} not found", id);
+            return null;
         }
 
         return investment;
