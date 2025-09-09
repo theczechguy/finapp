@@ -80,10 +80,13 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                Regular Incomes
+                <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#regularIncomesCollapse" aria-expanded="true" aria-controls="regularIncomesCollapse" id="regularIncomesToggleBtn" aria-label="Toggle Regular Incomes" title="Collapse/Expand">
+                    <i class="bi bi-caret-down-fill me-1" id="regularIncomesChevron"></i>
+                    <span class="fw-semibold">Regular Incomes</span>
+                </button>
                 <a asp-page="./IncomeSources" class="btn btn-sm btn-primary">Manage Sources</a>
             </div>
-            <div class="card-body">
+            <div class="card-body collapse show" id="regularIncomesCollapse">
                 <div class="table-responsive">
                 <table class="table mb-0">
                     <thead>
@@ -125,13 +128,16 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                One-Time Incomes
+                <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#oneTimeIncomesCollapse" aria-expanded="true" aria-controls="oneTimeIncomesCollapse" id="oneTimeIncomesToggleBtn" aria-label="Toggle One-Time Incomes" title="Collapse/Expand">
+                    <i class="bi bi-caret-down-fill me-1" id="oneTimeIncomesChevron"></i>
+                    <span class="fw-semibold">One-Time Incomes</span>
+                </button>
                 <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addOneTimeIncomeModal" title="Add Income" aria-label="Add Income">
                     <i class="bi bi-plus-lg"></i>
                     <span class="d-none d-sm-inline ms-1">Add Income <kbd>O</kbd></span>
                 </button>
             </div>
-            <div class="card-body">
+            <div class="card-body collapse show" id="oneTimeIncomesCollapse">
                 <div class="table-responsive">
                 <table class="table mb-0">
                     <thead>
@@ -184,14 +190,17 @@
 
 <!-- Budgets Card -->
 <div class="card mb-4">
-    <div class="card-header">
-        <span>Budgets</span>
-        <a href="./Budgets?year=@Model.ViewModel.Year&month=@Model.ViewModel.Month" class="btn btn-sm btn-primary float-end">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#budgetsCollapse" aria-expanded="true" aria-controls="budgetsCollapse" id="budgetsToggleBtn" aria-label="Toggle Budgets" title="Collapse/Expand">
+            <i class="bi bi-caret-down-fill me-1" id="budgetsChevron"></i>
+            <span class="fw-semibold">Budgets</span>
+        </button>
+        <a href="./Budgets?year=@Model.ViewModel.Year&month=@Model.ViewModel.Month" class="btn btn-sm btn-primary">
             <i class="bi bi-gear"></i>
             <span class="d-none d-sm-inline ms-1">Manage</span>
         </a>
     </div>
-    <div class="card-body">
+    <div class="card-body collapse show" id="budgetsCollapse">
         @if (Model.ViewModel.Budgets.Any(b => b.BudgetAmount.HasValue))
         {
             <div class="table-responsive">
@@ -256,7 +265,15 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                Regular Expenses
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#regularExpensesCollapse" aria-expanded="true" aria-controls="regularExpensesCollapse" id="regularToggleBtn" aria-label="Toggle Regular Expenses" title="Collapse/Expand">
+                        <i class="bi bi-caret-down-fill me-1" id="regularChevron"></i>
+                        <span class="fw-semibold">Regular Expenses</span>
+                    </button>
+                    <small class="text-muted ms-1">
+                        @("Total: " + Model.ViewModel.RegularExpenses.Sum(e => e.Amount).ToString("C", new System.Globalization.CultureInfo("cs-CZ")))
+                    </small>
+                </div>
                 <div>
                     <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addRegularExpenseModal" title="Add Expense" aria-label="Add Expense">
                         <i class="bi bi-plus-lg"></i>
@@ -264,7 +281,7 @@
                     </button>
                 </div>
             </div>
-            <div class="card-body">
+            <div class="card-body collapse show" id="regularExpensesCollapse">
                 @{
                     var selectedMonth = new DateTime(Model.ViewModel.Year, Model.ViewModel.Month, 1);
                     var lastIncluded = selectedMonth.AddMonths(2); // next 2 months window
@@ -386,14 +403,22 @@
         </div>
     </div>
     <div class="col-md-6">
-        <div class="card">
+    <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                Irregular Expenses
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#irregularExpensesCollapse" aria-expanded="true" aria-controls="irregularExpensesCollapse" id="irregularToggleBtn" aria-label="Toggle Irregular Expenses" title="Collapse/Expand">
+                        <i class="bi bi-caret-down-fill me-1" id="irregularChevron"></i>
+                        <span class="fw-semibold">Irregular Expenses</span>
+                    </button>
+                    <small class="text-muted ms-1">
+                        @("Total: " + Model.ViewModel.IrregularExpenses.Sum(e => e.Amount).ToString("C", new System.Globalization.CultureInfo("cs-CZ")))
+                    </small>
+                </div>
                 <div>
                     <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Quick Add <kbd>Q</kbd></button>
                 </div>
             </div>
-            <div class="card-body">
+            <div class="card-body collapse show" id="irregularExpensesCollapse">
                 <div id="irregularExpensesContainer">
                     <div class="table-responsive">
                     <table class="table mb-0" id="irregularExpensesTable">
@@ -911,6 +936,31 @@
 </div>
 
 @section Scripts {
+    <script>
+        // Toggle icons for collapsible sections
+        document.addEventListener('DOMContentLoaded', function () {
+            const pairs = [
+                { collapseId: 'regularExpensesCollapse', chevronId: 'regularChevron' },
+                { collapseId: 'irregularExpensesCollapse', chevronId: 'irregularChevron' },
+                { collapseId: 'regularIncomesCollapse', chevronId: 'regularIncomesChevron' },
+                { collapseId: 'oneTimeIncomesCollapse', chevronId: 'oneTimeIncomesChevron' },
+                { collapseId: 'budgetsCollapse', chevronId: 'budgetsChevron' }
+            ];
+            pairs.forEach(({ collapseId, chevronId }) => {
+                const collapseEl = document.getElementById(collapseId);
+                const chevron = document.getElementById(chevronId);
+                if (!collapseEl || !chevron) return;
+                collapseEl.addEventListener('hide.bs.collapse', () => {
+                    chevron.classList.remove('bi-caret-down-fill');
+                    chevron.classList.add('bi-caret-right-fill');
+                });
+                collapseEl.addEventListener('show.bs.collapse', () => {
+                    chevron.classList.remove('bi-caret-right-fill');
+                    chevron.classList.add('bi-caret-down-fill');
+                });
+            });
+        });
+    </script>
     <script>
         // Create expense data objects
         const regularExpensesData = [
