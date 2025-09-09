@@ -22,7 +22,7 @@ public class CreateModel(IInvestmentService investmentService) : PageModel
             return Page();
         }
 
-        await investmentService.AddInvestmentAsync(Investment);
-        return RedirectToPage("./List");
+        var createdInvestment = await investmentService.AddInvestmentAsync(Investment);
+        return RedirectToPage("./Edit", new { id = createdInvestment.Id });
     }
 }

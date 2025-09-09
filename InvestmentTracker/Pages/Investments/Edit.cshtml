@@ -53,39 +53,113 @@
 <div class="mb-3 mt-4">
     <h5>Contribution Schedules</h5>
     @if (Model.Investment.Type == InvestmentType.Recurring)
+    {
+        var culture = CultureInfo.CreateSpecificCulture(Model.Investment.Currency.ToCultureCode());
+        @if (Model.Schedules?.Any() == true)
         {
-            var culture = CultureInfo.CreateSpecificCulture(Model.Investment.Currency.ToCultureCode());
-            @if (Model.Schedules?.Any() == true)
+            <table class="table table-sm align-middle w-auto schedules-table">
+                <thead>
+                    <tr>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>Day</th>
+                        <th>Amount</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var s in Model.Schedules)
+                {
+                    var formId = $"updateForm-{s.Id}";
+                    <tr>
+                        <td>
+                            <input class="form-control form-control-sm w-auto" type="date" name="startDate" value="@s.StartDate.ToString("yyyy-MM-dd")" form="@formId" required />
+                        </td>
+                        <td>
+                            <input class="form-control form-control-sm w-auto" type="date" name="endDate" value="@(s.EndDate?.ToString("yyyy-MM-dd"))" form="@formId" />
+                        </td>
+                        <td>
+                            <input class="form-control form-control-sm w-auto" type="number" name="dayOfMonth" min="1" max="31" value="@(s.DayOfMonth ?? s.StartDate.Day)" form="@formId" />
+                        </td>
+                        <td>
+                            <input class="form-control form-control-sm w-auto" type="text" inputmode="decimal" name="amount" value="@s.Amount.ToString("F2", CultureInfo.InvariantCulture)" form="@formId" required />
+                        </td>
+                        <td>
+                            <form method="post" asp-page-handler="DeleteSchedule" asp-route-id="@Model.Investment.Id" asp-route-scheduleId="@s.Id" class="d-inline" data-loading="Deleting schedule...">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p class="text-muted">No schedules yet.</p>
+        }
+
+        <h6 class="mt-3">Add Schedule</h6>
+        <form method="post" asp-page-handler="AddSchedule" asp-route-id="@Model.Investment.Id" class="row g-2 align-items-end" id="addScheduleForm" data-loading="Adding schedule...">
+            <div class="col-auto">
+                <label class="form-label" asp-for="NewSchedule.StartDate">Start</label>
+                <input class="form-control" asp-for="NewSchedule.StartDate" type="date" required />
+                <span class="text-danger" asp-validation-for="NewSchedule.StartDate"></span>
+            </div>
+            <div class="col-auto">
+                <label class="form-label" asp-for="NewSchedule.EndDate">End</label>
+                <input class="form-control" asp-for="NewSchedule.EndDate" type="date" />
+                <span class="text-danger" asp-validation-for="NewSchedule.EndDate"></span>
+            </div>
+            <div class="col-auto">
+                <label class="form-label" asp-for="NewSchedule.DayOfMonth">Day</label>
+                <input class="form-control" asp-for="NewSchedule.DayOfMonth" type="number" min="1" max="31" />
+                <span class="text-danger" asp-validation-for="NewSchedule.DayOfMonth"></span>
+            </div>
+            <div class="col-auto">
+                <label class="form-label" asp-for="NewSchedule.Amount">Amount</label>
+                <input class="form-control" asp-for="NewSchedule.Amount" type="text" inputmode="decimal" value="" placeholder="0.00" required />
+                <span class="text-danger" asp-validation-for="NewSchedule.Amount"></span>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary" title="Add" aria-label="Add">
+                    <i class="bi bi-plus-lg"></i>
+                    <span class="d-none d-sm-inline ms-1">Add</span>
+                </button>
+            </div>
+        </form>
+
+        <div class="mt-4">
+            <h5>One-time Contributions</h5>
+            <form method="post" asp-page-handler="AddContribution" asp-route-id="@Model.Investment.Id" class="row g-2 align-items-end" id="addContributionForm" data-loading="Adding contribution...">
+                <div class="col-auto">
+                    <label class="form-label" for="NewContribution_Date">Date</label>
+                    <input class="form-control" type="date" name="NewContribution.Date" id="NewContribution_Date" required />
+                </div>
+                <div class="col-auto">
+                    <label class="form-label" for="NewContribution_Amount">Amount</label>
+                    <input class="form-control" type="text" inputmode="decimal" name="NewContribution.Amount" id="NewContribution_Amount" value="" placeholder="0.00" required />
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary" title="Add Contribution" aria-label="Add Contribution">
+                        <i class="bi bi-plus-lg"></i>
+                        <span class="d-none d-sm-inline ms-1">Add Contribution</span>
+                    </button>
+                </div>
+            </form>
+
+            @if (Model.Contributions?.Any() == true)
             {
-                <table class="table table-sm align-middle w-auto schedules-table">
-                    <thead>
-                        <tr>
-                            <th>Start</th>
-                            <th>End</th>
-                            <th>Day</th>
-                            <th>Amount</th>
-                            <th></th>
-                        </tr>
-                    </thead>
+                <table class="table table-sm w-auto schedules-table mt-2">
+                    <thead><tr><th>Date</th><th>Amount</th><th></th></tr></thead>
                     <tbody>
-                    @foreach (var s in Model.Schedules)
+                    @foreach (var c in Model.Contributions.OrderByDescending(c=>c.Date))
                     {
-                        var formId = $"updateForm-{s.Id}";
                         <tr>
+                            <td>@c.Date.ToShortDateString()</td>
+                            <td>@c.Amount.ToString("C", culture)</td>
                             <td>
-                                <input class="form-control form-control-sm w-auto" type="date" name="startDate" value="@s.StartDate.ToString("yyyy-MM-dd")" form="@formId" required />
-                            </td>
-                            <td>
-                                <input class="form-control form-control-sm w-auto" type="date" name="endDate" value="@(s.EndDate?.ToString("yyyy-MM-dd"))" form="@formId" />
-                            </td>
-                            <td>
-                                <input class="form-control form-control-sm w-auto" type="number" name="dayOfMonth" min="1" max="31" value="@(s.DayOfMonth ?? s.StartDate.Day)" form="@formId" />
-                            </td>
-                            <td>
-                                <input class="form-control form-control-sm w-auto" type="text" inputmode="decimal" name="amount" value="@s.Amount.ToString("F2", CultureInfo.InvariantCulture)" form="@formId" required />
-                            </td>
-                            <td>
-                                <form method="post" asp-page-handler="DeleteSchedule" asp-route-id="@Model.Investment.Id" asp-route-scheduleId="@s.Id" class="d-inline" data-loading="Deleting schedule...">
+                                <form method="post" asp-page-handler="DeleteContribution" asp-route-id="@Model.Investment.Id" asp-route-contributionId="@c.Id" class="d-inline" data-confirm="Delete this one-time contribution?" data-loading="Deleting contribution...">
                                     <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                                 </form>
                             </td>
@@ -96,90 +170,17 @@
             }
             else
             {
-                <p class="text-muted">No schedules yet.</p>
+                <p class="text-muted">No one-time contributions.</p>
             }
-
-            <h6 class="mt-3">Add Schedule</h6>
-            <form method="post" asp-page-handler="AddSchedule" asp-route-id="@Model.Investment.Id" class="row g-2 align-items-end" id="addScheduleForm" data-loading="Adding schedule...">
-                <div class="col-auto">
-                    <label class="form-label" asp-for="NewSchedule.StartDate">Start</label>
-                    <input class="form-control" asp-for="NewSchedule.StartDate" type="date" required />
-                    <span class="text-danger" asp-validation-for="NewSchedule.StartDate"></span>
-                </div>
-                <div class="col-auto">
-                    <label class="form-label" asp-for="NewSchedule.EndDate">End</label>
-                    <input class="form-control" asp-for="NewSchedule.EndDate" type="date" />
-                    <span class="text-danger" asp-validation-for="NewSchedule.EndDate"></span>
-                </div>
-                <div class="col-auto">
-                    <label class="form-label" asp-for="NewSchedule.DayOfMonth">Day</label>
-                    <input class="form-control" asp-for="NewSchedule.DayOfMonth" type="number" min="1" max="31" />
-                    <span class="text-danger" asp-validation-for="NewSchedule.DayOfMonth"></span>
-                </div>
-                <div class="col-auto">
-                    <label class="form-label" asp-for="NewSchedule.Amount">Amount</label>
-                    <input class="form-control" asp-for="NewSchedule.Amount" type="text" inputmode="decimal" value="" placeholder="0.00" required />
-                    <span class="text-danger" asp-validation-for="NewSchedule.Amount"></span>
-                </div>
-                <div class="col-auto">
-                    <button type="submit" class="btn btn-primary" title="Add" aria-label="Add">
-                        <i class="bi bi-plus-lg"></i>
-                        <span class="d-none d-sm-inline ms-1">Add</span>
-                    </button>
-                </div>
-            </form>
-
-            <div class="mt-4">
-                <h5>One-time Contributions</h5>
-                <form method="post" asp-page-handler="AddContribution" asp-route-id="@Model.Investment.Id" class="row g-2 align-items-end" id="addContributionForm" data-loading="Adding contribution...">
-                    <div class="col-auto">
-                        <label class="form-label" for="NewContribution_Date">Date</label>
-                        <input class="form-control" type="date" name="NewContribution.Date" id="NewContribution_Date" required />
-                    </div>
-                    <div class="col-auto">
-                        <label class="form-label" for="NewContribution_Amount">Amount</label>
-                        <input class="form-control" type="text" inputmode="decimal" name="NewContribution.Amount" id="NewContribution_Amount" value="" placeholder="0.00" required />
-                    </div>
-                    <div class="col-auto">
-                        <button type="submit" class="btn btn-primary" title="Add Contribution" aria-label="Add Contribution">
-                            <i class="bi bi-plus-lg"></i>
-                            <span class="d-none d-sm-inline ms-1">Add Contribution</span>
-                        </button>
-                    </div>
-                </form>
-
-                @if (Model.Contributions?.Any() == true)
-                {
-                    <table class="table table-sm w-auto schedules-table mt-2">
-                        <thead><tr><th>Date</th><th>Amount</th><th></th></tr></thead>
-                        <tbody>
-                        @foreach (var c in Model.Contributions.OrderByDescending(c=>c.Date))
-                        {
-                            <tr>
-                                <td>@c.Date.ToShortDateString()</td>
-                                <td>@c.Amount.ToString("C", culture)</td>
-                                <td>
-                                    <form method="post" asp-page-handler="DeleteContribution" asp-route-id="@Model.Investment.Id" asp-route-contributionId="@c.Id" class="d-inline" data-confirm="Delete this one-time contribution?" data-loading="Deleting contribution...">
-                                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        }
-                        </tbody>
-                    </table>
-                }
-                else
-                {
-                    <p class="text-muted">No one-time contributions.</p>
-                }
-            </div>
-        }
-        else
-        {
-            <p class="text-muted">Contribution schedules apply only to Recurring investments.</p>
-        }
-
-        <div class="text-danger mt-2">
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Tip:</strong> To configure contribution schedules and recurring contributions, change the investment type to "Recurring" and save your changes first.
+        </div>
+    }        <div class="text-danger mt-2">
             @foreach (var e in ViewData.ModelState.Where(kv => kv.Value?.Errors.Count > 0))
             {
                 foreach (var err in e.Value!.Errors)

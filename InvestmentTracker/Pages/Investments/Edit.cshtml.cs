@@ -59,7 +59,7 @@ public class EditModel(IInvestmentService investmentService) : PageModel
                 i => i.Name, i => i.Provider, i => i.Type, i => i.Category, i => i.Currency, i => i.ChargeAmount))
         {
             await investmentService.UpdateInvestmentAsync(id, investmentToUpdate);
-            return RedirectToPage("./List");
+            return RedirectToPage(new { id });
         }
 
         // If TryUpdateModelAsync fails, we need to reload the ancillary data
