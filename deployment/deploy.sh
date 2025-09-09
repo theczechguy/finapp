@@ -108,6 +108,9 @@ ssh -T $DOCKER_HOST << EOF
     # Cleanup
     # Remove uploaded tarball from remote host
     rm /tmp/finapp-deploy.tar.gz || true
+
+    echo "🧹 Cleaning up old Docker images..."
+    docker image prune -f
 EOF
 
 # Cleanup local files
