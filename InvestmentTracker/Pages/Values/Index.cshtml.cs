@@ -211,7 +211,28 @@ public class IndexModel(AppDbContext db) : PageModel
             }
             else // OneTime
             {
-                if (firstValues.TryGetValue(r.InvestmentId, out var fv))
+                // Prefer one-time contributions as the invested amount for OneTime investments.
+                // Sum contributions with Date <= AsOf. If none exist, fall back to earliest recorded value.
+                decimal totalOneTime = 0m;
+                if (oneTimes.TryGetValue(r.InvestmentId, out var lumpsList))
+                {
+                    foreach (var c in lumpsList)
+                    {
+                        if (c.Date.Date <= r.AsOf.Date)
+                            totalOneTime += c.Amount;
+                    }
+                }
+
+                if (totalOneTime > 0m)
+                {
+                    var invested = totalOneTime;
+                    if (invMeta.TryGetValue(r.InvestmentId, out var m) && m.ChargeAmount > 0)
+                    {
+                        invested -= m.ChargeAmount;
+                    }
+                    r.Invested = invested;
+                }
+                else if (firstValues.TryGetValue(r.InvestmentId, out var fv))
                 {
                     var invested = fv.value;
                     if (invMeta.TryGetValue(r.InvestmentId, out var m) && m.ChargeAmount > 0)

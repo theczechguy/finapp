@@ -32,7 +32,7 @@ DEPLOY_PATH="/opt/finapp"
 echo "🔍 Checking current FinApp deployment status on: $DOCKER_HOST"
 echo ""
 
-ssh $DOCKER_HOST << 'EOF'
+ssh -T $DOCKER_HOST << 'EOF'
     echo "📁 Deployment directory status:"
     if [ -d "/opt/finapp" ]; then
         echo "✅ /opt/finapp exists"
@@ -107,11 +107,11 @@ ssh $DOCKER_HOST << 'EOF'
     
     if [ -d "/opt/finapp" ]; then
         echo "📋 Current docker-compose status:"
-        cd /opt/finapp && docker compose ps 2>/dev/null || echo "No docker-compose services found"
+        cd /opt/finapp && cd FinApp/deployment && docker compose ps 2>/dev/null || echo "No docker-compose services found"
         echo ""
         
         echo "📝 Recent application logs (if available):"
-        cd /opt/finapp && docker compose logs --tail=5 finapp 2>/dev/null || echo "No application logs available"
+        cd /opt/finapp && cd FinApp/deployment && docker compose logs --tail=5 finapp 2>/dev/null || echo "No application logs available"
     fi
 EOF
 

@@ -63,14 +63,14 @@ tar --exclude='.git' \
     --exclude='.vs' \
     --exclude='.vscode' \
     --exclude='logs' \
-    --exclude='deployment' \
-    -czf finapp-deploy.tar.gz -C .. .
+    --no-xattrs \
+    -czf finapp-deploy.tar.gz -C .. FinApp
 
 echo "📤 Uploading to Docker host..."
 scp finapp-deploy.tar.gz $DOCKER_HOST:/tmp/
 
 echo "🔥 Performing complete destruction and fresh deployment..."
-ssh $DOCKER_HOST << 'EOF'
+ssh -T $DOCKER_HOST << 'EOF'
     set -e
     
     echo "🛑 Stopping all FinApp containers..."
@@ -104,35 +104,35 @@ ssh $DOCKER_HOST << 'EOF'
     tar -xzf /tmp/finapp-deploy.tar.gz
     
     echo "🏗️  Building and starting fresh application..."
-    docker compose up -d --build
+    cd FinApp/deployment && docker compose up -d --build
     
     echo "⏳ Waiting for PostgreSQL and application to initialize..."
     sleep 45
     
     echo "🔍 Checking deployment status..."
-    if docker compose ps | grep -q "Up"; then
+    if cd FinApp/deployment && docker compose ps | grep -q "Up"; then
         echo ""
         echo "✅ FRESH DEPLOYMENT SUCCESSFUL!"
-        echo "🌐 Application URL: http://$(hostname -I | awk '{print $1}'):5000"
+        echo "🌐 Application URL: http://$(hostname -i 2>/dev/null || ip route get 1 2>/dev/null | awk '{print $7}' || echo 'localhost'):5000"
         echo "🐘 PostgreSQL: Fresh database with clean schema"
         echo "📋 Container status:"
-        docker compose ps
+        cd FinApp/deployment && docker compose ps
         echo ""
         echo "📝 Recent application logs:"
-        docker compose logs --tail=15 finapp
+        cd FinApp/deployment && docker compose logs --tail=15 finapp
         echo ""
         echo "📝 PostgreSQL logs:"
-        docker compose logs --tail=10 postgres
+        cd FinApp/deployment && docker compose logs --tail=10 postgres
         echo ""
         echo "🎉 Your FinApp is ready with a completely fresh installation!"
     else
         echo ""
         echo "❌ DEPLOYMENT FAILED!"
         echo "📋 Container status:"
-        docker compose ps
+        cd FinApp/deployment && docker compose ps
         echo ""
         echo "📝 Full logs:"
-        docker compose logs
+        cd FinApp/deployment && docker compose logs
         exit 1
     fi
     

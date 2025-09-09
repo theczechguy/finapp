@@ -31,31 +31,65 @@ DEPLOY_PATH="/opt/finapp"
 
 echo "🔍 Checking FinApp status on: $DOCKER_HOST"
 
-ssh $DOCKER_HOST << EOF
+ssh -T $DOCKER_HOST << EOF
     cd $DEPLOY_PATH 2>/dev/null || { echo "❌ FinApp not deployed in $DEPLOY_PATH"; exit 1; }
     
     echo "📋 Current deployment status:"
+    echo "📁 Current directory: \$(pwd)"
+    echo "📂 Directory contents:"
+    ls -la
+    
+    # Check if FinApp directory exists
+    if [ -d "FinApp" ]; then
+        echo "✅ FinApp directory found"
+        echo "📂 FinApp contents:"
+        ls -la FinApp/
+        
+        if [ -d "FinApp/deployment" ]; then
+            echo "✅ Deployment directory found"
+        else
+            echo "❌ Deployment directory NOT found in FinApp/"
+            echo "💡 Expected: FinApp/deployment/"
+            echo "🔍 Available directories:"
+            find . -maxdepth 2 -type d | head -10
+        fi
+    else
+        echo "❌ FinApp directory NOT found"
+        echo "💡 Expected: FinApp/"
+        echo "🔍 Available directories:"
+        find . -maxdepth 1 -type d
+    fi
     
     # Check PostgreSQL deployment
-    if docker compose ps | grep -q "finapp"; then
+    if [ -d "FinApp/deployment" ]; then
         echo "🐘 PostgreSQL deployment active"
         echo "📦 Containers:"
-        docker compose ps
-        echo ""
-        echo "📊 Resource usage:"
-        docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}"
-        echo ""
-        echo "🔗 Database connection:"
-        if docker compose ps postgres | grep -q "Up"; then
-            echo "✅ PostgreSQL is running"
+        if cd "FinApp/deployment" 2>/dev/null; then
+            docker compose ps 2>/dev/null || echo "   Unable to list containers"
+            echo ""
+            echo "📊 Resource usage:"
+            docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}" 2>/dev/null || echo "   Unable to get resource usage"
+            echo ""
+            echo "🔗 Database connection:"
+            echo "🔍 Checking PostgreSQL container status:"
+            if docker compose ps postgres 2>/dev/null | grep -q "Up\|running\|healthy"; then
+                echo "✅ PostgreSQL is running"
+                docker compose ps postgres 2>/dev/null | tail -n 1 | sed 's/^/   Status: /'
+            else
+                echo "❌ PostgreSQL is not running"
+                echo "   Full container list:"
+                docker compose ps 2>/dev/null || echo "   Unable to get container list"
+            fi
         else
-            echo "❌ PostgreSQL is not running"
+            echo "❌ Cannot access deployment directory: FinApp/deployment"
+            echo "   This might be a permissions issue"
         fi
     else
         echo "❌ No FinApp containers running"
         echo "💡 To deploy: ./deploy.sh user@hostname"
+        echo "   Deployment directory not found: FinApp/deployment"
     fi
     
     echo ""
-    echo "🌐 Application URL: http://$(hostname -I | awk '{print \$1}'):5000"
+    echo "🌐 Application URL: http://\$(hostname -i 2>/dev/null || ip route get 1 2>/dev/null | awk '{print \$7}' 2>/dev/null || hostname -I 2>/dev/null | awk '{print \$1}' 2>/dev/null || echo 'localhost'):5000"
 EOF

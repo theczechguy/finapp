@@ -54,11 +54,11 @@
     </div>
 </form>
 
-<div class="mb-3 mt-4">
+    <div class="mb-3 mt-4">
     <h5>Contribution Schedules</h5>
+    @{ var culture = CultureInfo.CreateSpecificCulture(Model.Investment.Currency.ToCultureCode()); }
     @if (Model.Investment.Type == InvestmentType.Recurring)
     {
-        var culture = CultureInfo.CreateSpecificCulture(Model.Investment.Currency.ToCultureCode());
         @if (Model.Schedules?.Any() == true)
         {
             <table class="table table-sm align-middle w-auto schedules-table">
@@ -184,7 +184,54 @@
             <i class="bi bi-info-circle me-2"></i>
             <strong>Tip:</strong> To configure contribution schedules and recurring contributions, change the investment type to "Recurring" and save your changes first.
         </div>
-    }        <div class="text-danger mt-2">
+    }
+
+    <div>
+        <h5>One-time Contributions</h5>
+        <form method="post" asp-page-handler="AddContribution" asp-route-id="@Model.Investment.Id" class="row g-2 align-items-end" id="addContributionForm" data-loading="Adding contribution...">
+            <div class="col-auto">
+                <label class="form-label" for="NewContribution_Date">Date</label>
+                <input class="form-control" type="date" name="NewContribution.Date" id="NewContribution_Date" required />
+            </div>
+            <div class="col-auto">
+                <label class="form-label" for="NewContribution_Amount">Amount</label>
+                <input class="form-control" type="text" inputmode="decimal" name="NewContribution.Amount" id="NewContribution_Amount" value="" placeholder="0.00" required />
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary" title="Add Contribution" aria-label="Add Contribution">
+                    <i class="bi bi-plus-lg"></i>
+                    <span class="d-none d-sm-inline ms-1">Add Contribution</span>
+                </button>
+            </div>
+        </form>
+
+        @if (Model.Contributions?.Any() == true)
+        {
+            <table class="table table-sm w-auto schedules-table mt-2">
+                <thead><tr><th>Date</th><th>Amount</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var c in Model.Contributions.OrderByDescending(c=>c.Date))
+                {
+                    <tr>
+                        <td>@c.Date.ToShortDateString()</td>
+                        <td>@c.Amount.ToString("C", culture)</td>
+                        <td>
+                            <form method="post" asp-page-handler="DeleteContribution" asp-route-id="@Model.Investment.Id" asp-route-contributionId="@c.Id" class="d-inline" data-confirm="Delete this one-time contribution?" data-loading="Deleting contribution...">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p class="text-muted">No one-time contributions.</p>
+        }
+    </div>
+
+    <div class="text-danger mt-2">
             @foreach (var e in ViewData.ModelState.Where(kv => kv.Value?.Errors.Count > 0))
             {
                 foreach (var err in e.Value!.Errors)

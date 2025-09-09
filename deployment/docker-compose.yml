@@ -21,7 +21,9 @@ services:
       - finapp-network
 
   finapp:
-    build: .
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
     container_name: finapp
     ports:
       - "5000:5000"

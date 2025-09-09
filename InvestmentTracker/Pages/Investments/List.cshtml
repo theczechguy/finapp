@@ -38,7 +38,20 @@
         <td>@i.Category</td>
         <td>@i.Currency</td>
         <td>@(i.ChargeAmount == 0 ? "-" : i.ChargeAmount.ToString("C", culture))</td>
-        <td>-</td>
+        <td>
+            @{
+                var latest = Model.LatestValues.ContainsKey(i.Id) ? Model.LatestValues[i.Id] : null;
+                if (latest != null)
+                {
+                    var valueCulture = CultureInfo.CreateSpecificCulture(i.Currency.ToCultureCode());
+                    <text>@latest.Value.ToString("C", valueCulture)</text>
+                }
+                else
+                {
+                    <text>-</text>
+                }
+            }
+        </td>
         <td>
             <div class="d-flex flex-wrap align-items-center gap-2">
                 <a class="btn btn-sm btn-secondary" asp-page="Values" asp-route-id="@i.Id" title="Values" aria-label="Values">
