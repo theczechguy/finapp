@@ -58,6 +58,7 @@ public class ValuesModel(IInvestmentService investmentService) : PageModel
         }
 
         await investmentService.AddInvestmentValueAsync(id, NewValue);
+        TempData["ToastSuccess"] = $"Value added for {NewValue.AsOf:d}.";
         return RedirectToPage(new { id });
     }
 
@@ -86,18 +87,21 @@ public class ValuesModel(IInvestmentService investmentService) : PageModel
         }
 
         await investmentService.AddOneTimeContributionAsync(id, NewContribution);
+        TempData["ToastSuccess"] = $"Contribution added for {NewContribution.Date:d}.";
         return RedirectToPage(new { id });
     }
 
     public async Task<IActionResult> OnPostDeleteContributionAsync(int id, int contributionId)
     {
         await investmentService.DeleteOneTimeContributionAsync(id, contributionId);
+        TempData["ToastSuccess"] = "Contribution deleted.";
         return RedirectToPage(new { id });
     }
 
     public async Task<IActionResult> OnPostDeleteAsync(int id, int valueId)
     {
         await investmentService.DeleteInvestmentValueAsync(id, valueId);
+        TempData["ToastSuccess"] = "Value deleted.";
         return RedirectToPage(new { id });
     }
 }

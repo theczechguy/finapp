@@ -52,6 +52,27 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
 
+    @{
+        var toastSuccess = TempData["ToastSuccess"] as string;
+        var toastError = TempData["ToastError"] as string;
+    }
+    @if (!string.IsNullOrEmpty(toastSuccess))
+    {
+        <script>
+            window.addEventListener('DOMContentLoaded', function () {
+                Toast.success("@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(toastSuccess)");
+            });
+        </script>
+    }
+    @if (!string.IsNullOrEmpty(toastError))
+    {
+        <script>
+            window.addEventListener('DOMContentLoaded', function () {
+                Toast.error("@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(toastError)");
+            });
+        </script>
+    }
+
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -33,7 +33,7 @@ public class ExpenseCategoriesModel : PageModel
         }
 
         await _expenseService.AddExpenseCategoryAsync(NewCategory);
-
+        TempData["ToastSuccess"] = "Category added.";
         return RedirectToPage();
     }
 
@@ -47,7 +47,7 @@ public class ExpenseCategoriesModel : PageModel
             // For now, we'll just remove it - in production you'd want better error handling
             await _expenseService.DeleteExpenseCategoryAsync(id);
         }
-
+        TempData["ToastSuccess"] = "Category deleted.";
         return RedirectToPage();
     }
 }

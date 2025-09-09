@@ -39,6 +39,7 @@ namespace InvestmentTracker.Pages.Expenses
         public async Task<IActionResult> OnPostUpdateIncomeAsync(int incomeSourceId, decimal actualAmount, int year, int month)
         {
             await _expenseService.LogOrUpdateMonthlyIncomeAsync(incomeSourceId, year, month, actualAmount);
+            TempData["ToastSuccess"] = "Income updated.";
             return RedirectToPage(new { year, month });
         }
 
@@ -63,6 +64,7 @@ namespace InvestmentTracker.Pages.Expenses
             });
 
             await _expenseService.AddRegularExpenseAsync(expense);
+            TempData["ToastSuccess"] = "Regular expense added.";
             return RedirectToPage(new { Year, Month });
         }
 
@@ -80,12 +82,14 @@ namespace InvestmentTracker.Pages.Expenses
             };
 
             await _expenseService.AddIrregularExpenseAsync(expense);
+            TempData["ToastSuccess"] = "Irregular expense added.";
             return RedirectToPage(new { Year, Month });
         }
 
         public async Task<IActionResult> OnPostDeleteIrregularExpenseAsync(int expenseId)
         {
             await _expenseService.DeleteIrregularExpenseAsync(expenseId);
+            TempData["ToastSuccess"] = "Irregular expense deleted.";
             return RedirectToPage(new { Year, Month });
         }
 
@@ -112,6 +116,7 @@ namespace InvestmentTracker.Pages.Expenses
             // Handle schedule updates with temporal logic
             var startDate = new DateTime(startYear, startMonth, 1);
             await _expenseService.UpdateRegularExpenseScheduleAsync(id, amount, Enum.Parse<Frequency>(frequency), startDate);
+            TempData["ToastSuccess"] = "Regular expense updated.";
             return RedirectToPage(new { Year, Month });
         }
 
@@ -132,6 +137,7 @@ namespace InvestmentTracker.Pages.Expenses
             existingExpense.FamilyMemberId = familyMemberId;
 
             await _expenseService.UpdateIrregularExpenseAsync(existingExpense);
+            TempData["ToastSuccess"] = "Irregular expense updated.";
             return RedirectToPage(new { Year, Month });
         }
 
@@ -147,6 +153,7 @@ namespace InvestmentTracker.Pages.Expenses
             };
 
             await _expenseService.AddOneTimeIncomeAsync(income);
+            TempData["ToastSuccess"] = "One-time income added.";
             return RedirectToPage(new { Year, Month });
         }
 
@@ -165,12 +172,14 @@ namespace InvestmentTracker.Pages.Expenses
             existingIncome.IncomeSourceId = incomeSourceId;
 
             await _expenseService.UpdateOneTimeIncomeAsync(existingIncome);
+            TempData["ToastSuccess"] = "One-time income updated.";
             return RedirectToPage(new { Year, Month });
         }
 
         public async Task<IActionResult> OnPostDeleteOneTimeIncomeAsync(int incomeId)
         {
             await _expenseService.DeleteOneTimeIncomeAsync(incomeId);
+            TempData["ToastSuccess"] = "One-time income deleted.";
             return RedirectToPage(new { Year, Month });
         }
 

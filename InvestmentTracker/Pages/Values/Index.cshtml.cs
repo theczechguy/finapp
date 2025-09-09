@@ -305,6 +305,7 @@ public class IndexModel(AppDbContext db) : PageModel
             db.InvestmentValues.Remove(value);
             await db.SaveChangesAsync();
         }
+        TempData["ToastSuccess"] = "Value deleted.";
         return RedirectToPage();
     }
 }

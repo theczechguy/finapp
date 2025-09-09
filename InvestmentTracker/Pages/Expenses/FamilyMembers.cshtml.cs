@@ -36,6 +36,7 @@ namespace InvestmentTracker.Pages.Expenses
             };
 
             await _expenseService.AddFamilyMemberAsync(familyMember);
+            TempData["ToastSuccess"] = "Family member added.";
             return RedirectToPage();
         }
 
@@ -51,6 +52,7 @@ namespace InvestmentTracker.Pages.Expenses
             existingMember.Relationship = relationship;
 
             await _expenseService.UpdateFamilyMemberAsync(existingMember);
+            TempData["ToastSuccess"] = "Family member updated.";
             return RedirectToPage();
         }
 
@@ -64,6 +66,7 @@ namespace InvestmentTracker.Pages.Expenses
 
             member.IsActive = !member.IsActive;
             await _expenseService.UpdateFamilyMemberAsync(member);
+            TempData["ToastSuccess"] = member.IsActive ? "Family member activated." : "Family member deactivated.";
             return RedirectToPage();
         }
     }

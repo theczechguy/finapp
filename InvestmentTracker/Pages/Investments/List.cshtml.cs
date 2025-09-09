@@ -47,6 +47,7 @@ public class ListModel(IInvestmentService investmentService) : PageModel
     public async Task<IActionResult> OnPostDeleteAsync(int id)
     {
         await investmentService.DeleteInvestmentAsync(id);
+        TempData["ToastSuccess"] = "Investment deleted.";
         return RedirectToPage();
     }
 }

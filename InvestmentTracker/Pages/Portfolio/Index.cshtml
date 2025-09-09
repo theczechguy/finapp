@@ -10,7 +10,7 @@
 <h2>Portfolio Overview</h2>
 
 <div class="row mb-4">
-    @foreach (var total in Model.TotalsByCurrency.OrderBy(kv => kv.Key.ToString()))
+    @foreach (var total in Model.TotalsByCurrency.Where(kv => kv.Value > 0m).OrderBy(kv => kv.Key.ToString()))
     {
         <div class="col-md-6 mb-4">
             <div class="row">
@@ -47,7 +47,7 @@
                     @categoryTotal.Key
                 </div>
                 <ul class="list-group list-group-flush">
-                    @foreach (var currencyTotal in categoryTotal.Value)
+                    @foreach (var currencyTotal in categoryTotal.Value.Where(ct => ct.Value > 0m))
                     {
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             @currencyTotal.Key

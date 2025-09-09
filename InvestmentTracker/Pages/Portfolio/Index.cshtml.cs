@@ -102,7 +102,7 @@ namespace InvestmentTracker.Pages.Portfolio
 
             // Prepare chart data
             var chartData = new Dictionary<string, object>();
-            foreach (var currency in TotalsByCurrency.Keys)
+            foreach (var currency in TotalsByCurrency.Where(kv => kv.Value > 0m).Select(kv => kv.Key))
             {
                 var categoryData = new Dictionary<string, decimal>();
                 foreach (var category in TotalsByCategory)

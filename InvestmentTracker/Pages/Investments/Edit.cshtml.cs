@@ -59,6 +59,7 @@ public class EditModel(IInvestmentService investmentService) : PageModel
                 i => i.Name, i => i.Provider, i => i.Type, i => i.Category, i => i.Currency, i => i.ChargeAmount))
         {
             await investmentService.UpdateInvestmentAsync(id, investmentToUpdate);
+            TempData["ToastSuccess"] = "Investment updated.";
             return RedirectToPage(new { id });
         }
 
@@ -111,6 +112,7 @@ public class EditModel(IInvestmentService investmentService) : PageModel
             }
             else
             {
+                TempData["ToastSuccess"] = "Schedule added.";
                 return RedirectToPage(new { id });
             }
         }
@@ -124,6 +126,7 @@ public class EditModel(IInvestmentService investmentService) : PageModel
     public async Task<IActionResult> OnPostDeleteScheduleAsync(int id, int scheduleId)
     {
         await investmentService.DeleteContributionScheduleAsync(id, scheduleId);
+        TempData["ToastSuccess"] = "Schedule deleted.";
         return RedirectToPage(new { id });
     }
 
@@ -148,12 +151,14 @@ public class EditModel(IInvestmentService investmentService) : PageModel
         }
         
         await investmentService.AddOneTimeContributionAsync(id, NewContribution);
+        TempData["ToastSuccess"] = "Contribution added.";
         return RedirectToPage(new { id });
     }
 
     public async Task<IActionResult> OnPostDeleteContributionAsync(int id, int contributionId)
     {
         await investmentService.DeleteOneTimeContributionAsync(id, contributionId);
+        TempData["ToastSuccess"] = "Contribution deleted.";
         return RedirectToPage(new { id });
     }
 }
