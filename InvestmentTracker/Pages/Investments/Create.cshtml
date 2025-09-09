@@ -34,8 +34,8 @@
 
     <div class="mb-3">
         <label asp-for="Investment.ChargeAmount" class="form-label">One-time Charge</label>
-        <input asp-for="Investment.ChargeAmount" type="text" inputmode="decimal" class="form-control" value="" placeholder="0.00" autocomplete="off" />
-        <div class="form-text">A single charge deducted from invested total.</div>
+        <input name="Investment.ChargeAmount" type="text" inputmode="decimal" class="form-control" placeholder="Leave empty if no charge" autocomplete="off" />
+        <div class="form-text">A single charge deducted from invested total. Leave empty if none.</div>
         <span asp-validation-for="Investment.ChargeAmount" class="text-danger"></span>
     </div>
 
