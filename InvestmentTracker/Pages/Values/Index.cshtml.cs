@@ -151,16 +151,27 @@ public class IndexModel(AppDbContext db) : PageModel
 
         // Fetch earliest recorded value per investment (initial principal for one-time)
         var firstValues = new Dictionary<int, (DateTime date, decimal value)>();
-        foreach (var id in invIds)
+        if (invIds.Count > 0)
         {
-            var fv = await db.InvestmentValues
-                .Where(v => v.InvestmentId == id)
-                .OrderBy(v => v.AsOf)
-                .Select(v => new { v.AsOf, v.Value })
-                .FirstOrDefaultAsync();
-            if (fv != null)
+            // Compute min AsOf per investment in a single query
+            var minsQuery = db.InvestmentValues
+                .Where(v => invIds.Contains(v.InvestmentId))
+                .GroupBy(v => v.InvestmentId)
+                .Select(g => new { InvestmentId = g.Key, MinAsOf = g.Min(v => v.AsOf) });
+
+            // Join back to InvestmentValues to get the corresponding value for the min AsOf
+            var firstVals = await (
+                from v in db.InvestmentValues
+                join m in minsQuery on new { v.InvestmentId, v.AsOf } equals new { InvestmentId = m.InvestmentId, AsOf = m.MinAsOf }
+                select new { v.InvestmentId, v.AsOf, v.Value }
+            ).ToListAsync();
+
+            foreach (var fv in firstVals)
             {
-                firstValues[id] = (fv.AsOf, fv.Value);
+                if (!firstValues.ContainsKey(fv.InvestmentId))
+                {
+                    firstValues[fv.InvestmentId] = (fv.AsOf, fv.Value);
+                }
             }
         }
 
