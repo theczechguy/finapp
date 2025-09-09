@@ -94,5 +94,52 @@ public static class InvestmentApi
             var success = await service.DeleteContributionScheduleAsync(id, scheduleId);
             return success ? Results.NoContent() : Results.NotFound();
         });
+
+        // CSV Import API
+        api.MapPost("/investments/import-csv", async (HttpRequest request, CsvImportService importService) =>
+        {
+            try
+            {
+                // Read the uploaded file
+                var form = await request.ReadFormAsync();
+                var file = form.Files.GetFile("csvFile");
+
+                if (file == null || file.Length == 0)
+                {
+                    return Results.BadRequest(new { error = "No CSV file provided" });
+                }
+
+                // Read file content
+                using var reader = new StreamReader(file.OpenReadStream());
+                var csvContent = await reader.ReadToEndAsync();
+
+                // Import the data
+                var result = await importService.ImportInvestmentPortfolioAsync(csvContent);
+
+                if (result.Success)
+                {
+                    return Results.Ok(new
+                    {
+                        message = "Import completed successfully",
+                        investmentsProcessed = result.InvestmentsProcessed,
+                        valuesProcessed = result.ValuesProcessed
+                    });
+                }
+                else
+                {
+                    return Results.BadRequest(new
+                    {
+                        error = "Import completed with errors",
+                        errors = result.Errors,
+                        investmentsProcessed = result.InvestmentsProcessed,
+                        valuesProcessed = result.ValuesProcessed
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem($"Import failed: {ex.Message}");
+            }
+        });
     }
 }

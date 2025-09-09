@@ -6,7 +6,7 @@ namespace InvestmentTracker.Services;
 
 public interface IInvestmentService
 {
-    Task<IEnumerable<Investment>> GetAllInvestmentsAsync();
+    Task<IEnumerable<InvestmentSummary>> GetAllInvestmentsAsync();
     Task<Investment?> GetInvestmentAsync(int id);
     Task<Investment> AddInvestmentAsync(Investment investment);
     Task<bool> UpdateInvestmentAsync(int id, Investment update);

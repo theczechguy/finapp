@@ -16,11 +16,20 @@ public class InvestmentService : IInvestmentService
         _logger = logger;
     }
 
-    public async Task<IEnumerable<Investment>> GetAllInvestmentsAsync()
+    public async Task<IEnumerable<InvestmentSummary>> GetAllInvestmentsAsync()
     {
         _logger.LogInformation("Fetching all investments");
         return await _db.Investments
-            .Include(i => i.Values)
+            .Select(i => new InvestmentSummary
+            {
+                Id = i.Id,
+                Name = i.Name,
+                Category = i.Category,
+                Type = i.Type,
+                Currency = i.Currency,
+                Provider = i.Provider,
+                ChargeAmount = i.ChargeAmount
+            })
             .ToListAsync();
     }
 

@@ -74,15 +74,14 @@
     <tbody>
     @foreach (var investment in Model.InvestmentsWithLatestValue.OrderBy(i => i.Name))
     {
-        var latestValue = investment.Values.FirstOrDefault();
         <tr>
             <td>@investment.Name</td>
             <td>@(string.IsNullOrWhiteSpace(investment.Provider) ? "-" : investment.Provider)</td>
             <td>@investment.Category</td>
-            @if (latestValue != null)
+            @if (investment.LatestValue != null)
             {
-                <td>@latestValue.Value.ToString("C", CultureInfo.CreateSpecificCulture(investment.Currency.ToCultureCode()))</td>
-                <td>@latestValue.AsOf.ToShortDateString()</td>
+                <td>@investment.LatestValue.Value.ToString("C", CultureInfo.CreateSpecificCulture(investment.Currency.ToCultureCode()))</td>
+                <td>@investment.LatestValue.AsOf.ToShortDateString()</td>
             }
             else
             {

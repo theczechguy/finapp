@@ -19,7 +19,7 @@ namespace InvestmentTracker.Pages.Portfolio
             _investmentService = investmentService;
         }
 
-        public List<Investment> InvestmentsWithLatestValue { get; set; } = new();
+        public List<InvestmentWithLatestValue> InvestmentsWithLatestValue { get; set; } = new();
         public Dictionary<Currency, decimal> TotalsByCurrency { get; set; } = new();
         public Dictionary<InvestmentCategory, Dictionary<Currency, decimal>> TotalsByCategory { get; set; } = new();
         public Dictionary<DateTime, decimal> TotalsByDate { get; set; } = new();
@@ -48,7 +48,7 @@ namespace InvestmentTracker.Pages.Portfolio
                     break;
             }
 
-                        // Prepare time series data first (before filtering values)
+            // Prepare time series data first (before filtering values)
             var valuesForChart = await _investmentService.GetInvestmentValuesFromDateAsync(fromDate);
             TotalsByDate = valuesForChart
                 .GroupBy(v => v.AsOf.Date)
@@ -57,17 +57,39 @@ namespace InvestmentTracker.Pages.Portfolio
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
             ChartTimeSeriesJson = JsonSerializer.Serialize(TotalsByDate.ToDictionary(kv => kv.Key.ToString("yyyy-MM-dd"), kv => kv.Value));
 
-            var investmentsWithValues = new List<Investment>();
+            var investmentsWithValues = new List<InvestmentWithLatestValue>();
 
             foreach (var investment in investments)
             {
-                var latestValue = investment.Values.OrderByDescending(v => v.AsOf).FirstOrDefault();
+                // Get the latest value for this investment
+                var values = await _investmentService.GetInvestmentValuesAsync(investment.Id);
+                var latestValue = values
+                    .Select(v => new InvestmentValue
+                    {
+                        Id = (int)v.GetType().GetProperty("Id")?.GetValue(v)!,
+                        AsOf = (DateTime)v.GetType().GetProperty("AsOf")?.GetValue(v)!,
+                        Value = (decimal)v.GetType().GetProperty("Value")?.GetValue(v)!,
+                        InvestmentId = investment.Id
+                    })
+                    .OrderByDescending(v => v.AsOf)
+                    .FirstOrDefault();
+
+                var investmentWithValue = new InvestmentWithLatestValue
+                {
+                    Id = investment.Id,
+                    Name = investment.Name,
+                    Category = investment.Category,
+                    Type = investment.Type,
+                    Currency = investment.Currency,
+                    Provider = investment.Provider,
+                    ChargeAmount = investment.ChargeAmount,
+                    LatestValue = latestValue
+                };
+
+                investmentsWithValues.Add(investmentWithValue);
+
                 if (latestValue != null)
                 {
-                    // We only need the latest value for this page
-                    investment.Values = new List<InvestmentValue> { latestValue };
-                    investmentsWithValues.Add(investment);
-
                     TotalsByCurrency.TryGetValue(investment.Currency, out var currentTotal);
                     TotalsByCurrency[investment.Currency] = currentTotal + latestValue.Value;
                     
@@ -77,12 +99,6 @@ namespace InvestmentTracker.Pages.Portfolio
                     }
                     TotalsByCategory[investment.Category].TryGetValue(investment.Currency, out var currentCategoryTotal);
                     TotalsByCategory[investment.Category][investment.Currency] = currentCategoryTotal + latestValue.Value;
-                }
-                else
-                {
-                    // Add investment even if it has no values to show it in the list
-                    investment.Values = new List<InvestmentValue>();
-                    investmentsWithValues.Add(investment);
                 }
             }
 

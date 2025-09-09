@@ -30,7 +30,6 @@
     <tbody>
 @foreach (var i in Model.Investments)
 {
-    var latest = i.Values.OrderByDescending(v => v.AsOf).FirstOrDefault();
     var culture = CultureInfo.CreateSpecificCulture(i.Currency.ToCultureCode());
     <tr>
         <td>@i.Name</td>
@@ -39,7 +38,7 @@
         <td>@i.Category</td>
         <td>@i.Currency</td>
         <td>@(i.ChargeAmount == 0 ? "-" : i.ChargeAmount.ToString("C", culture))</td>
-        <td>@(latest is null ? "-" : latest.Value.ToString("C", culture) + " (" + latest.AsOf.ToShortDateString() + ")")</td>
+        <td>-</td>
         <td>
             <div class="d-flex flex-wrap align-items-center gap-2">
                 <a class="btn btn-sm btn-secondary" asp-page="Values" asp-route-id="@i.Id" title="Values" aria-label="Values">

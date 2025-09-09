@@ -10,7 +10,7 @@ namespace InvestmentTracker.Pages.Investments;
 
 public class ListModel(IInvestmentService investmentService) : PageModel
 {
-    public IList<Investment> Investments { get;set; } = default!;
+    public IList<InvestmentSummary> Investments { get;set; } = default!;
 
     public async Task OnGetAsync()
     {
