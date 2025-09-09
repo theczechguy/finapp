@@ -350,6 +350,7 @@ class KeyboardShortcutsManager {
         document.addEventListener('keydown', (e) => this.handleKeyPress(e));
         this.registerShortcuts();
         this.showHint();
+        this.initFormEnterHandling();
         
         // Make hide function globally available for HTML onclick
         window.hideKeyboardShortcuts = () => this.hideHelp();
@@ -392,7 +393,9 @@ class KeyboardShortcutsManager {
         }
 
         // Values page shortcuts
-        if (currentPath.includes('/Values')) {
+        if (currentPath.includes('/Values') || (currentPath.includes('/Investments/') && currentPath.includes('Values'))) {
+            this.shortcuts.set('a', () => this.focusValueForm());
+            this.shortcuts.set('c', () => this.focusContributionForm());
             this.shortcuts.set('f', () => this.focusSearchField());
         }
     }
@@ -570,6 +573,90 @@ class KeyboardShortcutsManager {
         if (searchInput) {
             searchInput.focus();
         }
+    }
+
+    focusValueForm() {
+        // Focus the first input in the add value form
+        // Try multiple selectors to find the form
+        let valueForm = document.querySelector('form[asp-page-handler="AddValue"]');
+        if (!valueForm) {
+            // Fallback: find form that contains value input
+            valueForm = document.querySelector('input[name*="Value"][type="text"]').closest('form');
+        }
+        if (!valueForm) {
+            // Another fallback: find form with "Add Value" heading above it
+            const heading = Array.from(document.querySelectorAll('h5')).find(h => h.textContent.includes('Add Value'));
+            if (heading) {
+                valueForm = heading.nextElementSibling;
+                while (valueForm && valueForm.tagName !== 'FORM') {
+                    valueForm = valueForm.nextElementSibling;
+                }
+            }
+        }
+
+        if (valueForm) {
+            const firstInput = valueForm.querySelector('input[type="date"], input[type="text"]');
+            if (firstInput) {
+                firstInput.focus();
+                firstInput.select();
+            }
+        }
+    }
+
+    focusContributionForm() {
+        // Focus the first input in the add contribution form
+        // Try multiple selectors to find the form
+        let contributionForm = document.querySelector('form[asp-page-handler="AddContribution"]');
+        if (!contributionForm) {
+            // Fallback: find form that contains contribution input
+            contributionForm = document.querySelector('input[name*="Contribution"][type="text"]').closest('form');
+        }
+        if (!contributionForm) {
+            // Another fallback: find form with "One-time Contributions" heading above it
+            const heading = Array.from(document.querySelectorAll('h5')).find(h => h.textContent.includes('One-time Contributions'));
+            if (heading) {
+                contributionForm = heading.nextElementSibling;
+                while (contributionForm && contributionForm.tagName !== 'FORM') {
+                    contributionForm = contributionForm.nextElementSibling;
+                }
+            }
+        }
+
+        if (contributionForm) {
+            const firstInput = contributionForm.querySelector('input[type="date"], input[type="text"]');
+            if (firstInput) {
+                firstInput.focus();
+                firstInput.select();
+            }
+        }
+    }
+
+    initFormEnterHandling() {
+        // Handle Enter key for form submission (excluding textareas and when Ctrl/Shift is pressed)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                const activeElement = document.activeElement;
+                
+                // Don't handle Enter in textareas or when typing in input fields that shouldn't submit
+                if (activeElement.tagName === 'TEXTAREA') {
+                    return;
+                }
+                
+                // If we're in a form input and it's not a submit button, try to submit the form
+                if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'SELECT') {
+                    const form = activeElement.closest('form');
+                    if (form && !activeElement.classList.contains('no-enter-submit')) {
+                        // Check if there's a submit button in the form
+                        const submitButton = form.querySelector('button[type="submit"]');
+                        if (submitButton && !submitButton.disabled) {
+                            e.preventDefault();
+                            form.requestSubmit();
+                            return;
+                        }
+                    }
+                }
+            }
+        });
     }
 }
 
