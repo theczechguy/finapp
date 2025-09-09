@@ -46,6 +46,7 @@ public class IndexModel(AppDbContext db) : PageModel
         public Currency Currency { get; set; }
         public DateTime AsOf { get; set; }
         public decimal Value { get; set; }
+        public ValueChangeType ChangeType { get; set; }
         public decimal? Invested { get; set; }
         public decimal? PercentDiff { get; set; }
     }
@@ -120,7 +121,8 @@ public class IndexModel(AppDbContext db) : PageModel
                 InvestmentName = v.Investment!.Name,
                 Currency = v.Investment!.Currency,
                 AsOf = v.AsOf,
-                Value = v.Value
+                Value = v.Value,
+                ChangeType = v.ChangeType
             })
             .Skip((PageNumber - 1) * PageSize)
             .Take(PageSize)

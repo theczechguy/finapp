@@ -50,6 +50,7 @@
             <th>
                 <a asp-route-sort="Value" asp-route-dir="@(Model.Sort=="Value" && Model.Dir=="asc" ? "desc" : "asc")" asp-route-Provider="@Model.Provider" asp-route-InvestmentId="@Model.InvestmentId" asp-route-From="@Model.From?.ToString("yyyy-MM-dd")" asp-route-To="@Model.To?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize">Value @(Model.Sort=="Value" ? (Model.Dir=="asc" ? "▲" : "▼") : "")</a>
             </th>
+            <th>Type</th>
             <th>Invested</th>
             <th>% Difference</th>
             <th></th>
@@ -65,6 +66,26 @@
             </td>
             <td>@r.AsOf.ToShortDateString()</td>
             <td>@r.Value.ToString("C", CultureInfo.CreateSpecificCulture(r.Currency.ToCultureCode()))</td>
+            <td>
+                @switch (r.ChangeType)
+                {
+                    case InvestmentTracker.Models.ValueChangeType.MarketValue:
+                        <span class="badge bg-primary">Market</span>
+                        break;
+                    case InvestmentTracker.Models.ValueChangeType.Buy:
+                        <span class="badge bg-success">Buy</span>
+                        break;
+                    case InvestmentTracker.Models.ValueChangeType.Sell:
+                        <span class="badge bg-danger">Sell</span>
+                        break;
+                    case InvestmentTracker.Models.ValueChangeType.Other:
+                        <span class="badge bg-secondary">Other</span>
+                        break;
+                    default:
+                        <span class="badge bg-light text-dark">@r.ChangeType</span>
+                        break;
+                }
+            </td>
             <td>@(r.Invested.HasValue ? r.Invested.Value.ToString("C", CultureInfo.CreateSpecificCulture(r.Currency.ToCultureCode())) : "—")</td>
             <td>
                 @if (r.Invested.HasValue && r.Invested.Value > 0 && r.PercentDiff.HasValue)

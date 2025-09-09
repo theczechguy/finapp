@@ -69,6 +69,7 @@
             <th>Category</th>
             <th>Latest Value</th>
             <th>As Of Date</th>
+            <th>Type</th>
         </tr>
     </thead>
     <tbody>
@@ -82,10 +83,19 @@
             {
                 <td>@investment.LatestValue.Value.ToString("C", CultureInfo.CreateSpecificCulture(investment.Currency.ToCultureCode()))</td>
                 <td>@investment.LatestValue.AsOf.ToShortDateString()</td>
+                <td>
+                    <span class="badge 
+                        @(investment.LatestValue.ChangeType == ValueChangeType.MarketValue ? "bg-secondary" : 
+                          investment.LatestValue.ChangeType == ValueChangeType.Buy ? "bg-success" : 
+                          investment.LatestValue.ChangeType == ValueChangeType.Sell ? "bg-danger" : "bg-warning")">
+                        @investment.LatestValue.ChangeType.ToString()
+                    </span>
+                </td>
             }
             else
             {
                 <td class="text-muted">No value recorded</td>
+                <td class="text-muted">-</td>
                 <td class="text-muted">-</td>
             }
         </tr>

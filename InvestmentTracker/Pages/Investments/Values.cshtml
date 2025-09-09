@@ -56,6 +56,16 @@
             }
             <span asp-validation-for="NewValue.Value" class="text-danger"></span>
         </div>
+        <div class="col-auto">
+            <label asp-for="NewValue.ChangeType" class="form-label">Type</label>
+            <select asp-for="NewValue.ChangeType" class="form-control">
+                <option value="@ValueChangeType.MarketValue">Market Value</option>
+                <option value="@ValueChangeType.Buy">Buy</option>
+                <option value="@ValueChangeType.Sell">Sell</option>
+                <option value="@ValueChangeType.Other">Other</option>
+            </select>
+            <span asp-validation-for="NewValue.ChangeType" class="text-danger"></span>
+        </div>
         <div class="col-auto align-self-end">
             <button type="submit" class="btn btn-primary" title="Add" aria-label="Add">
                 <i class="bi bi-plus-lg"></i>
@@ -121,23 +131,73 @@
     }
 
     <h5 class="mt-4">History</h5>
+    
+    @if (Model.Investment?.Values?.Any() == true)
+    {
+        var changeTypeSummary = Model.Investment.Values
+            .GroupBy(v => v.ChangeType)
+            .Select(g => new { Type = g.Key, Count = g.Count(), TotalValue = g.Sum(v => v.Value) })
+            .OrderByDescending(x => x.Count)
+            .ToList();
+        
+        <div class="mb-3">
+            <small class="text-muted">Change Type Summary:</small>
+            @foreach (var summary in changeTypeSummary)
+            {
+                <span class="badge me-2 
+                    @(summary.Type == ValueChangeType.MarketValue ? "bg-secondary" : 
+                      summary.Type == ValueChangeType.Buy ? "bg-success" : 
+                      summary.Type == ValueChangeType.Sell ? "bg-danger" : "bg-warning")">
+                    @summary.Type (@summary.Count)
+                </span>
+            }
+        </div>
+    }
+    
     <div class="table-responsive">
     <table class="table table-sm">
         <thead>
             <tr>
                 <th>Date</th>
                 <th>Value</th>
+                <th>Type</th>
+                <th>Change</th>
                 <th></th>
             </tr>
         </thead>
         <tbody>
-        @foreach (var v in Model.Investment.Values)
+        @{
+            var previousValue = Model.Investment?.Values?.OrderBy(v => v.AsOf).FirstOrDefault()?.Value ?? 0;
+        }
+        @foreach (var v in Model.Investment?.Values?.OrderByDescending(v => v.AsOf) ?? Enumerable.Empty<InvestmentValue>())
         {
+            var changePercent = previousValue != 0 ? ((v.Value - previousValue) / previousValue) * 100 : 0;
+            var changeClass = changePercent > 0 ? "text-success" : changePercent < 0 ? "text-danger" : "text-muted";
+            var changeSymbol = changePercent > 0 ? "+" : changePercent < 0 ? "" : "";
+            previousValue = v.Value;
             <tr>
                 <td>@v.AsOf.ToShortDateString()</td>
                 <td>@v.Value.ToString("C", culture)</td>
                 <td>
-                    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Investment.Id" asp-route-valueId="@v.Id" data-confirm="Delete this value record?" data-loading="Deleting value...">
+                    <span class="badge 
+                        @(v.ChangeType == ValueChangeType.MarketValue ? "bg-secondary" : 
+                          v.ChangeType == ValueChangeType.Buy ? "bg-success" : 
+                          v.ChangeType == ValueChangeType.Sell ? "bg-danger" : "bg-warning")">
+                        @v.ChangeType.ToString()
+                    </span>
+                </td>
+                <td class="@changeClass">
+                    @if (changePercent != 0)
+                    {
+                        <small>@changeSymbol@changePercent.ToString("+#.##;-#.##;0")%</small>
+                    }
+                    else
+                    {
+                        <small class="text-muted">-</small>
+                    }
+                </td>
+                <td>
+                    <form method="post" asp-page-handler="Delete" asp-route-id="@(Model.Investment?.Id ?? 0)" asp-route-valueId="@v.Id" data-confirm="Delete this value record?" data-loading="Deleting value...">
                         <button type="submit" class="btn btn-sm btn-danger" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
                     </form>
                 </td>

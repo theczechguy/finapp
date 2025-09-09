@@ -145,7 +145,7 @@ function Get-OrCreateInvestment {
 
 # Function to add a value (with duplicate check)
 function Add-InvestmentValue {
-    param([int]$InvestmentId, [string]$Date, [decimal]$Value)
+    param([int]$InvestmentId, [string]$Date, [decimal]$Value, [int]$ChangeType = 0)
 
     # Check if value already exists
     $existingValue = Test-ValueExists -InvestmentId $InvestmentId -Date $Date
@@ -158,6 +158,7 @@ function Add-InvestmentValue {
         investmentId = $InvestmentId
         asOf = $Date
         value = $Value
+        changeType = $ChangeType
     } | ConvertTo-Json
 
     try {
