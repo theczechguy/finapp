@@ -26,13 +26,34 @@ public class ValuesModel(IInvestmentService investmentService) : PageModel
 
     public async Task<IActionResult> OnPostAddValueAsync(int id)
     {
-    ModelState.Clear();
-    if (!TryValidateModel(NewValue, nameof(NewValue)))
+        ModelState.Clear();
+        if (!TryValidateModel(NewValue, nameof(NewValue)))
         {
             // reload investment list for view
             Investment = await investmentService.GetInvestmentAsync(id);
             if (Investment is not null)
                 Investment.Values = Investment.Values.OrderByDescending(v => v.AsOf).ToList();
+            return Page();
+        }
+
+        // Validate the date is not in the future
+        if (NewValue.AsOf.Date > DateTime.Today)
+        {
+            ModelState.AddModelError("NewValue.AsOf", "Cannot add a value for a future date.");
+            Investment = await investmentService.GetInvestmentAsync(id);
+            if (Investment is not null)
+                Investment.Values = Investment.Values.OrderByDescending(v => v.AsOf).ToList();
+            return Page();
+        }
+
+        // Check for duplicate value on the same date
+        var existingValue = await investmentService.GetInvestmentAsync(id);
+        if (existingValue != null && existingValue.Values.Any(v => v.AsOf.Date == NewValue.AsOf.Date))
+        {
+            ModelState.AddModelError("NewValue.AsOf", $"A value already exists for {NewValue.AsOf.ToShortDateString()}. Please choose a different date or edit the existing value.");
+            // reload investment list for view
+            Investment = existingValue;
+            Investment.Values = Investment.Values.OrderByDescending(v => v.AsOf).ToList();
             return Page();
         }
 
@@ -51,6 +72,19 @@ public class ValuesModel(IInvestmentService investmentService) : PageModel
             }
             return Page();
         }
+
+        // Validate the date is not in the future
+        if (NewContribution.Date.Date > DateTime.Today)
+        {
+            ModelState.AddModelError("NewContribution.Date", "Cannot add a contribution for a future date.");
+            Investment = await investmentService.GetInvestmentAsync(id);
+            if (Investment is not null)
+            {
+                Investment.Values = Investment.Values.OrderByDescending(v => v.AsOf).ToList();
+            }
+            return Page();
+        }
+
         await investmentService.AddOneTimeContributionAsync(id, NewContribution);
         return RedirectToPage(new { id });
     }
