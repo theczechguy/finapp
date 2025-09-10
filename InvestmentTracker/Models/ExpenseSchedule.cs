@@ -11,7 +11,8 @@ public class ExpenseSchedule
     public int RegularExpenseId { get; set; }
     public RegularExpense? RegularExpense { get; set; }
 
-    // Month-based scheduling instead of specific dates
+    // Month and day-based scheduling
+
     [Required]
     [Range(2020, 2100)]
     public int StartYear { get; set; }
@@ -20,11 +21,19 @@ public class ExpenseSchedule
     [Range(1, 12)]
     public int StartMonth { get; set; }
 
+    [Required]
+    [Range(1, 31)]
+    public int StartDay { get; set; } = 1;
+
+
     [Range(2020, 2100)]
     public int? EndYear { get; set; }
 
     [Range(1, 12)]
     public int? EndMonth { get; set; }
+
+    [Range(1, 31)]
+    public int? EndDay { get; set; }
 
     [Required]
     [Range(0.01, double.MaxValue)]
@@ -35,12 +44,13 @@ public class ExpenseSchedule
     public Frequency Frequency { get; set; } = Frequency.Monthly;
 
     // Computed properties for backward compatibility
-    [NotMapped]
-    public DateTime StartDate => new DateTime(StartYear, StartMonth, 1);
 
     [NotMapped]
-    public DateTime? EndDate => EndYear.HasValue && EndMonth.HasValue
-        ? new DateTime(EndYear.Value, EndMonth.Value, DateTime.DaysInMonth(EndYear.Value, EndMonth.Value))
+    public DateTime StartDate => new DateTime(StartYear, StartMonth, StartDay);
+
+    [NotMapped]
+    public DateTime? EndDate => EndYear.HasValue && EndMonth.HasValue && EndDay.HasValue
+        ? new DateTime(EndYear.Value, EndMonth.Value, EndDay.Value)
         : null;
 
     // Helper methods

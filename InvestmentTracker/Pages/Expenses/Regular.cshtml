@@ -261,6 +261,7 @@
         <div class="modal-content">
             <form id="expenseForm">
                 @Html.AntiForgeryToken()
+}
                 <div class="modal-header">
                     <h5 class="modal-title">Add Recurring Expense</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -289,7 +290,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Frequency <span class="text-danger">*</span></label>
-                            <select class="form-select" id="expenseFrequency" required onchange="toggleStartingMonth()">
+                            <select class="form-select" id="expenseFrequency" required>
                                 <option value="">Select frequency</option>
                                 <option value="Monthly">Monthly</option>
                                 <option value="Quarterly">Quarterly (every 3 months)</option>
@@ -297,26 +298,30 @@
                                 <option value="Annually">Annually (once per year)</option>
                             </select>
                         </div>
-                        <div class="col-12" id="startingMonthContainer" style="display: none;">
-                            <label class="form-label">Starting Month <span class="text-danger">*</span></label>
-                            <select class="form-select" id="startingMonth">
-                                <option value="1">January</option>
-                                <option value="2">February</option>
-                                <option value="3">March</option>
-                                <option value="4">April</option>
-                                <option value="5">May</option>
-                                <option value="6">June</option>
-                                <option value="7">July</option>
-                                <option value="8">August</option>
-                                <option value="9">September</option>
-                                <option value="10">October</option>
-                                <option value="11">November</option>
-                                <option value="12">December</option>
-                            </select>
-                            <div class="form-text">
-                                <i class="bi bi-info-circle text-primary me-1"></i>
-                                <span id="frequencyHelp">Select the month when this expense should first occur.</span>
+                        <div class="col-md-6">
+                            <label class="form-label">Start Date <span class="text-danger">*</span></label>
+                            <div class="row g-2">
+                                <div class="col-4">
+                                    <select class="form-select" id="expenseStartYear" required>
+                                        @for (int y = DateTime.Today.Year - 1; y <= DateTime.Today.Year + 5; y++)
+                                        {
+                                            <option value="@y" selected="@(y == DateTime.Today.Year)">@y</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-4">
+                                    <select class="form-select" id="expenseStartMonth" required>
+                                        @for (int m = 1; m <= 12; m++)
+                                        {
+                                            <option value="@m" selected="@(m == DateTime.Today.Month)">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-4">
+                                    <input type="number" class="form-control" id="expenseStartDay" min="1" max="31" value="1" required>
+                                </div>
                             </div>
+                            <div class="form-text">Select year, month, and day when this expense should start (e.g., 2025, September, 15).</div>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Description</label>
@@ -367,29 +372,6 @@
     </style>
     
     <script>
-        function toggleStartingMonth() {
-            const frequency = document.getElementById('expenseFrequency').value;
-            const container = document.getElementById('startingMonthContainer');
-            const helpText = document.getElementById('frequencyHelp');
-            
-            if (frequency === 'Monthly') {
-                container.style.display = 'none';
-            } else {
-                container.style.display = 'block';
-                
-                switch (frequency) {
-                    case 'Quarterly':
-                        helpText.textContent = 'Select the month when this quarterly expense should first occur (will repeat every 3 months).';
-                        break;
-                    case 'SemiAnnually':
-                        helpText.textContent = 'Select the month when this semi-annual expense should first occur (will repeat every 6 months).';
-                        break;
-                    case 'Annually':
-                        helpText.textContent = 'Select the month when this annual expense occurs each year.';
-                        break;
-                }
-            }
-        }
 
         function clearFilters() {
             document.getElementById('categoryFilter').value = '';
@@ -518,21 +500,36 @@
 
         document.getElementById('expenseForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const formData = new FormData();
-            const expenseId = document.getElementById('expenseId').value;
-            
-            formData.append('id', expenseId);
-            formData.append('name', document.getElementById('expenseName').value);
-            formData.append('categoryId', document.getElementById('expenseCategory').value);
-            formData.append('amount', document.getElementById('expenseAmount').value);
-            formData.append('frequency', document.getElementById('expenseFrequency').value);
-            formData.append('startingMonth', document.getElementById('startingMonth').value);
-            formData.append('description', document.getElementById('expenseDescription').value);
-            
-            const isEdit = expenseId && expenseId !== '0';
+            const expenseIdEl = document.getElementById('expenseId');
+            const expenseNameEl = document.getElementById('expenseName');
+            const expenseCategoryEl = document.getElementById('expenseCategory');
+            const expenseAmountEl = document.getElementById('expenseAmount');
+            const expenseFrequencyEl = document.getElementById('expenseFrequency');
+            const expenseStartYearEl = document.getElementById('expenseStartYear');
+            const expenseStartMonthEl = document.getElementById('expenseStartMonth');
+            const expenseStartDayEl = document.getElementById('expenseStartDay');
+            const expenseDescriptionEl = document.getElementById('expenseDescription');
+
+            if (!expenseIdEl || !expenseNameEl || !expenseCategoryEl || !expenseAmountEl || !expenseFrequencyEl || !expenseStartYearEl || !expenseStartMonthEl || !expenseStartDayEl || !expenseDescriptionEl) {
+                alert('Form is missing required fields. Please reload the page.');
+                return;
+            }
+
+            formData.append('id', expenseIdEl.value);
+            formData.append('name', expenseNameEl.value);
+            formData.append('categoryId', expenseCategoryEl.value);
+            formData.append('amount', expenseAmountEl.value);
+            formData.append('frequency', expenseFrequencyEl.value);
+            formData.append('startYear', expenseStartYearEl.value);
+            formData.append('startMonth', expenseStartMonthEl.value);
+            formData.append('startDay', expenseStartDayEl.value);
+            formData.append('description', expenseDescriptionEl.value);
+
+            const isEdit = expenseIdEl.value && expenseIdEl.value !== '0';
             const handler = isEdit ? 'Update' : 'Create';
-            
+
             fetch(`/expenses/regular?handler=${handler}`, {
                 method: 'POST',
                 headers: {
@@ -559,7 +556,6 @@
             document.getElementById('expenseForm').reset();
             document.getElementById('expenseId').value = '0';
             document.querySelector('#addExpenseModal .modal-title').textContent = 'Add Recurring Expense';
-            document.getElementById('startingMonthContainer').style.display = 'none';
         });
 
         // Keyboard shortcuts
@@ -585,9 +581,8 @@
                     event.preventDefault();
                     // Reset form and show add modal
                     document.getElementById('expenseForm').reset();
-                    document.querySelector('#addExpenseModal .modal-title').textContent = 'Add Recurring Expense';
                     document.getElementById('expenseId').value = '0';
-                    toggleStartingMonth();
+                    document.querySelector('#addExpenseModal .modal-title').textContent = 'Add Recurring Expense';
                     new bootstrap.Modal(document.getElementById('addExpenseModal')).show();
                     break;
             }

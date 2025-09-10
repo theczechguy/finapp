@@ -166,11 +166,13 @@ namespace InvestmentTracker.Pages.Expenses
         }
 
         public async Task<IActionResult> OnPostCreateAsync(
-            string name, 
-            int categoryId, 
-            decimal amount, 
-            string frequency, 
-            int? startingMonth, 
+            string name,
+            int categoryId,
+            decimal amount,
+            string frequency,
+            int startYear,
+            int startMonth,
+            int startDay,
             string? description)
         {
             try
@@ -187,10 +189,10 @@ namespace InvestmentTracker.Pages.Expenses
                     return new JsonResult(new { success = false, message = "Invalid frequency selected." });
                 }
 
-                // Validate starting month for non-monthly frequencies
-                if (parsedFrequency != Frequency.Monthly && (!startingMonth.HasValue || startingMonth < 1 || startingMonth > 12))
+                // Validate start date
+                if (startYear < 2000 || startMonth < 1 || startMonth > 12 || startDay < 1 || startDay > 31)
                 {
-                    return new JsonResult(new { success = false, message = "Starting month is required for non-monthly frequencies." });
+                    return new JsonResult(new { success = false, message = "Valid start year, month, and day are required." });
                 }
 
                 // Create the regular expense
@@ -204,8 +206,9 @@ namespace InvestmentTracker.Pages.Expenses
                 // Create the expense schedule
                 var schedule = new ExpenseSchedule
                 {
-                    StartYear = DateTime.Now.Year,
-                    StartMonth = startingMonth ?? DateTime.Now.Month,
+                    StartYear = startYear,
+                    StartMonth = startMonth,
+                    StartDay = startDay,
                     Amount = amount,
                     Frequency = parsedFrequency,
                     RegularExpense = expense
@@ -231,6 +234,7 @@ namespace InvestmentTracker.Pages.Expenses
             decimal amount, 
             string frequency, 
             int? startingMonth, 
+            int? startDay,
             string? description)
         {
             try
@@ -284,6 +288,7 @@ namespace InvestmentTracker.Pages.Expenses
                     {
                         StartYear = DateTime.Now.Year,
                         StartMonth = startingMonth ?? DateTime.Now.Month,
+                        StartDay = startDay ?? 1,
                         Amount = amount,
                         Frequency = parsedFrequency,
                         RegularExpense = expense

@@ -54,11 +54,21 @@ namespace InvestmentTracker.Pages.Expenses
                 FamilyMemberId = familyMemberId
             };
 
-            // Create initial schedule with month-based fields
+            // Create initial schedule with month and day-based fields
+            int startDay = 1;
+            if (Request.Form.ContainsKey("startDay"))
+            {
+                var startDayValue = Request.Form["startDay"];
+                if (!string.IsNullOrEmpty(startDayValue) && int.TryParse(startDayValue, out var parsedDay))
+                {
+                    startDay = parsedDay;
+                }
+            }
             expense.Schedules.Add(new ExpenseSchedule
             {
                 StartYear = startYear,
                 StartMonth = startMonth,
+                StartDay = startDay,
                 Amount = amount,
                 Frequency = Enum.Parse<Frequency>(frequency)
             });
