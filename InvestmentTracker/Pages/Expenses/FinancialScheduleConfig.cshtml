@@ -1,0 +1,37 @@
+@page
+@model InvestmentTracker.Pages.Expenses.FinancialScheduleConfigModel
+@{
+    ViewData["Title"] = "Financial Schedule Configuration";
+}
+
+<h2>Financial Schedule Configuration</h2>
+
+<form method="post">
+    <div class="mb-3">
+        <label for="ScheduleType" class="form-label">Schedule Type</label>
+        <select asp-for="ScheduleType" class="form-select">
+            <option value="Calendar">Calendar Month</option>
+            <option value="Custom">Custom Financial Schedule</option>
+        </select>
+    </div>
+    <div class="mb-3" id="customScheduleFields" style="display:none;">
+        <label for="StartDay" class="form-label">Start Day of Month</label>
+        <input asp-for="StartDay" type="number" min="1" max="31" class="form-control" />
+        <div class="form-text">
+            Your financial month will run from the selected day (e.g., 15th) of one month to the day before that in the next month (e.g., 15th Sep to 14th Oct).
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
+
+@section Scripts {
+    <script>
+        const scheduleTypeSelect = document.querySelector('[name="ScheduleType"]');
+        const customFields = document.getElementById('customScheduleFields');
+        function toggleCustomFields() {
+            customFields.style.display = scheduleTypeSelect.value === 'Custom' ? '' : 'none';
+        }
+        scheduleTypeSelect.addEventListener('change', toggleCustomFields);
+        toggleCustomFields();
+    </script>
+}
