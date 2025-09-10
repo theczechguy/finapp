@@ -104,7 +104,7 @@ cd deployment
 ### **PostgreSQL Settings**
 - Database: `finapp`
 - Username: `finapp` 
-- Password: `finapp123`
+- Password: `<YOUR_PASSWORD>`
 - Port: `5432`
 
 ### **Application Settings**

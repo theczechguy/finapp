@@ -151,7 +151,7 @@ The application uses PostgreSQL for all environments. To run locally:
 
 1. Start PostgreSQL (using Docker):
    ```bash
-   docker run --name postgres-finapp -e POSTGRES_PASSWORD=finapp123 -e POSTGRES_DB=finapp_dev -e POSTGRES_USER=finapp -p 5432:5432 -d postgres:16-alpine
+   docker run --name postgres-finapp -e POSTGRES_PASSWORD=<YOUR_PASSWORD> -e POSTGRES_DB=finapp_dev -e POSTGRES_USER=finapp -p 5432:5432 -d postgres:16-alpine
    ```
 
 2. Run the application:

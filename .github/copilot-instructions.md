@@ -32,7 +32,7 @@ Purpose: give AI coding agents the context and conventions needed to be producti
 - Local Run:
   - Requires PostgreSQL. Quick start (Docker):
     ```bash
-    docker run --name postgres-finapp -e POSTGRES_PASSWORD=finapp123 -e POSTGRES_DB=finapp_dev -e POSTGRES_USER=finapp -p 5432:5432 -d postgres:16-alpine
+    docker run --name postgres-finapp -e POSTGRES_PASSWORD=<YOUR_PASSWORD> -e POSTGRES_DB=finapp_dev -e POSTGRES_USER=finapp -p 5432:5432 -d postgres:16-alpine
     cd InvestmentTracker
     dotnet run
     ```
