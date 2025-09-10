@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: finapp
       POSTGRES_USER: finapp
-      POSTGRES_PASSWORD: finapp123
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
