@@ -1,3 +1,8 @@
+# Database backups and data files
+*.bckp
+*backup*
+docs/*.csv  # Personal financial data
+
 # .NET Core
 bin/
 obj/
