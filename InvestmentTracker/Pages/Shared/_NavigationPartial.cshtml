@@ -1,9 +1,10 @@
 @{
     var path = ViewContext.HttpContext.Request.Path;
-    var isExpensesSection = path.StartsWithSegments("/Expenses");
+    var isExpensesSection = path.StartsWithSegments("/Expenses") || path.StartsWithSegments("/Analytics");
     var isInvestmentsSection = path.StartsWithSegments("/Investments") ||
                               path.StartsWithSegments("/Values") ||
                               path.StartsWithSegments("/Portfolio");
+    var isAnalyticsSection = path.StartsWithSegments("/Analytics");
 }
 
 <ul class="navbar-nav flex-grow-1">
@@ -27,6 +28,11 @@
         <li class="nav-item">
             <a class="nav-link" asp-area="" asp-page="/Expenses/Budgets">Budgets</a>
         </li>
+        <li class="nav-item">
+            <a class="nav-link @(isAnalyticsSection ? "active" : "")" asp-area="" asp-page="/Analytics/Index">
+                <i class="bi bi-bar-chart-line me-1"></i>Analytics
+            </a>
+        </li>
     }
     else if (isInvestmentsSection)
     {
@@ -38,6 +44,12 @@
         </li>
         <li class="nav-item">
             <a class="nav-link" asp-area="" asp-page="/Values/Index">Values</a>
+        </li>
+    }
+    else
+    {
+        <li class="nav-item">
+            <a class="nav-link" asp-area="" asp-page="/Index">Home</a>
         </li>
     }
 </ul>

@@ -350,7 +350,6 @@ class KeyboardShortcutsManager {
         document.addEventListener('keydown', (e) => this.handleKeyPress(e));
         this.registerShortcuts();
         this.showHint();
-        this.initFormEnterHandling();
         this.initEscapeKeyHandling();  // Add direct ESC key handling
         
         // Make hide function globally available for HTML onclick

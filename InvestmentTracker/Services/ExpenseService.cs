@@ -782,5 +782,264 @@ namespace InvestmentTracker.Services
             _context.Update(income);
             return _context.SaveChangesAsync();
         }
+
+        // Analytics Methods
+        public async Task<List<CategoryExpenseData>> GetCategoryExpenseDataAsync(DateTime? startDate = null, DateTime? endDate = null)
+        {
+            var start = startDate ?? DateTime.Now.AddMonths(-12);
+            var end = endDate ?? DateTime.Now;
+
+            // Get regular expenses for the period
+            var monthIndexStart = start.Year * 12 + start.Month;
+            var monthIndexEnd = end.Year * 12 + end.Month;
+
+            var regularExpenses = await _context.RegularExpenses
+                .AsNoTracking()
+                .Include(e => e.Category)
+                .Include(e => e.Schedules)
+                .Where(e => e.Schedules.Any(s =>
+                    (s.StartYear * 12 + s.StartMonth) <= monthIndexEnd &&
+                    (s.EndYear == null || s.EndMonth == null || (s.EndYear * 12 + s.EndMonth) >= monthIndexStart)))
+                .ToListAsync();
+
+            // Get irregular expenses for the period
+            var irregularExpenses = await _context.IrregularExpenses
+                .AsNoTracking()
+                .Include(e => e.Category)
+                .Where(e => e.Date >= start && e.Date <= end)
+                .ToListAsync();
+
+            // Calculate category totals
+            var categoryTotals = new Dictionary<string, decimal>();
+
+            // Process regular expenses
+            foreach (var expense in regularExpenses.Where(e => e.Category != null))
+            {
+                var applicableSchedules = expense.Schedules
+                    .Where(s => s.IsActiveForMonth(start.Year, start.Month) || 
+                               s.IsActiveForMonth(end.Year, end.Month) ||
+                               (s.StartDate <= end && (s.EndDate == null || s.EndDate >= start)))
+                    .ToList();
+
+                foreach (var schedule in applicableSchedules)
+                {
+                    // Calculate months this schedule is active in the range
+                    var monthsActive = 0;
+                    for (var date = start; date <= end; date = date.AddMonths(1))
+                    {
+                        if (schedule.IsActiveForMonth(date.Year, date.Month) && 
+                            schedule.ShouldApplyInMonth(date.Year, date.Month))
+                        {
+                            monthsActive++;
+                        }
+                    }
+                    var totalForSchedule = schedule.Amount * monthsActive;
+                    categoryTotals.TryGetValue(expense.Category!.Name, out var current);
+                    categoryTotals[expense.Category.Name] = current + totalForSchedule;
+                }
+            }
+
+            // Process irregular expenses
+            foreach (var expense in irregularExpenses.Where(e => e.Category != null))
+            {
+                categoryTotals.TryGetValue(expense.Category!.Name, out var current);
+                categoryTotals[expense.Category.Name] = current + expense.Amount;
+            }
+
+            // Convert to CategoryExpenseData with colors
+            var colors = new[] { "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40", "#FF6384", "#C9CBCF" };
+            var result = categoryTotals
+                .OrderByDescending(kvp => kvp.Value)
+                .Select((kvp, index) => new CategoryExpenseData
+                {
+                    Category = kvp.Key,
+                    Amount = kvp.Value,
+                    Color = colors[index % colors.Length]
+                })
+                .ToList();
+
+            return result;
+        }
+
+        public async Task<List<MonthlyExpenseData>> GetMonthlyExpenseTrendsAsync(int months = 12)
+        {
+            var endDate = DateTime.Now;
+            var startDate = endDate.AddMonths(-months + 1);
+
+            var monthlyData = new List<MonthlyExpenseData>();
+
+            for (int i = 0; i < months; i++)
+            {
+                var currentMonth = startDate.AddMonths(i);
+                var nextMonth = currentMonth.AddMonths(1);
+
+                // Get regular expenses for this month
+                var monthIndex = currentMonth.Year * 12 + currentMonth.Month;
+                var regularExpenses = await _context.RegularExpenses
+                    .AsNoTracking()
+                    .Include(e => e.Schedules)
+                    .Where(e => e.Schedules.Any(s =>
+                        (s.StartYear * 12 + s.StartMonth) <= monthIndex &&
+                        (s.EndYear == null || s.EndMonth == null || (s.EndYear * 12 + s.EndMonth) >= monthIndex)))
+                    .ToListAsync();
+
+                decimal regularTotal = 0;
+                foreach (var expense in regularExpenses)
+                {
+                    var applicableSchedule = expense.Schedules
+                        .Where(s => s.IsActiveForMonth(currentMonth.Year, currentMonth.Month))
+                        .OrderByDescending(s => s.StartYear * 12 + s.StartMonth)
+                        .FirstOrDefault();
+
+                    if (applicableSchedule != null && applicableSchedule.ShouldApplyInMonth(currentMonth.Year, currentMonth.Month))
+                    {
+                        regularTotal += applicableSchedule.Amount;
+                    }
+                }
+
+                // Get irregular expenses for this month
+                var irregularTotal = await _context.IrregularExpenses
+                    .AsNoTracking()
+                    .Where(e => e.Date >= currentMonth && e.Date < nextMonth)
+                    .SumAsync(e => e.Amount);
+
+                var total = regularTotal + irregularTotal;
+
+                monthlyData.Add(new MonthlyExpenseData
+                {
+                    Month = currentMonth.ToString("MMM yyyy"),
+                    Amount = total
+                });
+            }
+
+            return monthlyData;
+        }
+
+        public async Task<MonthlyComparisonData> GetMonthlyComparisonAsync(DateTime? targetMonth = null)
+        {
+            var currentMonth = targetMonth ?? new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            var previousMonth = currentMonth.AddMonths(-1);
+            var nextMonth = currentMonth.AddMonths(1);
+
+            // Get expenses for current month
+            var currentMonthExpenses = await GetExpensesForMonthAsync(currentMonth);
+            var previousMonthExpenses = await GetExpensesForMonthAsync(previousMonth);
+
+            // Calculate totals
+            var currentTotal = currentMonthExpenses.Sum(e => e.Amount);
+            var previousTotal = previousMonthExpenses.Sum(e => e.Amount);
+            var changeAmount = currentTotal - previousTotal;
+            var changePercent = previousTotal != 0 ? (changeAmount / previousTotal) * 100 : 0;
+
+            // Determine trend
+            string trend = "stable";
+            if (changeAmount > 0) trend = "up";
+            else if (changeAmount < 0) trend = "down";
+
+            // Get all categories that appear in either month
+            var allCategories = currentMonthExpenses.Select(e => e.Category)
+                .Union(previousMonthExpenses.Select(e => e.Category))
+                .Distinct()
+                .OrderBy(c => c)
+                .ToList();
+
+            // Calculate category comparisons
+            var categoryComparisons = new List<CategoryComparisonData>();
+            var colors = new[] { "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40", "#FF6384", "#C9CBCF" };
+
+            for (int i = 0; i < allCategories.Count; i++)
+            {
+                var category = allCategories[i];
+                var currentAmount = currentMonthExpenses.Where(e => e.Category == category).Sum(e => e.Amount);
+                var previousAmount = previousMonthExpenses.Where(e => e.Category == category).Sum(e => e.Amount);
+                var catChangeAmount = currentAmount - previousAmount;
+                var catChangePercent = previousAmount != 0 ? (catChangeAmount / previousAmount) * 100 : 0;
+
+                string catTrend = "stable";
+                if (catChangeAmount > 0) catTrend = "up";
+                else if (catChangeAmount < 0) catTrend = "down";
+
+                categoryComparisons.Add(new CategoryComparisonData
+                {
+                    Category = category,
+                    CurrentMonth = currentAmount,
+                    PreviousMonth = previousAmount,
+                    ChangeAmount = catChangeAmount,
+                    ChangePercent = catChangePercent,
+                    Trend = catTrend,
+                    Color = colors[i % colors.Length]
+                });
+            }
+
+            return new MonthlyComparisonData
+            {
+                CurrentMonth = currentMonth.ToString("MMMM yyyy"),
+                PreviousMonth = previousMonth.ToString("MMMM yyyy"),
+                CurrentTotal = currentTotal,
+                PreviousTotal = previousTotal,
+                ChangeAmount = changeAmount,
+                ChangePercent = changePercent,
+                Trend = trend,
+                CategoryComparisons = categoryComparisons.OrderByDescending(c => c.CurrentMonth).ToList()
+            };
+        }
+
+        private async Task<List<ExpenseItem>> GetExpensesForMonthAsync(DateTime month)
+        {
+            var nextMonth = month.AddMonths(1);
+            var expenses = new List<ExpenseItem>();
+
+            // Get regular expenses for this month
+            var monthIndex = month.Year * 12 + month.Month;
+            var regularExpenses = await _context.RegularExpenses
+                .AsNoTracking()
+                .Include(e => e.Category)
+                .Include(e => e.Schedules)
+                .Where(e => e.Schedules.Any(s =>
+                    (s.StartYear * 12 + s.StartMonth) <= monthIndex &&
+                    (s.EndYear == null || s.EndMonth == null || (s.EndYear * 12 + s.EndMonth) >= monthIndex)))
+                .ToListAsync();
+
+            foreach (var expense in regularExpenses.Where(e => e.Category != null))
+            {
+                var applicableSchedule = expense.Schedules
+                    .Where(s => s.IsActiveForMonth(month.Year, month.Month))
+                    .OrderByDescending(s => s.StartYear * 12 + s.StartMonth)
+                    .FirstOrDefault();
+
+                if (applicableSchedule != null && applicableSchedule.ShouldApplyInMonth(month.Year, month.Month))
+                {
+                    expenses.Add(new ExpenseItem
+                    {
+                        Category = expense.Category!.Name,
+                        Amount = applicableSchedule.Amount
+                    });
+                }
+            }
+
+            // Get irregular expenses for this month
+            var irregularExpenses = await _context.IrregularExpenses
+                .AsNoTracking()
+                .Include(e => e.Category)
+                .Where(e => e.Date >= month && e.Date < nextMonth && e.Category != null)
+                .ToListAsync();
+
+            foreach (var expense in irregularExpenses)
+            {
+                expenses.Add(new ExpenseItem
+                {
+                    Category = expense.Category!.Name,
+                    Amount = expense.Amount
+                });
+            }
+
+            return expenses;
+        }
+
+        private class ExpenseItem
+        {
+            public string Category { get; set; } = string.Empty;
+            public decimal Amount { get; set; }
+        }
     }
 }
