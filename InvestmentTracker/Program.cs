@@ -6,6 +6,12 @@ using InvestmentTracker.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load .env file in Development environment
+if (builder.Environment.IsDevelopment())
+{
+    DotNetEnv.Env.Load();
+}
+
 // Add services to the container.
 
 builder.Services.AddRazorPages(options => { })
