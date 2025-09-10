@@ -361,7 +361,7 @@ class KeyboardShortcutsManager {
         this.shortcuts.set('h', () => this.navigateTo('/'));
         this.shortcuts.set('e', () => this.navigateTo('/Expenses/Index'));
         this.shortcuts.set('i', () => this.navigateTo('/Investments/List'));
-        this.shortcuts.set('p', () => this.navigateTo('/Portfolio/Index'));
+        this.shortcuts.set('t', () => this.navigateTo('/Portfolio/Index')); // Changed from 'p' to 't' for porTfolio
         this.shortcuts.set('v', () => this.navigateTo('/Values/Index'));
 
         // Help shortcut
@@ -395,13 +395,13 @@ class KeyboardShortcutsManager {
 
         // Investment pages shortcuts
         if (currentPath.includes('/Investments')) {
-            this.shortcuts.set('n', () => this.navigateTo('/Investments/Create'));
+            this.shortcuts.set('c', () => this.navigateTo('/Investments/Create')); // Changed from 'n' to 'c' for Create
         }
 
         // Values page shortcuts
         if (currentPath.includes('/Values') || (currentPath.includes('/Investments/') && currentPath.includes('Values'))) {
             this.shortcuts.set('a', () => this.focusValueForm());
-            this.shortcuts.set('c', () => this.focusContributionForm());
+            this.shortcuts.set('b', () => this.focusContributionForm()); // Changed from 'c' to 'b' for contriB
             this.shortcuts.set('f', () => this.focusSearchField());
         }
     }

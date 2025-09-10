@@ -65,7 +65,7 @@
                             </div>
                             <div class="col-md-3 d-flex align-items-end">
                                 <button class="btn btn-secondary w-100" onclick="clearFilters()">
-                                    <i class="fas fa-times me-1"></i>Clear Filters
+                                    <i class="bi bi-x-lg me-1"></i>Clear Filters
                                 </button>
                             </div>
                         </div>
@@ -165,7 +165,7 @@
                                             <td>
                                                 @if (expense.IsAlternativeSchedule)
                                                 {
-                                                    <i class="fas fa-calendar-alt text-warning me-2" title="Alternative Schedule"></i>
+                                                    <i class="bi bi-calendar-event text-warning me-2" title="Alternative Schedule"></i>
                                                 }
                                                 <strong>@expense.Name</strong>
                                                 @if (!string.IsNullOrWhiteSpace(expense.Description))
@@ -314,7 +314,7 @@
                                 <option value="12">December</option>
                             </select>
                             <div class="form-text">
-                                <i class="fas fa-info-circle text-primary me-1"></i>
+                                <i class="bi bi-info-circle text-primary me-1"></i>
                                 <span id="frequencyHelp">Select the month when this expense should first occur.</span>
                             </div>
                         </div>

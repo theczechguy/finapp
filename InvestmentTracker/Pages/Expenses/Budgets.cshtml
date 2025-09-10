@@ -105,7 +105,7 @@
                                             <input type="hidden" name="month" value="@Model.ViewModel.Month" />
                                             <div class="input-group input-group-sm" style="width: 140px;">
                                                 <span class="input-group-text d-inline d-sm-none" style="font-size: 0.75rem;">Budget</span>
-                                                <input name="amount" type="number" step="1" min="1" max="10000000" class="form-control" style="width: 100px;" value="@(b.BudgetAmount ?? 0)" placeholder="Amount" oninput="this.value = Math.floor(Math.abs(this.value)) || ''"/>
+                                                <input name="amount" type="number" step="1" min="1" max="10000000" class="form-control" style="width: 100px;" value="@(b.BudgetAmount ?? 0)" placeholder="Amount" required />
                                             </div>
                                             <button type="submit" class="btn btn-sm btn-primary" style="width: 40px; height: 31px;" title="Update budget for this month only (future months keep original amount)" aria-label="Update budget for this month only">
                                                 <i class="bi bi-save"></i>
@@ -122,7 +122,7 @@
                                             <input type="hidden" name="scope" value="future" />
                                             <div class="input-group input-group-sm" style="width: 140px;">
                                                 <span class="input-group-text d-inline d-sm-none" style="font-size: 0.75rem;">Budget</span>
-                                                <input name="amount" type="number" step="1" min="1" max="10000000" class="form-control" style="width: 100px;" value="0" placeholder="Amount" oninput="this.value = Math.floor(Math.abs(this.value)) || ''"/>
+                                                <input name="amount" type="number" step="1" min="1" max="10000000" class="form-control" style="width: 100px;" placeholder="Amount" required />
                                             </div>
                                             <button type="submit" class="btn btn-sm btn-primary" style="width: 40px; height: 31px;" title="Create budget (applies to this month and all future months)" aria-label="Create budget">
                                                 <i class="bi bi-save"></i>
