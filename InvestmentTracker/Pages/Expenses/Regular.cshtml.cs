@@ -233,8 +233,9 @@ namespace InvestmentTracker.Pages.Expenses
             int categoryId, 
             decimal amount, 
             string frequency, 
-            int? startingMonth, 
-            int? startDay,
+            int startYear,
+            int startMonth,
+            int startDay,
             string? description)
         {
             try
@@ -251,10 +252,10 @@ namespace InvestmentTracker.Pages.Expenses
                     return new JsonResult(new { success = false, message = "Invalid frequency selected." });
                 }
 
-                // Validate starting month for non-monthly frequencies
-                if (parsedFrequency != Frequency.Monthly && (!startingMonth.HasValue || startingMonth < 1 || startingMonth > 12))
+                // Validate start date
+                if (startYear < 2000 || startMonth < 1 || startMonth > 12 || startDay < 1 || startDay > 31)
                 {
-                    return new JsonResult(new { success = false, message = "Starting month is required for non-monthly frequencies." });
+                    return new JsonResult(new { success = false, message = "Valid start year, month, and day are required." });
                 }
 
                 // Find the expense
@@ -279,16 +280,18 @@ namespace InvestmentTracker.Pages.Expenses
                     // Update existing schedule
                     currentSchedule.Amount = amount;
                     currentSchedule.Frequency = parsedFrequency;
-                    currentSchedule.StartMonth = startingMonth ?? DateTime.Now.Month;
+                    currentSchedule.StartYear = startYear;
+                    currentSchedule.StartMonth = startMonth;
+                    currentSchedule.StartDay = startDay;
                 }
                 else
                 {
                     // Create new schedule if none exists
                     var schedule = new ExpenseSchedule
                     {
-                        StartYear = DateTime.Now.Year,
-                        StartMonth = startingMonth ?? DateTime.Now.Month,
-                        StartDay = startDay ?? 1,
+                        StartYear = startYear,
+                        StartMonth = startMonth,
+                        StartDay = startDay,
                         Amount = amount,
                         Frequency = parsedFrequency,
                         RegularExpense = expense
@@ -303,6 +306,89 @@ namespace InvestmentTracker.Pages.Expenses
             catch
             {
                 return new JsonResult(new { success = false, message = "An error occurred while updating the expense." });
+            }
+        }
+
+        public async Task<IActionResult> OnPostBulkUpdateStartDateAsync(string expenseIds, int startYear, int startMonth, int startDay)
+        {
+            try
+            {
+                // Parse expense IDs
+                if (string.IsNullOrWhiteSpace(expenseIds))
+                {
+                    return new JsonResult(new { success = false, message = "No expenses selected." });
+                }
+
+                var ids = expenseIds.Split(',')
+                    .Select(id => int.TryParse(id.Trim(), out var parsedId) ? (int?)parsedId : null)
+                    .Where(id => id.HasValue)
+                    .Select(id => id!.Value)
+                    .ToList();
+
+                if (!ids.Any())
+                {
+                    return new JsonResult(new { success = false, message = "Invalid expense IDs provided." });
+                }
+
+                // Validate start date
+                if (startYear < 2000 || startMonth < 1 || startMonth > 12 || startDay < 1 || startDay > 31)
+                {
+                    return new JsonResult(new { success = false, message = "Valid start year, month, and day are required." });
+                }
+
+                // Get expenses with their schedules
+                var expenses = await _context.RegularExpenses
+                    .Include(e => e.Schedules)
+                    .Where(e => ids.Contains(e.Id))
+                    .ToListAsync();
+
+                if (!expenses.Any())
+                {
+                    return new JsonResult(new { success = false, message = "No valid expenses found." });
+                }
+
+                var updatedCount = 0;
+
+                foreach (var expense in expenses)
+                {
+                    var currentSchedule = expense.Schedules.FirstOrDefault();
+                    if (currentSchedule != null)
+                    {
+                        // Update existing schedule
+                        currentSchedule.StartYear = startYear;
+                        currentSchedule.StartMonth = startMonth;
+                        currentSchedule.StartDay = startDay;
+                        updatedCount++;
+                    }
+                    else
+                    {
+                        // Create new schedule if none exists
+                        var newSchedule = new ExpenseSchedule
+                        {
+                            StartYear = startYear,
+                            StartMonth = startMonth,
+                            StartDay = startDay,
+                            Amount = expense.Amount,
+                            Frequency = expense.Recurrence,
+                            RegularExpense = expense
+                        };
+                        expense.Schedules.Add(newSchedule);
+                        updatedCount++;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                return new JsonResult(new 
+                { 
+                    success = true, 
+                    message = $"Successfully updated start date for {updatedCount} expense(s).",
+                    updatedCount = updatedCount
+                });
+            }
+            catch (Exception ex)
+            {
+                return new JsonResult(new { success = false, message = $"An error occurred while updating expenses: {ex.Message}" });
             }
         }
 
@@ -358,7 +444,9 @@ namespace InvestmentTracker.Pages.Expenses
                         amount = currentSchedule?.Amount ?? 0,
                         categoryId = expense.ExpenseCategoryId,
                         frequency = currentSchedule?.Frequency.ToString() ?? "Monthly",
-                        startingMonth = currentSchedule?.StartMonth ?? DateTime.Now.Month,
+                        startYear = currentSchedule?.StartYear ?? DateTime.Now.Year,
+                        startMonth = currentSchedule?.StartMonth ?? DateTime.Now.Month,
+                        startDay = currentSchedule?.StartDay ?? 1,
                         hasSchedule = currentSchedule != null
                     }
                 });
