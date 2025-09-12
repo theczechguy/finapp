@@ -19,6 +19,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ExpenseSchedule> ExpenseSchedules => Set<ExpenseSchedule>();
     public DbSet<FamilyMember> FamilyMember => Set<FamilyMember>();
     public DbSet<CategoryBudget> CategoryBudgets => Set<CategoryBudget>();
+    public DbSet<FinancialScheduleConfig> FinancialScheduleConfigs => Set<FinancialScheduleConfig>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
