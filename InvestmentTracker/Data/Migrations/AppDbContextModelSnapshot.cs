@@ -188,6 +188,29 @@ namespace InvestmentTracker.Data.Migrations
                     b.ToTable("FamilyMember");
                 });
 
+            modelBuilder.Entity("InvestmentTracker.Models.FinancialScheduleConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ScheduleType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("StartDay")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FinancialScheduleConfigs");
+                });
+
             modelBuilder.Entity("InvestmentTracker.Models.IncomeSource", b =>
                 {
                     b.Property<int>("Id")

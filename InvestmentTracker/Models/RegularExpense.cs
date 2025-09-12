@@ -52,9 +52,12 @@ public class RegularExpense
 
     private decimal GetCurrentAmount()
     {
+        // Order by raw date components to avoid triggering StartDate property evaluation
         var currentSchedule = Schedules
             .Where(s => s.StartDate <= DateTime.Today && (s.EndDate == null || s.EndDate >= DateTime.Today))
-            .OrderByDescending(s => s.StartDate)
+            .OrderByDescending(s => s.StartYear)
+            .ThenByDescending(s => s.StartMonth)
+            .ThenByDescending(s => s.StartDay)
             .FirstOrDefault();
 
         return currentSchedule?.Amount ?? 0;
@@ -62,9 +65,12 @@ public class RegularExpense
 
     private Frequency GetCurrentFrequency()
     {
+        // Order by raw date components to avoid triggering StartDate property evaluation
         var currentSchedule = Schedules
             .Where(s => s.StartDate <= DateTime.Today && (s.EndDate == null || s.EndDate >= DateTime.Today))
-            .OrderByDescending(s => s.StartDate)
+            .OrderByDescending(s => s.StartYear)
+            .ThenByDescending(s => s.StartMonth)
+            .ThenByDescending(s => s.StartDay)
             .FirstOrDefault();
 
         return currentSchedule?.Frequency ?? Frequency.Monthly;
@@ -72,12 +78,28 @@ public class RegularExpense
 
     private DateTime GetStartDate()
     {
-        return Schedules.OrderBy(s => s.StartDate).FirstOrDefault()?.StartDate ?? DateTime.Today;
+        // Order by raw date components to avoid triggering StartDate property evaluation
+        // which could fail on invalid dates in the database
+        var earliestSchedule = Schedules
+            .OrderBy(s => s.StartYear)
+            .ThenBy(s => s.StartMonth)
+            .ThenBy(s => s.StartDay)
+            .FirstOrDefault();
+
+        return earliestSchedule?.StartDate ?? DateTime.Today;
     }
 
     private DateTime? GetEndDate()
     {
-        return Schedules.OrderByDescending(s => s.EndDate ?? DateTime.MaxValue).FirstOrDefault()?.EndDate;
+        // Order by raw date components to avoid triggering EndDate property evaluation
+        var latestSchedule = Schedules
+            .Where(s => s.EndYear.HasValue && s.EndMonth.HasValue && s.EndDay.HasValue)
+            .OrderByDescending(s => s.EndYear)
+            .ThenByDescending(s => s.EndMonth)
+            .ThenByDescending(s => s.EndDay)
+            .FirstOrDefault();
+
+        return latestSchedule?.EndDate;
     }
 
     // Get frequency info for display purposes
