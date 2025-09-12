@@ -1,7 +1,7 @@
 # Configurable Financial Schedule – Design Document
 
 ## Scope
-- Applies only to the expense dashboard and analytics views.
+- Applies only to the expense dashboard.
 - Regular and irregular expense entry remains calendar-based.
 - No migration concerns; schema can be recreated as needed.
 
@@ -9,7 +9,7 @@
 - User can choose between calendar month or custom financial schedule.
 - For custom schedule, user specifies:
   - Start date (e.g., 15th of month)
-  - Schedule length (number of days; not limited to 1 month)
+  - Schedule length is fixed at 1 month (custom financial months align with calendar months but start on a different day)
 
 ## Regular Expense Changes
 - Regular expenses should allow specifying a start date (day of month), not just the month.
