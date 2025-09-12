@@ -3,6 +3,7 @@ using InvestmentTracker.Infrastructure;
 using InvestmentTracker.Services;
 using Microsoft.EntityFrameworkCore;
 using InvestmentTracker.Endpoints;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,6 +49,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IInvestmentService, InvestmentService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<CsvImportService>();
+
+// Configure Data Protection for persistent keys in production
+if (!builder.Environment.IsDevelopment())
+{
+    builder.Services.AddDataProtection()
+        .SetApplicationName("FinApp");
+}
 
 var app = builder.Build();
 
