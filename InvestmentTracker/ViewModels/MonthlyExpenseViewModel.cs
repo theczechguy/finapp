@@ -5,8 +5,9 @@ namespace InvestmentTracker.ViewModels
 {
     public class MonthlyExpenseViewModel
     {
-        public int Year { get; set; }
-        public int Month { get; set; }
+        public DateTime SelectedDate { get; set; }
+        public int Year => SelectedDate.Year;
+        public int Month => SelectedDate.Month;
         public decimal TotalIncome { get; set; }
         public decimal TotalExpenses { get; set; }
         public decimal NetBalance => TotalIncome - TotalExpenses;
@@ -17,7 +18,10 @@ namespace InvestmentTracker.ViewModels
         public List<IrregularExpense> IrregularExpenses { get; set; } = new();
         public Dictionary<string, decimal> ExpensesByCategory { get; set; } = new();
 
-        public List<BudgetItemViewModel> Budgets { get; set; } = new();
+    public List<BudgetItemViewModel> Budgets { get; set; } = new();
+
+    // Add schedule config for dashboard UI
+    public FinancialScheduleConfig? ScheduleConfig { get; set; }
     }
 
     public class BudgetItemViewModel

@@ -9,6 +9,7 @@ namespace InvestmentTracker.Services
     public interface IExpenseService
     {
         Task<MonthlyExpenseViewModel> GetMonthlyDataAsync(int year, int month);
+        Task<FinancialScheduleConfig?> GetFinancialScheduleConfigAsync();
         Task AddIncomeSourceAsync(IncomeSource incomeSource);
         Task UpdateIncomeSourceAsync(IncomeSource incomeSource);
         Task LogOrUpdateMonthlyIncomeAsync(int incomeSourceId, int year, int month, decimal actualAmount);
@@ -45,10 +46,5 @@ namespace InvestmentTracker.Services
     Task SetCategoryBudgetAsync(int categoryId, decimal amount, int year, int month, bool applyToFuture);
     Task DeleteCategoryBudgetAsync(int categoryId, int year, int month);
     Task<List<BudgetHistoryItem>> GetBudgetHistoryAsync(int categoryId);
-
-    // Analytics
-    Task<List<CategoryExpenseData>> GetCategoryExpenseDataAsync(DateTime? startDate = null, DateTime? endDate = null);
-    Task<List<MonthlyExpenseData>> GetMonthlyExpenseTrendsAsync(int months = 12);
-    Task<MonthlyComparisonData> GetMonthlyComparisonAsync(DateTime? targetMonth = null);
     }
 }
