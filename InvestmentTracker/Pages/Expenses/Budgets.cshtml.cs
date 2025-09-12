@@ -21,17 +21,15 @@ namespace InvestmentTracker.Pages.Expenses
         }
 
         [BindProperty(SupportsGet = true)]
-        public int? Year { get; set; }
-
-        [BindProperty(SupportsGet = true)]
-        public int? Month { get; set; }
+        public DateTime? SelectedDate { get; set; }
 
         public MonthlyExpenseViewModel ViewModel { get; set; } = new();
 
         public async Task OnGetAsync()
         {
-            var selectedYear = Year ?? DateTime.Today.Year;
-            var selectedMonth = Month ?? DateTime.Today.Month;
+            var selectedDate = SelectedDate ?? DateTime.Today;
+            var selectedYear = selectedDate.Year;
+            var selectedMonth = selectedDate.Month;
 
             // Seed default categories if needed
             await _expenseService.SeedDefaultCategoriesAsync();
@@ -72,13 +70,13 @@ namespace InvestmentTracker.Pages.Expenses
 
             var applyToFuture = string.Equals(scope, "future", StringComparison.OrdinalIgnoreCase);
             await _expenseService.SetCategoryBudgetAsync(categoryId, amount, year, month, applyToFuture);
-            return RedirectToPage(new { year, month });
+            return RedirectToPage(new { SelectedDate = new DateTime(year, month, 1) });
         }
 
         public async Task<IActionResult> OnPostDeleteBudgetAsync(int categoryId, int year, int month)
         {
             await _expenseService.DeleteCategoryBudgetAsync(categoryId, year, month);
-            return RedirectToPage(new { year, month });
+            return RedirectToPage(new { SelectedDate = new DateTime(year, month, 1) });
         }
 
         public async Task<IActionResult> OnGetBudgetHistoryAsync(int categoryId)

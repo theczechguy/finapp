@@ -18,17 +18,26 @@ namespace InvestmentTracker.Pages.Expenses
         }
 
         [BindProperty(SupportsGet = true)]
-        public int? Year { get; set; }
-
-        [BindProperty(SupportsGet = true)]
-        public int? Month { get; set; }
+        public DateTime? SelectedDate { get; set; }
 
         public MonthlyExpenseViewModel ViewModel { get; set; } = new();
 
         public async Task OnGetAsync()
         {
-            var selectedYear = Year ?? DateTime.Today.Year;
-            var selectedMonth = Month ?? DateTime.Today.Month;
+            DateTime selectedDate;
+            
+            if (SelectedDate.HasValue)
+            {
+                selectedDate = SelectedDate.Value;
+            }
+            else
+            {
+                // When no date is specified, determine the default based on schedule configuration
+                selectedDate = await GetDefaultSelectedDateAsync();
+            }
+            
+            var selectedYear = selectedDate.Year;
+            var selectedMonth = selectedDate.Month;
 
             // Seed default categories if needed
             await _expenseService.SeedDefaultCategoriesAsync();
@@ -36,11 +45,53 @@ namespace InvestmentTracker.Pages.Expenses
             ViewModel = await _expenseService.GetMonthlyDataAsync(selectedYear, selectedMonth);
         }
 
+        private async Task<DateTime> GetDefaultSelectedDateAsync()
+        {
+            // Load financial schedule config to determine default view
+            var config = await _expenseService.GetFinancialScheduleConfigAsync();
+            string scheduleType = config?.ScheduleType ?? "Calendar";
+            int startDay = config?.StartDay ?? 1;
+            
+            var today = DateTime.Today;
+            
+            if (scheduleType == "Custom")
+            {
+                // For custom schedules, find the start date of the period containing today
+                int currentYear = today.Year;
+                int currentMonth = today.Month; // 1-based
+                int currentDay = today.Day;
+                
+                if (currentDay >= startDay)
+                {
+                    // Current date is in the period starting this month
+                    return new DateTime(currentYear, currentMonth, startDay);
+                }
+                else
+                {
+                    // Current date is in the period starting last month
+                    if (currentMonth == 1)
+                    {
+                        // January, so go to December of previous year
+                        return new DateTime(currentYear - 1, 12, startDay);
+                    }
+                    else
+                    {
+                        return new DateTime(currentYear, currentMonth - 1, startDay);
+                    }
+                }
+            }
+            else
+            {
+                // For calendar months, use the first day of current month
+                return new DateTime(today.Year, today.Month, 1);
+            }
+        }
+
         public async Task<IActionResult> OnPostUpdateIncomeAsync(int incomeSourceId, decimal actualAmount, int year, int month)
         {
             await _expenseService.LogOrUpdateMonthlyIncomeAsync(incomeSourceId, year, month, actualAmount);
             TempData["ToastSuccess"] = "Income updated.";
-            return RedirectToPage(new { year, month });
+            return RedirectToPage(new { SelectedDate = new DateTime(year, month, 1) });
         }
 
         public async Task<IActionResult> OnPostAddRegularExpenseAsync(string name, decimal amount, int categoryId, string frequency, int startYear, int startMonth, string currency, string expenseType, int? familyMemberId)
@@ -75,7 +126,7 @@ namespace InvestmentTracker.Pages.Expenses
 
             await _expenseService.AddRegularExpenseAsync(expense);
             TempData["ToastSuccess"] = "Regular expense added.";
-            return RedirectToPage(new { Year, Month });
+            return RedirectToPage(new { SelectedDate });
         }
 
         public async Task<IActionResult> OnPostAddIrregularExpenseAsync(string name, decimal amount, int categoryId, DateTime date, string currency, string expenseType, int? familyMemberId)
@@ -93,14 +144,14 @@ namespace InvestmentTracker.Pages.Expenses
 
             await _expenseService.AddIrregularExpenseAsync(expense);
             TempData["ToastSuccess"] = "Irregular expense added.";
-            return RedirectToPage(new { Year, Month });
+            return RedirectToPage(new { SelectedDate });
         }
 
         public async Task<IActionResult> OnPostDeleteIrregularExpenseAsync(int expenseId)
         {
             await _expenseService.DeleteIrregularExpenseAsync(expenseId);
             TempData["ToastSuccess"] = "Irregular expense deleted.";
-            return RedirectToPage(new { Year, Month });
+            return RedirectToPage(new { SelectedDate });
         }
 
         public async Task<IEnumerable<ExpenseCategory>> GetExpenseCategoriesAsync()
@@ -127,7 +178,7 @@ namespace InvestmentTracker.Pages.Expenses
             var startDate = new DateTime(startYear, startMonth, 1);
             await _expenseService.UpdateRegularExpenseScheduleAsync(id, amount, Enum.Parse<Frequency>(frequency), startDate);
             TempData["ToastSuccess"] = "Regular expense updated.";
-            return RedirectToPage(new { Year, Month });
+            return RedirectToPage(new { SelectedDate });
         }
 
         public async Task<IActionResult> OnPostUpdateIrregularExpenseAsync(int id, string name, decimal amount, int categoryId, DateTime date, string currency, string expenseType, int? familyMemberId)
@@ -148,7 +199,7 @@ namespace InvestmentTracker.Pages.Expenses
 
             await _expenseService.UpdateIrregularExpenseAsync(existingExpense);
             TempData["ToastSuccess"] = "Irregular expense updated.";
-            return RedirectToPage(new { Year, Month });
+            return RedirectToPage(new { SelectedDate });
         }
 
         public async Task<IActionResult> OnPostAddOneTimeIncomeAsync(string name, decimal amount, DateTime date, string currency, int? incomeSourceId)
@@ -164,7 +215,7 @@ namespace InvestmentTracker.Pages.Expenses
 
             await _expenseService.AddOneTimeIncomeAsync(income);
             TempData["ToastSuccess"] = "One-time income added.";
-            return RedirectToPage(new { Year, Month });
+            return RedirectToPage(new { SelectedDate });
         }
 
         public async Task<IActionResult> OnPostUpdateOneTimeIncomeAsync(int id, string name, decimal amount, DateTime date, string currency, int? incomeSourceId)
@@ -183,14 +234,14 @@ namespace InvestmentTracker.Pages.Expenses
 
             await _expenseService.UpdateOneTimeIncomeAsync(existingIncome);
             TempData["ToastSuccess"] = "One-time income updated.";
-            return RedirectToPage(new { Year, Month });
+            return RedirectToPage(new { SelectedDate });
         }
 
         public async Task<IActionResult> OnPostDeleteOneTimeIncomeAsync(int incomeId)
         {
             await _expenseService.DeleteOneTimeIncomeAsync(incomeId);
             TempData["ToastSuccess"] = "One-time income deleted.";
-            return RedirectToPage(new { Year, Month });
+            return RedirectToPage(new { SelectedDate });
         }
 
         public async Task<IEnumerable<IncomeSource>> GetIncomeSourcesAsync()
