@@ -2,6 +2,17 @@
 
 Purpose: give AI coding agents the context and conventions needed to be productive in this repo without guesswork.
 
+## Core directives
+- Be concise: prefer brevity over verbosity.
+- Be pragmatic: prefer practical solutions over theoretical purity.
+- Be consistent: follow existing patterns unless there’s a strong reason not to.
+- Prioritize clarity: write code that is easy to read and understand.
+- Favor maintainability: write code that is easy to modify and extend.
+- Always make sure to not break existing functionality unless explicitly asked to refactor or improve it.
+
+- For expense section, the core page is the expense dashboard
+- When implementing a new feature always summarize the requirement and ask for confirmation before proceeding.
+
 ## Architecture Overview
 - App: ASP.NET Core 8 Razor Pages app in `InvestmentTracker/` with EF Core 8 + PostgreSQL.
 - Data: EF Core models in `InvestmentTracker/Models`, DbContext in `Data/AppDbContext.cs`, migrations in `Data/Migrations`.
