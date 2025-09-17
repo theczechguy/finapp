@@ -18,9 +18,8 @@
     string headingText;
     if (activeScheduleType == "Custom")
     {
-        var startDate = new DateTime(Model.ViewModel.SelectedDate.Year, Model.ViewModel.SelectedDate.Month, activeStartDay);
-        var nextMonth = startDate.AddMonths(1);
-        var endDate = new DateTime(nextMonth.Year, nextMonth.Month, activeStartDay).AddDays(-1);
+        var startDate = Model.ViewModel.FinancialMonthStartDate;
+        var endDate = Model.ViewModel.FinancialMonthEndDate;
         headingText = $"Expenses: {startDate:dd MMM yyyy} – {endDate:dd MMM yyyy}";
         ViewData["Title"] = headingText;
     }
@@ -46,7 +45,16 @@
 
 
 <div class="d-flex align-items-center justify-content-between mb-3">
-    <h2 class="mb-0">@headingText</h2>
+    <div class="d-flex align-items-center">
+        <h2 class="mb-0 me-3">@headingText</h2>
+        @if (activeScheduleType == "Custom")
+        {
+            <button type="button" class="btn btn-primary btn-lg ms-2 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#adjustStartDateModal" title="Adjust start date for this month">
+                <i class="bi bi-calendar-plus me-2"></i>
+                <span>Adjust Start Date</span>
+            </button>
+        }
+    </div>
     <form method="get" class="d-flex align-items-end gap-2 mb-0">
         <div>
             <label for="monthPicker" class="form-label mb-0">Month</label>
@@ -965,6 +973,31 @@
                         <i class="bi bi-save"></i>
                         <span class="d-none d-sm-inline ms-1">Update Income</span>
                     </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Adjust Start Date Modal -->
+<div class="modal fade" id="adjustStartDateModal" tabindex="-1" aria-labelledby="adjustStartDateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="adjustStartDateModalLabel">Adjust Financial Month Start Date</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" asp-page-handler="AdjustStartDate" data-loading="Saving...">
+                    <input type="hidden" name="SelectedDate" value="@Model.ViewModel.SelectedDate.ToString("yyyy-MM-dd")" />
+                    <div class="mb-3">
+                        <label for="overrideStartDate" class="form-label">New Start Date for this Financial Month</label>
+                        <input type="date" id="overrideStartDate" name="overrideDate" class="form-control" required />
+                        <div class="form-text">
+                            Select the exact date when this financial month should begin. This will only affect the current period.
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
                 </form>
             </div>
         </div>

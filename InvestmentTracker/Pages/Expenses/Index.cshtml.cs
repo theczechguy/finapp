@@ -244,6 +244,21 @@ namespace InvestmentTracker.Pages.Expenses
             return RedirectToPage(new { SelectedDate });
         }
 
+        public async Task<IActionResult> OnPostAdjustStartDateAsync(DateTime overrideDate)
+        {
+            if (SelectedDate == null)
+            {
+                TempData["ToastError"] = "Cannot adjust start date without a selected month.";
+                return RedirectToPage();
+            }
+
+            var targetMonth = new DateTime(SelectedDate.Value.Year, SelectedDate.Value.Month, 1);
+            await _expenseService.SetFinancialMonthOverrideAsync(targetMonth, overrideDate);
+
+            TempData["ToastSuccess"] = "Financial month start date adjusted.";
+            return RedirectToPage(new { SelectedDate });
+        }
+
         public async Task<IEnumerable<IncomeSource>> GetIncomeSourcesAsync()
         {
             return await _expenseService.GetAllIncomeSourcesAsync();

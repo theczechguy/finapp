@@ -20,6 +20,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<FamilyMember> FamilyMember => Set<FamilyMember>();
     public DbSet<CategoryBudget> CategoryBudgets => Set<CategoryBudget>();
     public DbSet<FinancialScheduleConfig> FinancialScheduleConfigs => Set<FinancialScheduleConfig>();
+    public DbSet<FinancialMonthOverride> FinancialMonthOverrides => Set<FinancialMonthOverride>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -142,6 +143,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<CategoryBudget>()
             .HasIndex(cb => new { cb.StartYear, cb.StartMonth, cb.EndYear, cb.EndMonth, cb.ExpenseCategoryId, cb.Amount })
             .HasDatabaseName("IX_CategoryBudgets_CoveringQuery");
+
+        modelBuilder.Entity<FinancialMonthOverride>()
+            .HasIndex(fmo => new { fmo.TargetMonth, fmo.UserId })
+            .IsUnique();
 
         base.OnModelCreating(modelBuilder);
     }

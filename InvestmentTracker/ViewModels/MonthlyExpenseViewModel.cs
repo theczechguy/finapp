@@ -22,6 +22,9 @@ namespace InvestmentTracker.ViewModels
 
     // Add schedule config for dashboard UI
     public FinancialScheduleConfig? ScheduleConfig { get; set; }
+    
+    public DateTime FinancialMonthStartDate { get; set; }
+    public DateTime FinancialMonthEndDate { get; set; }
     }
 
     public class BudgetItemViewModel

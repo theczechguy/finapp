@@ -48,10 +48,33 @@ namespace InvestmentTracker.Services
                 DateTime startDate, endDate;
                 if (scheduleType == "Custom")
                 {
-                    // Custom financial month: from startDay of selected month to day before startDay of next month
-                    startDate = new DateTime(year, month, startDay);
-                    var nextMonth = startDate.AddMonths(1);
-                    endDate = new DateTime(nextMonth.Year, nextMonth.Month, startDay).AddDays(-1);
+                    var currentTargetMonth = new DateTime(year, month, 1);
+                    var nextTargetMonth = currentTargetMonth.AddMonths(1);
+
+                    var overrides = await _context.FinancialMonthOverrides
+                        .AsNoTracking()
+                        .Where(o => o.TargetMonth == currentTargetMonth || o.TargetMonth == nextTargetMonth)
+                        .ToDictionaryAsync(o => o.TargetMonth);
+
+                    var currentMonthOverride = overrides.GetValueOrDefault(currentTargetMonth);
+                    var nextMonthOverride = overrides.GetValueOrDefault(nextTargetMonth);
+
+                    // Determine the start date for the current financial month
+                    startDate = currentMonthOverride?.OverrideStartDate ?? new DateTime(year, month, startDay);
+
+                    // Determine the start date for the next financial month to calculate the current month's end date
+                    DateTime nextMonthStartDate;
+                    if (nextMonthOverride != null)
+                    {
+                        nextMonthStartDate = nextMonthOverride.OverrideStartDate;
+                    }
+                    else
+                    {
+                        var nextMonthDate = new DateTime(year, month, startDay).AddMonths(1);
+                        nextMonthStartDate = new DateTime(nextMonthDate.Year, nextMonthDate.Month, startDay);
+                    }
+                    
+                    endDate = nextMonthStartDate.AddDays(-1);
                 }
                 else
                 {
@@ -104,7 +127,9 @@ namespace InvestmentTracker.Services
                     IrregularExpenses = irregularExpenses.ToList(),
                     ExpensesByCategory = expensesByCategory,
                     Budgets = budgetsVm,
-                    ScheduleConfig = config
+                    ScheduleConfig = config,
+                    FinancialMonthStartDate = startDate,
+                    FinancialMonthEndDate = endDate
                 };
 
                 stopwatch.Stop();
@@ -119,6 +144,29 @@ namespace InvestmentTracker.Services
                     year, month, stopwatch.ElapsedMilliseconds);
                 throw;
             }
+        }
+
+        public async Task SetFinancialMonthOverrideAsync(DateTime targetMonth, DateTime overrideStartDate)
+        {
+            var existingOverride = await _context.FinancialMonthOverrides
+                .FirstOrDefaultAsync(fmo => fmo.TargetMonth == targetMonth);
+
+            if (existingOverride != null)
+            {
+                existingOverride.OverrideStartDate = overrideStartDate;
+                _context.FinancialMonthOverrides.Update(existingOverride);
+            }
+            else
+            {
+                var newOverride = new FinancialMonthOverride
+                {
+                    TargetMonth = targetMonth,
+                    OverrideStartDate = overrideStartDate
+                };
+                _context.FinancialMonthOverrides.Add(newOverride);
+            }
+
+            await _context.SaveChangesAsync();
         }
 
         private async Task<List<IncomeViewModel>> GetMonthlyIncomeDataAsync(int year, int month)

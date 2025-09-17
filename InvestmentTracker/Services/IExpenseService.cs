@@ -46,5 +46,6 @@ namespace InvestmentTracker.Services
     Task SetCategoryBudgetAsync(int categoryId, decimal amount, int year, int month, bool applyToFuture);
     Task DeleteCategoryBudgetAsync(int categoryId, int year, int month);
     Task<List<BudgetHistoryItem>> GetBudgetHistoryAsync(int categoryId);
+    Task SetFinancialMonthOverrideAsync(DateTime targetMonth, DateTime overrideStartDate);
     }
 }
