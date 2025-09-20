@@ -171,11 +171,69 @@ namespace InvestmentTracker.Services
 
         public async Task<DateTime?> GetExistingFinancialMonthOverrideAsync(DateTime targetMonth)
         {
-            var overrideEntity = await _context.FinancialMonthOverrides
-                .AsNoTracking()
-                .FirstOrDefaultAsync(o => o.TargetMonth == targetMonth);
+            return await _context.FinancialMonthOverrides
+                .Where(o => o.TargetMonth == targetMonth)
+                .Select(o => (DateTime?)o.OverrideStartDate)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<DateTime> GetDefaultSelectedDateAsync()
+        {
+            // Load financial schedule config
+            var config = await GetFinancialScheduleConfigAsync();
+            string scheduleType = config?.ScheduleType ?? "Calendar";
+            int startDay = config?.StartDay ?? 1;
             
-            return overrideEntity?.OverrideStartDate;
+            var today = DateTime.Today;
+            
+            if (scheduleType == "Custom")
+            {
+                // For custom schedules, find the start date of the period containing today
+                int currentYear = today.Year;
+                int currentMonth = today.Month; // 1-based
+                int currentDay = today.Day;
+                
+                if (currentDay >= startDay)
+                {
+                    // Current date is in the period starting this month
+                    return new DateTime(currentYear, currentMonth, startDay);
+                }
+                else
+                {
+                    // Current date is in the period starting last month
+                    if (currentMonth == 1)
+                    {
+                        // January, so go to December of previous year
+                        return new DateTime(currentYear - 1, 12, startDay);
+                    }
+                    else
+                    {
+                        return new DateTime(currentYear, currentMonth - 1, startDay);
+                    }
+                }
+            }
+            else
+            {
+                // For calendar months, use the first day of current month
+                return new DateTime(today.Year, today.Month, 1);
+            }
+        }
+
+        private async Task<DateTime> CalculateDefaultStartDateForMonthAsync(int year, int month)
+        {
+            // Load financial schedule config
+            var config = await GetFinancialScheduleConfigAsync();
+            string scheduleType = config?.ScheduleType ?? "Calendar";
+            int startDay = config?.StartDay ?? 1;
+            
+            if (scheduleType == "Custom")
+            {
+                return new DateTime(year, month, startDay);
+            }
+            else
+            {
+                return new DateTime(year, month, 1);
+            }
         }
 
         private async Task<List<IncomeViewModel>> GetMonthlyIncomeDataAsync(int year, int month)

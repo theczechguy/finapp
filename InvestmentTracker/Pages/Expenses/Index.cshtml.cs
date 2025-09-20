@@ -34,7 +34,7 @@ namespace InvestmentTracker.Pages.Expenses
             else
             {
                 // When no date is specified, determine the default based on schedule configuration
-                selectedDate = await GetDefaultSelectedDateAsync();
+                selectedDate = await _expenseService.GetDefaultSelectedDateAsync();
             }
             
             var selectedYear = selectedDate.Year;
@@ -49,47 +49,7 @@ namespace InvestmentTracker.Pages.Expenses
             PrefilledOverrideDate = (await GetPrefilledOverrideDateAsync(selectedDate)).ToString("yyyy-MM-dd");
         }
 
-        private async Task<DateTime> GetDefaultSelectedDateAsync()
-        {
-            // Load financial schedule config to determine default view
-            var config = await _expenseService.GetFinancialScheduleConfigAsync();
-            string scheduleType = config?.ScheduleType ?? "Calendar";
-            int startDay = config?.StartDay ?? 1;
-            
-            var today = DateTime.Today;
-            
-            if (scheduleType == "Custom")
-            {
-                // For custom schedules, find the start date of the period containing today
-                int currentYear = today.Year;
-                int currentMonth = today.Month; // 1-based
-                int currentDay = today.Day;
-                
-                if (currentDay >= startDay)
-                {
-                    // Current date is in the period starting this month
-                    return new DateTime(currentYear, currentMonth, startDay);
-                }
-                else
-                {
-                    // Current date is in the period starting last month
-                    if (currentMonth == 1)
-                    {
-                        // January, so go to December of previous year
-                        return new DateTime(currentYear - 1, 12, startDay);
-                    }
-                    else
-                    {
-                        return new DateTime(currentYear, currentMonth - 1, startDay);
-                    }
-                }
-            }
-            else
-            {
-                // For calendar months, use the first day of current month
-                return new DateTime(today.Year, today.Month, 1);
-            }
-        }
+
 
         public async Task<IActionResult> OnPostUpdateIncomeAsync(int incomeSourceId, decimal actualAmount, int year, int month)
         {
