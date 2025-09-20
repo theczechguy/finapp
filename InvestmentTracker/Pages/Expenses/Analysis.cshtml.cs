@@ -19,9 +19,11 @@ public class AnalysisModel : PageModel
     public DateTime? SelectedDate { get; set; }
 
     public string ChartDataJson { get; private set; } = "{}";
+    public string RegularChartDataJson { get; private set; } = "{}";
     public DateTime FinancialMonthStartDate { get; private set; }
     public DateTime FinancialMonthEndDate { get; private set; }
     public FinancialScheduleConfig? ScheduleConfig { get; private set; }
+    public string TrendsChartDataJson { get; private set; } = "{}";
 
     public async Task OnGetAsync()
     {
@@ -43,7 +45,9 @@ public class AnalysisModel : PageModel
         ScheduleConfig = await _expenseService.GetFinancialScheduleConfigAsync();
 
         // Calculate the actual date range for the financial month
-        await CalculateFinancialMonthDatesAsync(selectedDate);
+        var (startDate, endDate) = await _expenseService.CalculateFinancialMonthDatesAsync(selectedDate.Year, selectedDate.Month);
+        FinancialMonthStartDate = startDate;
+        FinancialMonthEndDate = endDate;
 
         var analysisData = await _expenseService.GetIrregularExpenseAnalysisAsync(FinancialMonthStartDate, FinancialMonthEndDate);
 
@@ -64,6 +68,63 @@ public class AnalysisModel : PageModel
         };
 
         ChartDataJson = JsonSerializer.Serialize(chartData);
+
+        // Get trend data for the last 12 months
+        var trendData = await _expenseService.GetMonthlyExpenseTrendsAsync(12);
+
+        var trendsChartData = new
+        {
+            labels = trendData.Select(t => t.PeriodLabel).ToArray(),
+            datasets = new object[]
+            {
+                new
+                {
+                    label = "Regular Expenses",
+                    data = trendData.Select(t => t.RegularExpenses).ToArray(),
+                    borderColor = "#36A2EB",
+                    backgroundColor = "rgba(54, 162, 235, 0.1)",
+                    tension = 0.4
+                },
+                new
+                {
+                    label = "Irregular Expenses",
+                    data = trendData.Select(t => t.IrregularExpenses).ToArray(),
+                    borderColor = "#FF6384",
+                    backgroundColor = "rgba(255, 99, 132, 0.1)",
+                    tension = 0.4
+                },
+                new
+                {
+                    label = "Total Expenses",
+                    data = trendData.Select(t => t.TotalExpenses).ToArray(),
+                    borderColor = "#FFCE56",
+                    backgroundColor = "rgba(255, 206, 86, 0.1)",
+                    borderDash = new[] { 5, 5 },
+                    tension = 0.4
+                }
+            }
+        };
+
+        TrendsChartDataJson = JsonSerializer.Serialize(trendsChartData);
+
+        // Get regular expense analysis data
+        var regularAnalysisData = await _expenseService.GetRegularExpenseAnalysisAsync(FinancialMonthStartDate, FinancialMonthEndDate);
+
+        var regularChartData = new
+        {
+            labels = regularAnalysisData.Select(d => d.CategoryName),
+            datasets = new[]
+            {
+                new
+                {
+                    label = "Regular Expenses by Category",
+                    data = regularAnalysisData.Select(d => d.TotalAmount),
+                    backgroundColor = analysisData.Select((d, index) => colors[(index + 3) % colors.Length]) // Offset colors to differentiate from irregular
+                }
+            }
+        };
+
+        RegularChartDataJson = JsonSerializer.Serialize(regularChartData);
     }
 
     private async Task<DateTime> GetDefaultSelectedDateAsync()
@@ -105,30 +166,6 @@ public class AnalysisModel : PageModel
         {
             // For calendar months, use the first day of current month
             return new DateTime(today.Year, today.Month, 1);
-        }
-    }
-
-    private async Task CalculateFinancialMonthDatesAsync(DateTime selectedDate)
-    {
-        // Load financial schedule config
-        var config = await _expenseService.GetFinancialScheduleConfigAsync();
-        string scheduleType = config?.ScheduleType ?? "Calendar";
-        int startDay = config?.StartDay ?? 1;
-
-        if (scheduleType == "Custom")
-        {
-            // Custom schedule: period starts on startDay of selected month
-            FinancialMonthStartDate = new DateTime(selectedDate.Year, selectedDate.Month, startDay);
-
-            // End date is the day before the next period starts
-            var nextPeriodStart = FinancialMonthStartDate.AddMonths(1);
-            FinancialMonthEndDate = nextPeriodStart.AddDays(-1);
-        }
-        else
-        {
-            // Calendar month: standard month boundaries
-            FinancialMonthStartDate = new DateTime(selectedDate.Year, selectedDate.Month, 1);
-            FinancialMonthEndDate = FinancialMonthStartDate.AddMonths(1).AddDays(-1);
         }
     }
 }

@@ -19,18 +19,6 @@
     }
 }
 
-<div class="alert alert-info d-flex align-items-center mb-3" role="alert">
-    <i class="bi bi-calendar me-2"></i>
-    <div>
-        <strong>Active Schedule:</strong> @activeScheduleType
-        @if (activeScheduleType == "Custom")
-        {
-            <span>(Start day: @activeStartDay)</span>
-        }
-        <a href="/expenses/financialscheduleconfig" class="btn btn-sm btn-outline-primary ms-3">Change</a>
-    </div>
-</div>
-
 <div class="d-flex align-items-center justify-content-between mb-3">
     <div class="d-flex align-items-center">
         <h2 class="mb-0 me-3">@headingText</h2>
@@ -56,12 +44,36 @@
     </form>
 </div>
 
-<div class="card bg-dark-2 border-secondary">
+<div class="row">
+    <div class="col-md-6">
+        <div class="card bg-dark-2 border-secondary">
+            <div class="card-header">
+                <h5>Irregular Expenses by Category</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="expenseChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card bg-dark-2 border-secondary">
+            <div class="card-header">
+                <h5>Regular Expenses by Category</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="regularExpenseChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card bg-dark-2 border-secondary mt-4">
     <div class="card-header">
-        <h5>Irregular Expenses by Category</h5>
+        <h5>Expense Trends (Last 12 Months)</h5>
+        <small class="text-muted">Regular vs Irregular Expenses Over Time</small>
     </div>
     <div class="card-body">
-        <canvas id="expenseChart"></canvas>
+        <canvas id="trendsChart" width="800" height="600" style="max-width: 100%; height: auto;"></canvas>
     </div>
 </div>
 
@@ -95,6 +107,112 @@
                 p.textContent = 'No irregular expense data available for the selected period.';
                 p.classList.add('text-center', 'text-muted');
                 canvas.parentElement.replaceChild(p, canvas);
+            }
+
+            // Render regular expense chart
+            const regularCtx = document.getElementById('regularExpenseChart').getContext('2d');
+            const regularChartData = JSON.parse('@Html.Raw(Model.RegularChartDataJson)');
+
+            if (regularChartData.labels && regularChartData.labels.length > 0) {
+                new Chart(regularCtx, {
+                    type: 'doughnut',
+                    data: regularChartData,
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Regular Expenses by Category'
+                            }
+                        }
+                    }
+                });
+            } else {
+                const regularCanvas = document.getElementById('regularExpenseChart');
+                const p = document.createElement('p');
+                p.textContent = 'No regular expense data available for the selected period.';
+                p.classList.add('text-center', 'text-muted');
+                regularCanvas.parentElement.replaceChild(p, regularCanvas);
+            }
+
+            // Render trends chart
+            const trendsCtx = document.getElementById('trendsChart').getContext('2d');
+            const trendsData = JSON.parse('@Html.Raw(Model.TrendsChartDataJson)');
+
+            if (trendsData.labels && trendsData.labels.length > 0) {
+                new Chart(trendsCtx, {
+                    type: 'line',
+                    data: trendsData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Expense Trends Over Time'
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        label += new Intl.NumberFormat('cs-CZ', {
+                                            style: 'currency',
+                                            currency: 'CZK'
+                                        }).format(context.parsed.y);
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: 'Month'
+                                }
+                            },
+                            y: {
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: 'Amount (CZK)'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return new Intl.NumberFormat('cs-CZ', {
+                                            style: 'currency',
+                                            currency: 'CZK',
+                                            notation: 'compact'
+                                        }).format(value);
+                                    }
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        }
+                    }
+                });
+            } else {
+                const trendsCanvas = document.getElementById('trendsChart');
+                const p = document.createElement('p');
+                p.textContent = 'No trend data available.';
+                p.classList.add('text-center', 'text-muted');
+                trendsCanvas.parentElement.replaceChild(p, trendsCanvas);
             }
         });
 

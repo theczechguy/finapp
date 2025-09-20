@@ -41,4 +41,20 @@ namespace InvestmentTracker.Models
         public string CategoryName { get; set; } = string.Empty;
         public decimal TotalAmount { get; set; }
     }
+
+    public class RegularExpenseCategoryAnalysis
+    {
+        public string CategoryName { get; set; } = string.Empty;
+        public decimal TotalAmount { get; set; }
+    }
+
+    public class MonthlyExpenseTrends
+    {
+        public string PeriodLabel { get; set; } = string.Empty;
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public decimal RegularExpenses { get; set; }
+        public decimal IrregularExpenses { get; set; }
+        public decimal TotalExpenses => RegularExpenses + IrregularExpenses;
+    }
 }

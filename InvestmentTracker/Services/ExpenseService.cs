@@ -1124,5 +1124,204 @@ namespace InvestmentTracker.Services
                 .OrderByDescending(a => a.TotalAmount)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<RegularExpenseCategoryAnalysis>> GetRegularExpenseAnalysisAsync(DateTime startDate, DateTime endDate)
+        {
+            var regularExpenses = await _context.RegularExpenses
+                .AsNoTracking()
+                .Include(e => e.Category)
+                .Include(e => e.Schedules)
+                .ToListAsync();
+
+            var categoryTotals = new Dictionary<string, decimal>();
+
+            foreach (var expense in regularExpenses)
+            {
+                foreach (var schedule in expense.Schedules)
+                {
+                    // Calculate the total amount for this expense in the period
+                    var occurrences = CalculateOccurrencesInPeriod(schedule, startDate, endDate);
+                    var totalForExpense = occurrences * schedule.Amount;
+                    
+                    var categoryName = expense.Category?.Name ?? "Unknown";
+                    if (categoryTotals.ContainsKey(categoryName))
+                    {
+                        categoryTotals[categoryName] += totalForExpense;
+                    }
+                    else
+                    {
+                        categoryTotals[categoryName] = totalForExpense;
+                    }
+                }
+            }
+
+            return categoryTotals
+                .Select(kvp => new RegularExpenseCategoryAnalysis
+                {
+                    CategoryName = kvp.Key,
+                    TotalAmount = kvp.Value
+                })
+                .OrderByDescending(a => a.TotalAmount)
+                .ToList();
+        }
+
+        public async Task<IEnumerable<MonthlyExpenseTrends>> GetMonthlyExpenseTrendsAsync(int monthsBack)
+        {
+            var config = await _context.FinancialScheduleConfigs.AsNoTracking().FirstOrDefaultAsync();
+            string scheduleType = config?.ScheduleType ?? "Calendar";
+            int startDay = config?.StartDay ?? 1;
+
+            var today = DateTime.Today;
+            var trends = new List<MonthlyExpenseTrends>();
+
+            // Calculate the periods going backwards
+            for (int i = monthsBack - 1; i >= 0; i--)
+            {
+                DateTime periodStart, periodEnd;
+                string periodLabel;
+
+                if (scheduleType == "Custom")
+                {
+                    // Use the shared calculation method for consistency
+                    var targetDate = today.AddMonths(-i);
+                    var (start, end) = await CalculateFinancialMonthDatesAsync(targetDate.Year, targetDate.Month);
+                    periodStart = start;
+                    periodEnd = end;
+                    periodLabel = $"{periodStart:MMM yyyy}";
+                }
+                else
+                {
+                    // Calendar months
+                    var targetDate = today.AddMonths(-i);
+                    periodStart = new DateTime(targetDate.Year, targetDate.Month, 1);
+                    periodEnd = periodStart.AddMonths(1).AddDays(-1);
+                    periodLabel = $"{periodStart:MMM yyyy}";
+                }
+
+                // Get irregular expenses for this period
+                var irregularExpenses = await _context.IrregularExpenses
+                    .AsNoTracking()
+                    .Where(e => e.Date >= periodStart && e.Date <= periodEnd)
+                    .SumAsync(e => (decimal?)e.Amount) ?? 0;
+
+                // Calculate regular expenses for this period
+                // This is complex because regular expenses are scheduled and may span multiple periods
+                var regularExpensesTotal = await CalculateRegularExpensesForPeriodAsync(periodStart, periodEnd);
+
+                trends.Add(new MonthlyExpenseTrends
+                {
+                    PeriodLabel = periodLabel,
+                    StartDate = periodStart,
+                    EndDate = periodEnd,
+                    RegularExpenses = regularExpensesTotal,
+                    IrregularExpenses = irregularExpenses
+                });
+            }
+
+            return trends.OrderBy(t => t.StartDate);
+        }
+
+        private async Task<decimal> CalculateRegularExpensesForPeriodAsync(DateTime periodStart, DateTime periodEnd)
+        {
+            var allRegularExpenses = await _context.RegularExpenses
+                .AsNoTracking()
+                .Include(e => e.Schedules)
+                .ToListAsync();
+
+            decimal total = 0;
+
+            foreach (var expense in allRegularExpenses)
+            {
+                foreach (var schedule in expense.Schedules)
+                {
+                    // Calculate how many times this expense occurs in the period
+                    var occurrences = CalculateOccurrencesInPeriod(schedule, periodStart, periodEnd);
+                    total += occurrences * schedule.Amount;
+                }
+            }
+
+            return total;
+        }
+
+        private int CalculateOccurrencesInPeriod(ExpenseSchedule schedule, DateTime periodStart, DateTime periodEnd)
+        {
+            // This is a simplified calculation - in a real implementation you'd need more complex logic
+            // to handle different frequencies (monthly, quarterly, etc.)
+            
+            if (schedule.Frequency == Frequency.Monthly)
+            {
+                // For monthly expenses, count how many months in the period
+                var monthsInPeriod = ((periodEnd.Year - periodStart.Year) * 12) + periodEnd.Month - periodStart.Month + 1;
+                return Math.Max(1, monthsInPeriod); // At least 1 occurrence
+            }
+            else if (schedule.Frequency == Frequency.Quarterly)
+            {
+                // Simplified quarterly calculation
+                var quarters = Math.Ceiling((double)((periodEnd.Year - periodStart.Year) * 12 + periodEnd.Month - periodStart.Month + 1) / 3);
+                return Math.Max(1, (int)quarters);
+            }
+            else if (schedule.Frequency == Frequency.SemiAnnually)
+            {
+                // Simplified semi-annual calculation
+                var halfYears = Math.Ceiling((double)((periodEnd.Year - periodStart.Year) * 12 + periodEnd.Month - periodStart.Month + 1) / 6);
+                return Math.Max(1, (int)halfYears);
+            }
+            else if (schedule.Frequency == Frequency.Annually)
+            {
+                // Simplified annual calculation
+                var years = periodEnd.Year - periodStart.Year + 1;
+                return Math.Max(1, years);
+            }
+
+            return 1; // Default to 1 occurrence
+        }
+
+        public async Task<(DateTime startDate, DateTime endDate)> CalculateFinancialMonthDatesAsync(int year, int month)
+        {
+            // Load financial schedule config
+            var config = await _context.FinancialScheduleConfigs.AsNoTracking().FirstOrDefaultAsync();
+            string scheduleType = config?.ScheduleType ?? "Calendar";
+            int startDay = config?.StartDay ?? 1;
+
+            DateTime startDate, endDate;
+            if (scheduleType == "Custom")
+            {
+                var currentTargetMonth = new DateTime(year, month, 1);
+                var nextTargetMonth = currentTargetMonth.AddMonths(1);
+
+                var overrides = await _context.FinancialMonthOverrides
+                    .AsNoTracking()
+                    .Where(o => o.TargetMonth == currentTargetMonth || o.TargetMonth == nextTargetMonth)
+                    .ToDictionaryAsync(o => o.TargetMonth);
+
+                var currentMonthOverride = overrides.GetValueOrDefault(currentTargetMonth);
+                var nextMonthOverride = overrides.GetValueOrDefault(nextTargetMonth);
+
+                // Determine the start date for the current financial month
+                startDate = currentMonthOverride?.OverrideStartDate ?? new DateTime(year, month, startDay);
+
+                // Determine the start date for the next financial month to calculate the current month's end date
+                DateTime nextMonthStartDate;
+                if (nextMonthOverride != null)
+                {
+                    nextMonthStartDate = nextMonthOverride.OverrideStartDate;
+                }
+                else
+                {
+                    var nextMonthDate = new DateTime(year, month, startDay).AddMonths(1);
+                    nextMonthStartDate = new DateTime(nextMonthDate.Year, nextMonthDate.Month, startDay);
+                }
+                
+                endDate = nextMonthStartDate.AddDays(-1);
+            }
+            else
+            {
+                // Calendar month
+                startDate = new DateTime(year, month, 1);
+                endDate = startDate.AddMonths(1).AddDays(-1);
+            }
+
+            return (startDate, endDate);
+        }
     }
 }
