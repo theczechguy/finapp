@@ -31,31 +31,11 @@
     }
 }
 
-<div class="alert alert-info d-flex align-items-center mb-3" role="alert">
-    <i class="bi bi-calendar me-2"></i>
-    <div>
-        <strong>Active Schedule:</strong> @activeScheduleType
-        @if (activeScheduleType == "Custom")
-        {
-            <span>(Start day: @activeStartDay)</span>
-        }
-        <a href="/expenses/financialscheduleconfig" class="btn btn-sm btn-outline-primary ms-3">Change</a>
+<div class="d-block d-lg-flex align-items-lg-center justify-content-lg-between mb-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start mb-3 mb-lg-0">
+        <h2 class="mb-0 me-3 text-center">@headingText</h2>
     </div>
-</div>
-
-
-<div class="d-flex align-items-center justify-content-between mb-3">
-    <div class="d-flex align-items-center">
-        <h2 class="mb-0 me-3">@headingText</h2>
-        @if (activeScheduleType == "Custom")
-        {
-            <button type="button" class="btn btn-primary btn-lg ms-2 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#adjustStartDateModal" title="Adjust start date for this month">
-                <i class="bi bi-calendar-plus me-2"></i>
-                <span>Adjust Start Date</span>
-            </button>
-        }
-    </div>
-    <form method="get" class="d-flex align-items-end gap-2 mb-0">
+    <form method="get" class="d-flex flex-wrap align-items-end justify-content-center justify-content-lg-end gap-2 mb-0">
         <div>
             <label for="monthPicker" class="form-label mb-0">Month</label>
             <input type="date" id="monthPicker" name="selectedDate" class="form-control" value="@Model.ViewModel.SelectedDate.ToString("yyyy-MM-dd")" />
@@ -72,6 +52,26 @@
             <button type="button" class="btn btn-secondary" onclick="navigateMonth(1)" title="Next Month">
                 Next <i class="bi bi-chevron-right"></i>
             </button>
+        </div>
+        
+        <!-- Unified Schedule Dropdown -->
+        <div class="btn-group ms-3">
+            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-calendar3 me-1"></i>
+                Schedule: @activeScheduleType
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="/expenses/financialscheduleconfig">Configure Schedule</a></li>
+                @if (activeScheduleType == "Custom")
+                {
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#adjustStartDateModal">
+                            Adjust Current Month
+                        </button>
+                    </li>
+                }
+            </ul>
         </div>
     </form>
 </div>
