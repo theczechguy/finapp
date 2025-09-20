@@ -1109,5 +1109,20 @@ namespace InvestmentTracker.Services
                 throw;
             }
         }
+
+        public async Task<IEnumerable<IrregularExpenseCategoryAnalysis>> GetIrregularExpenseAnalysisAsync(DateTime startDate, DateTime endDate)
+        {
+            return await _context.IrregularExpenses
+                .AsNoTracking()
+                .Where(e => e.Date >= startDate && e.Date <= endDate)
+                .GroupBy(e => e.Category)
+                .Select(g => new IrregularExpenseCategoryAnalysis
+                {
+                    CategoryName = g.Key != null ? g.Key.Name : "Unknown",
+                    TotalAmount = g.Sum(e => e.Amount)
+                })
+                .OrderByDescending(a => a.TotalAmount)
+                .ToListAsync();
+        }
     }
 }

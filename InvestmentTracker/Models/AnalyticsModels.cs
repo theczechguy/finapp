@@ -35,4 +35,10 @@ namespace InvestmentTracker.Models
         public string Trend { get; set; } = string.Empty; // "up", "down", "stable"
         public List<CategoryComparisonData> CategoryComparisons { get; set; } = new();
     }
+
+    public class IrregularExpenseCategoryAnalysis
+    {
+        public string CategoryName { get; set; } = string.Empty;
+        public decimal TotalAmount { get; set; }
+    }
 }
