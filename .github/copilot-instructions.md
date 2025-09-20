@@ -43,6 +43,7 @@ Purpose: give AI coding agents the context and conventions needed to be producti
 - Currency: `Currency` enum + `.ToCultureCode()` extension for formatting.
 
 ## Important Patterns
+- **Service Architecture**: Always use dependency injection with services. PageModels should NEVER inject DbContext directly - use services instead. Services handle all database operations and business logic.
 - Razor PageModels call services; keep DB logic in `Services/` unless there is a deliberate performance reason (see `Pages/Values/Index.cshtml.cs`).
 - TempData + Toasts: Success messages are set via `TempData["ToastSuccess"]` in POST handlers; `_Layout.cshtml` reads and displays with `Toast.success(...)`.
 - Decimals & Culture: Client-side number/range validation accepts comma separators; server-side uses `InvariantDecimalModelBinder*` to normalize commas to dots.

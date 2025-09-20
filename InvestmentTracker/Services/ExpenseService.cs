@@ -169,6 +169,15 @@ namespace InvestmentTracker.Services
             await _context.SaveChangesAsync();
         }
 
+        public async Task<DateTime?> GetExistingFinancialMonthOverrideAsync(DateTime targetMonth)
+        {
+            var overrideEntity = await _context.FinancialMonthOverrides
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o => o.TargetMonth == targetMonth);
+            
+            return overrideEntity?.OverrideStartDate;
+        }
+
         private async Task<List<IncomeViewModel>> GetMonthlyIncomeDataAsync(int year, int month)
         {
             var stopwatch = Stopwatch.StartNew();

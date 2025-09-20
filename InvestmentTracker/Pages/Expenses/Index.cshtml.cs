@@ -21,6 +21,7 @@ namespace InvestmentTracker.Pages.Expenses
         public DateTime? SelectedDate { get; set; }
 
         public MonthlyExpenseViewModel ViewModel { get; set; } = new();
+        public string PrefilledOverrideDate { get; private set; } = "";
 
         public async Task OnGetAsync()
         {
@@ -43,6 +44,9 @@ namespace InvestmentTracker.Pages.Expenses
             await _expenseService.SeedDefaultCategoriesAsync();
 
             ViewModel = await _expenseService.GetMonthlyDataAsync(selectedYear, selectedMonth);
+            
+            // Set the prefilled override date for the modal
+            PrefilledOverrideDate = (await GetPrefilledOverrideDateAsync(selectedDate)).ToString("yyyy-MM-dd");
         }
 
         private async Task<DateTime> GetDefaultSelectedDateAsync()
@@ -272,6 +276,35 @@ namespace InvestmentTracker.Pages.Expenses
         public async Task<IEnumerable<FamilyMember>> GetFamilyMembersAsync()
         {
             return await _expenseService.GetFamilyMembersAsync();
+        }
+
+        private async Task<DateTime> GetPrefilledOverrideDateAsync(DateTime selectedDate)
+        {
+            // First check if there's an existing override for this month
+            var targetMonth = new DateTime(selectedDate.Year, selectedDate.Month, 1);
+            
+            // Check for existing override using the service
+            var existingOverrideDate = await _expenseService.GetExistingFinancialMonthOverrideAsync(targetMonth);
+            
+            if (existingOverrideDate.HasValue)
+            {
+                // If there's an existing override, use that date
+                return existingOverrideDate.Value;
+            }
+            
+            // If no override exists, use the standard configured start date
+            var scheduleConfig = await _expenseService.GetFinancialScheduleConfigAsync();
+            string scheduleType = scheduleConfig?.ScheduleType ?? "Calendar";
+            int startDay = scheduleConfig?.StartDay ?? 1;
+            
+            if (scheduleType == "Custom")
+            {
+                return new DateTime(selectedDate.Year, selectedDate.Month, startDay);
+            }
+            else
+            {
+                return new DateTime(selectedDate.Year, selectedDate.Month, 1);
+            }
         }
     }
 }

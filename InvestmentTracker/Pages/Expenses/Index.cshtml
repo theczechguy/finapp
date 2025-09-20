@@ -992,7 +992,7 @@
                     <input type="hidden" name="SelectedDate" value="@Model.ViewModel.SelectedDate.ToString("yyyy-MM-dd")" />
                     <div class="mb-3">
                         <label for="overrideStartDate" class="form-label">New Start Date for this Financial Month</label>
-                        <input type="date" id="overrideStartDate" name="overrideDate" class="form-control" required />
+                        <input type="date" id="overrideStartDate" name="overrideDate" class="form-control" required value="@Model.PrefilledOverrideDate" />
                         <div class="form-text">
                             Select the exact date when this financial month should begin. This will only affect the current period.
                         </div>

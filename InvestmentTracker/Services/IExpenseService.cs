@@ -51,5 +51,6 @@ namespace InvestmentTracker.Services
     Task<IEnumerable<RegularExpenseCategoryAnalysis>> GetRegularExpenseAnalysisAsync(DateTime startDate, DateTime endDate);
     Task<IEnumerable<MonthlyExpenseTrends>> GetMonthlyExpenseTrendsAsync(int monthsBack);
     Task<(DateTime startDate, DateTime endDate)> CalculateFinancialMonthDatesAsync(int year, int month);
+    Task<DateTime?> GetExistingFinancialMonthOverrideAsync(DateTime targetMonth);
     }
 }
