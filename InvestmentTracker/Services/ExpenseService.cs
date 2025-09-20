@@ -24,7 +24,18 @@ namespace InvestmentTracker.Services
 
         public async Task<FinancialScheduleConfig?> GetFinancialScheduleConfigAsync()
         {
-            return await _context.FinancialScheduleConfigs.AsNoTracking().FirstOrDefaultAsync();
+            try
+            {
+                _logger.LogDebug("Retrieving financial schedule configuration");
+                var config = await _context.FinancialScheduleConfigs.AsNoTracking().FirstOrDefaultAsync();
+                _logger.LogDebug("Retrieved financial schedule config: {@Config}", config);
+                return config;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve financial schedule configuration");
+                throw;
+            }
         }
 
         public async Task<MonthlyExpenseViewModel> GetMonthlyDataAsync(int year, int month)
@@ -148,74 +159,129 @@ namespace InvestmentTracker.Services
 
         public async Task SetFinancialMonthOverrideAsync(DateTime targetMonth, DateTime overrideStartDate)
         {
-            var existingOverride = await _context.FinancialMonthOverrides
-                .FirstOrDefaultAsync(fmo => fmo.TargetMonth == targetMonth);
+            try
+            {
+                _logger.LogInformation("Setting financial month override for {TargetMonth} to {OverrideStartDate}", 
+                    targetMonth.ToString("yyyy-MM-dd"), overrideStartDate.ToString("yyyy-MM-dd"));
+                
+                var existingOverride = await _context.FinancialMonthOverrides
+                    .FirstOrDefaultAsync(fmo => fmo.TargetMonth == targetMonth);
 
-            if (existingOverride != null)
-            {
-                existingOverride.OverrideStartDate = overrideStartDate;
-                _context.FinancialMonthOverrides.Update(existingOverride);
-            }
-            else
-            {
-                var newOverride = new FinancialMonthOverride
+                if (existingOverride != null)
                 {
-                    TargetMonth = targetMonth,
-                    OverrideStartDate = overrideStartDate
-                };
-                _context.FinancialMonthOverrides.Add(newOverride);
-            }
+                    _logger.LogDebug("Updating existing override for {TargetMonth}", targetMonth.ToString("yyyy-MM-dd"));
+                    existingOverride.OverrideStartDate = overrideStartDate;
+                    _context.FinancialMonthOverrides.Update(existingOverride);
+                }
+                else
+                {
+                    _logger.LogDebug("Creating new override for {TargetMonth}", targetMonth.ToString("yyyy-MM-dd"));
+                    var newOverride = new FinancialMonthOverride
+                    {
+                        TargetMonth = targetMonth,
+                        OverrideStartDate = overrideStartDate
+                    };
+                    _context.FinancialMonthOverrides.Add(newOverride);
+                }
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Successfully set financial month override for {TargetMonth}", targetMonth.ToString("yyyy-MM-dd"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to set financial month override for {TargetMonth}", targetMonth.ToString("yyyy-MM-dd"));
+                throw;
+            }
         }
 
         public async Task<DateTime?> GetExistingFinancialMonthOverrideAsync(DateTime targetMonth)
         {
-            return await _context.FinancialMonthOverrides
-                .Where(o => o.TargetMonth == targetMonth)
-                .Select(o => (DateTime?)o.OverrideStartDate)
-                .FirstOrDefaultAsync();
+            try
+            {
+                _logger.LogDebug("Checking for existing financial month override for {TargetMonth}", targetMonth.ToString("yyyy-MM-dd"));
+                var overrideDate = await _context.FinancialMonthOverrides
+                    .Where(o => o.TargetMonth == targetMonth)
+                    .Select(o => (DateTime?)o.OverrideStartDate)
+                    .FirstOrDefaultAsync();
+                
+                if (overrideDate.HasValue)
+                {
+                    _logger.LogDebug("Found override for {TargetMonth}: {OverrideDate}", 
+                        targetMonth.ToString("yyyy-MM-dd"), overrideDate.Value.ToString("yyyy-MM-dd"));
+                }
+                else
+                {
+                    _logger.LogDebug("No override found for {TargetMonth}", targetMonth.ToString("yyyy-MM-dd"));
+                }
+                
+                return overrideDate;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to check for financial month override for {TargetMonth}", targetMonth.ToString("yyyy-MM-dd"));
+                throw;
+            }
         }
 
         public async Task<DateTime> GetDefaultSelectedDateAsync()
         {
-            // Load financial schedule config
-            var config = await GetFinancialScheduleConfigAsync();
-            string scheduleType = config?.ScheduleType ?? "Calendar";
-            int startDay = config?.StartDay ?? 1;
-            
-            var today = DateTime.Today;
-            
-            if (scheduleType == "Custom")
+            try
             {
-                // For custom schedules, find the start date of the period containing today
-                int currentYear = today.Year;
-                int currentMonth = today.Month; // 1-based
-                int currentDay = today.Day;
+                _logger.LogDebug("Calculating default selected date");
                 
-                if (currentDay >= startDay)
+                // Load financial schedule config
+                var config = await GetFinancialScheduleConfigAsync();
+                string scheduleType = config?.ScheduleType ?? "Calendar";
+                int startDay = config?.StartDay ?? 1;
+                
+                var today = DateTime.Today;
+                DateTime result;
+                
+                if (scheduleType == "Custom")
                 {
-                    // Current date is in the period starting this month
-                    return new DateTime(currentYear, currentMonth, startDay);
-                }
-                else
-                {
-                    // Current date is in the period starting last month
-                    if (currentMonth == 1)
+                    _logger.LogDebug("Using custom schedule with start day {StartDay}", startDay);
+                    // For custom schedules, find the start date of the period containing today
+                    int currentYear = today.Year;
+                    int currentMonth = today.Month; // 1-based
+                    int currentDay = today.Day;
+                    
+                    if (currentDay >= startDay)
                     {
-                        // January, so go to December of previous year
-                        return new DateTime(currentYear - 1, 12, startDay);
+                        // Current date is in the period starting this month
+                        result = new DateTime(currentYear, currentMonth, startDay);
+                        _logger.LogDebug("Current date is in period starting this month: {Result}", result.ToString("yyyy-MM-dd"));
                     }
                     else
                     {
-                        return new DateTime(currentYear, currentMonth - 1, startDay);
+                        // Current date is in the period starting last month
+                        if (currentMonth == 1)
+                        {
+                            // January, so go to December of previous year
+                            result = new DateTime(currentYear - 1, 12, startDay);
+                            _logger.LogDebug("Current date is in period starting last month (December previous year): {Result}", result.ToString("yyyy-MM-dd"));
+                        }
+                        else
+                        {
+                            result = new DateTime(currentYear, currentMonth - 1, startDay);
+                            _logger.LogDebug("Current date is in period starting last month: {Result}", result.ToString("yyyy-MM-dd"));
+                        }
                     }
                 }
+                else
+                {
+                    _logger.LogDebug("Using calendar schedule");
+                    // For calendar months, use the first day of current month
+                    result = new DateTime(today.Year, today.Month, 1);
+                    _logger.LogDebug("Using first day of current month: {Result}", result.ToString("yyyy-MM-dd"));
+                }
+                
+                _logger.LogDebug("Default selected date calculated: {Result}", result.ToString("yyyy-MM-dd"));
+                return result;
             }
-            else
+            catch (Exception ex)
             {
-                // For calendar months, use the first day of current month
-                return new DateTime(today.Year, today.Month, 1);
+                _logger.LogError(ex, "Failed to calculate default selected date");
+                throw;
             }
         }
 
@@ -480,137 +546,316 @@ namespace InvestmentTracker.Services
 
         public async Task<List<BudgetHistoryItem>> GetBudgetHistoryAsync(int categoryId)
         {
-            var budgets = await _context.CategoryBudgets
-                .Where(cb => cb.ExpenseCategoryId == categoryId)
-                .Include(cb => cb.ExpenseCategory)
-                .OrderByDescending(cb => cb.StartYear)
-                .ThenByDescending(cb => cb.StartMonth)
-                .ToListAsync();
-
-            var history = new List<BudgetHistoryItem>();
-
-            foreach (var budget in budgets)
+            try
             {
-                history.Add(new BudgetHistoryItem
-                {
-                    BudgetId = budget.Id,
-                    CategoryId = budget.ExpenseCategoryId,
-                    CategoryName = budget.ExpenseCategory?.Name ?? "Unknown",
-                    Amount = budget.Amount,
-                    StartYear = budget.StartYear,
-                    StartMonth = budget.StartMonth,
-                    EndYear = budget.EndYear,
-                    EndMonth = budget.EndMonth,
-                    StartDate = budget.StartDate,
-                    EndDate = budget.EndDate,
-                    IsActive = budget.IsActiveForMonth(DateTime.Today.Year, DateTime.Today.Month)
-                });
-            }
+                _logger.LogDebug("Retrieving budget history for category {CategoryId}", categoryId);
+                var budgets = await _context.CategoryBudgets
+                    .Where(cb => cb.ExpenseCategoryId == categoryId)
+                    .Include(cb => cb.ExpenseCategory)
+                    .OrderByDescending(cb => cb.StartYear)
+                    .ThenByDescending(cb => cb.StartMonth)
+                    .ToListAsync();
 
-            return history;
+                var history = new List<BudgetHistoryItem>();
+                foreach (var budget in budgets)
+                {
+                    history.Add(new BudgetHistoryItem
+                    {
+                        BudgetId = budget.Id,
+                        CategoryId = budget.ExpenseCategoryId,
+                        CategoryName = budget.ExpenseCategory?.Name ?? "Unknown",
+                        Amount = budget.Amount,
+                        StartYear = budget.StartYear,
+                        StartMonth = budget.StartMonth,
+                        EndYear = budget.EndYear,
+                        EndMonth = budget.EndMonth,
+                        StartDate = budget.StartDate,
+                        EndDate = budget.EndDate,
+                        IsActive = budget.IsActiveForMonth(DateTime.Today.Year, DateTime.Today.Month)
+                    });
+                }
+
+                _logger.LogDebug("Retrieved {HistoryCount} budget history items for category {CategoryId}", history.Count, categoryId);
+                return history;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve budget history for category {CategoryId}", categoryId);
+                throw;
+            }
         }
 
         public async Task AddIncomeSourceAsync(IncomeSource incomeSource)
         {
-            _context.Add(incomeSource);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _logger.LogInformation("Adding new income source: {IncomeSourceName}", incomeSource.Name);
+                _context.Add(incomeSource);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Successfully added income source {IncomeSourceName} with ID {IncomeSourceId}", 
+                    incomeSource.Name, incomeSource.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add income source {IncomeSourceName}", incomeSource.Name);
+                throw;
+            }
         }
 
         public async Task UpdateIncomeSourceAsync(IncomeSource incomeSource)
         {
-            _context.Update(incomeSource);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _logger.LogInformation("Updating income source {IncomeSourceId}: {IncomeSourceName}", 
+                    incomeSource.Id, incomeSource.Name);
+                _context.Update(incomeSource);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Successfully updated income source {IncomeSourceId}: {IncomeSourceName}", 
+                    incomeSource.Id, incomeSource.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update income source {IncomeSourceId}: {IncomeSourceName}", 
+                    incomeSource.Id, incomeSource.Name);
+                throw;
+            }
         }
 
         public async Task LogOrUpdateMonthlyIncomeAsync(int incomeSourceId, int year, int month, decimal actualAmount)
         {
-            var monthDate = new DateTime(year, month, 1);
-            var existing = _context.MonthlyIncomes.FirstOrDefault(m => m.IncomeSourceId == incomeSourceId && m.Month == monthDate);
+            try
+            {
+                _logger.LogInformation("Logging/updating monthly income for source {IncomeSourceId}, {Year}/{Month}: {Amount}", 
+                    incomeSourceId, year, month, actualAmount);
+                    
+                var monthDate = new DateTime(year, month, 1);
+                var existing = _context.MonthlyIncomes.FirstOrDefault(m => m.IncomeSourceId == incomeSourceId && m.Month == monthDate);
 
-            if (existing != null)
-            {
-                existing.ActualAmount = actualAmount;
-            }
-            else
-            {
-                var newMonthlyIncome = new MonthlyIncome
+                if (existing != null)
                 {
-                    IncomeSourceId = incomeSourceId,
-                    Month = monthDate,
-                    ActualAmount = actualAmount
-                };
-                _context.Add(newMonthlyIncome);
+                    _logger.LogDebug("Updating existing monthly income record");
+                    existing.ActualAmount = actualAmount;
+                }
+                else
+                {
+                    _logger.LogDebug("Creating new monthly income record");
+                    var newMonthlyIncome = new MonthlyIncome
+                    {
+                        IncomeSourceId = incomeSourceId,
+                        Month = monthDate,
+                        ActualAmount = actualAmount
+                    };
+                    _context.Add(newMonthlyIncome);
+                }
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Successfully logged/updated monthly income for source {IncomeSourceId}, {Year}/{Month}", 
+                    incomeSourceId, year, month);
             }
-            await _context.SaveChangesAsync();
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to log/update monthly income for source {IncomeSourceId}, {Year}/{Month}", 
+                    incomeSourceId, year, month);
+                throw;
+            }
         }
 
         public async Task AddOneTimeIncomeAsync(OneTimeIncome income)
         {
-            _context.Add(income);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _logger.LogInformation("Adding one-time income: {IncomeName}, Amount: {Amount}, Date: {Date}", 
+                    income.Name, income.Amount, income.Date.ToString("yyyy-MM-dd"));
+                _context.Add(income);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Successfully added one-time income {IncomeName} with ID {IncomeId}", 
+                    income.Name, income.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add one-time income {IncomeName}", income.Name);
+                throw;
+            }
         }
 
         public async Task<OneTimeIncome?> GetOneTimeIncomeAsync(int id)
         {
-            return await _context.OneTimeIncomes
-                .Include(oti => oti.IncomeSource)
-                .FirstOrDefaultAsync(oti => oti.Id == id);
+            try
+            {
+                _logger.LogDebug("Retrieving one-time income {IncomeId}", id);
+                var income = await _context.OneTimeIncomes
+                    .Include(oti => oti.IncomeSource)
+                    .FirstOrDefaultAsync(oti => oti.Id == id);
+                
+                if (income == null)
+                {
+                    _logger.LogWarning("One-time income {IncomeId} not found", id);
+                }
+                else
+                {
+                    _logger.LogDebug("Retrieved one-time income {IncomeId}: {IncomeName}", id, income.Name);
+                }
+                
+                return income;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve one-time income {IncomeId}", id);
+                throw;
+            }
         }
 
         public async Task UpdateOneTimeIncomeAsync(OneTimeIncome income)
         {
-            _context.Update(income);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _logger.LogInformation("Updating one-time income {IncomeId}: {IncomeName}", income.Id, income.Name);
+                _context.Update(income);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Successfully updated one-time income {IncomeId}: {IncomeName}", income.Id, income.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update one-time income {IncomeId}: {IncomeName}", income.Id, income.Name);
+                throw;
+            }
         }
 
         public async Task DeleteOneTimeIncomeAsync(int incomeId)
         {
-            var income = new OneTimeIncome { Id = incomeId };
-            _context.Remove(income);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _logger.LogInformation("Deleting one-time income {IncomeId}", incomeId);
+                var income = new OneTimeIncome { Id = incomeId };
+                _context.Remove(income);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Successfully deleted one-time income {IncomeId}", incomeId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to delete one-time income {IncomeId}", incomeId);
+                throw;
+            }
         }
 
         public async Task<IEnumerable<OneTimeIncome>> GetOneTimeIncomesForMonthAsync(int year, int month)
         {
-            var startDate = new DateTime(year, month, 1);
-            var endDate = startDate.AddMonths(1).AddDays(-1);
-            
-            return await _context.OneTimeIncomes
-                .AsNoTracking()
-                .Include(oti => oti.IncomeSource)
-                .Where(oti => oti.Date >= startDate && oti.Date <= endDate)
-                .ToListAsync();
+            try
+            {
+                _logger.LogDebug("Retrieving one-time incomes for {Year}/{Month}", year, month);
+                var startDate = new DateTime(year, month, 1);
+                var endDate = startDate.AddMonths(1).AddDays(-1);
+                
+                var incomes = await _context.OneTimeIncomes
+                    .AsNoTracking()
+                    .Include(oti => oti.IncomeSource)
+                    .Where(oti => oti.Date >= startDate && oti.Date <= endDate)
+                    .ToListAsync();
+                    
+                _logger.LogDebug("Retrieved {IncomeCount} one-time incomes for {Year}/{Month}", incomes.Count, year, month);
+                return incomes;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve one-time incomes for {Year}/{Month}", year, month);
+                throw;
+            }
         }
 
         public async Task<IEnumerable<ExpenseCategory>> GetExpenseCategoriesAsync()
         {
-            return await _context.ExpenseCategories.ToListAsync();
+            try
+            {
+                _logger.LogDebug("Retrieving all expense categories");
+                var categories = await _context.ExpenseCategories.ToListAsync();
+                _logger.LogDebug("Retrieved {CategoryCount} expense categories", categories.Count);
+                return categories;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve expense categories");
+                throw;
+            }
         }
 
         public async Task AddExpenseCategoryAsync(ExpenseCategory category)
         {
-            _context.Add(category);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _logger.LogInformation("Adding new expense category: {CategoryName}", category.Name);
+                _context.Add(category);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Successfully added expense category {CategoryName} with ID {CategoryId}", 
+                    category.Name, category.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add expense category {CategoryName}", category.Name);
+                throw;
+            }
         }
 
         public async Task<ExpenseCategory?> GetExpenseCategoryAsync(int id)
         {
-            return await _context.ExpenseCategories.FindAsync(id);
+            try
+            {
+                _logger.LogDebug("Retrieving expense category {CategoryId}", id);
+                var category = await _context.ExpenseCategories.FindAsync(id);
+                
+                if (category == null)
+                {
+                    _logger.LogWarning("Expense category {CategoryId} not found", id);
+                }
+                else
+                {
+                    _logger.LogDebug("Retrieved expense category {CategoryId}: {CategoryName}", id, category.Name);
+                }
+                
+                return category;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve expense category {CategoryId}", id);
+                throw;
+            }
         }
 
         public async Task UpdateExpenseCategoryAsync(ExpenseCategory category)
         {
-            _context.Update(category);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _logger.LogInformation("Updating expense category {CategoryId}: {CategoryName}", category.Id, category.Name);
+                _context.Update(category);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Successfully updated expense category {CategoryId}: {CategoryName}", category.Id, category.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update expense category {CategoryId}: {CategoryName}", category.Id, category.Name);
+                throw;
+            }
         }
 
         public async Task DeleteExpenseCategoryAsync(int id)
         {
-            var category = await _context.ExpenseCategories.FindAsync(id);
-            if (category != null)
+            try
             {
-                _context.ExpenseCategories.Remove(category);
-                await _context.SaveChangesAsync();
+                _logger.LogInformation("Deleting expense category {CategoryId}", id);
+                var category = await _context.ExpenseCategories.FindAsync(id);
+                if (category != null)
+                {
+                    _context.ExpenseCategories.Remove(category);
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Successfully deleted expense category {CategoryId}: {CategoryName}", id, category.Name);
+                }
+                else
+                {
+                    _logger.LogWarning("Expense category {CategoryId} not found for deletion", id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to delete expense category {CategoryId}", id);
+                throw;
             }
         }
 
@@ -660,21 +905,66 @@ namespace InvestmentTracker.Services
 
         public async Task<IEnumerable<IncomeSource>> GetAllIncomeSourcesAsync()
         {
-            return await _context.IncomeSources.ToListAsync();
+            try
+            {
+                _logger.LogDebug("Retrieving all income sources");
+                var incomeSources = await _context.IncomeSources.ToListAsync();
+                _logger.LogDebug("Retrieved {IncomeSourceCount} income sources", incomeSources.Count);
+                return incomeSources;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve income sources");
+                throw;
+            }
         }
 
         public async Task<IncomeSource?> GetIncomeSourceAsync(int id)
         {
-            return await _context.IncomeSources.FindAsync(id);
+            try
+            {
+                _logger.LogDebug("Retrieving income source {IncomeSourceId}", id);
+                var incomeSource = await _context.IncomeSources.FindAsync(id);
+                
+                if (incomeSource == null)
+                {
+                    _logger.LogWarning("Income source {IncomeSourceId} not found", id);
+                }
+                else
+                {
+                    _logger.LogDebug("Retrieved income source {IncomeSourceId}: {IncomeSourceName}", id, incomeSource.Name);
+                }
+                
+                return incomeSource;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve income source {IncomeSourceId}", id);
+                throw;
+            }
         }
 
         public async Task DeleteIncomeSourceAsync(int id)
         {
-            var incomeSource = await _context.IncomeSources.FindAsync(id);
-            if (incomeSource != null)
+            try
             {
-                _context.IncomeSources.Remove(incomeSource);
-                await _context.SaveChangesAsync();
+                _logger.LogInformation("Deleting income source {IncomeSourceId}", id);
+                var incomeSource = await _context.IncomeSources.FindAsync(id);
+                if (incomeSource != null)
+                {
+                    _context.IncomeSources.Remove(incomeSource);
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Successfully deleted income source {IncomeSourceId}: {IncomeSourceName}", id, incomeSource.Name);
+                }
+                else
+                {
+                    _logger.LogWarning("Income source {IncomeSourceId} not found for deletion", id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to delete income source {IncomeSourceId}", id);
+                throw;
             }
         }
 
@@ -715,11 +1005,31 @@ namespace InvestmentTracker.Services
 
         public async Task<RegularExpense?> GetRegularExpenseAsync(int id)
         {
-            return await _context.RegularExpenses
-                .Include(e => e.Category)
-                .Include(e => e.Schedules)
-                .Include(e => e.FamilyMember)
-                .FirstOrDefaultAsync(e => e.Id == id);
+            try
+            {
+                _logger.LogDebug("Retrieving regular expense {ExpenseId}", id);
+                var expense = await _context.RegularExpenses
+                    .Include(e => e.Category)
+                    .Include(e => e.Schedules)
+                    .Include(e => e.FamilyMember)
+                    .FirstOrDefaultAsync(e => e.Id == id);
+                
+                if (expense == null)
+                {
+                    _logger.LogWarning("Regular expense {ExpenseId} not found", id);
+                }
+                else
+                {
+                    _logger.LogDebug("Retrieved regular expense {ExpenseId}: {ExpenseName}", id, expense.Name);
+                }
+                
+                return expense;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve regular expense {ExpenseId}", id);
+                throw;
+            }
         }
 
         public async Task UpdateRegularExpenseAsync(RegularExpense expense)
@@ -938,76 +1248,43 @@ namespace InvestmentTracker.Services
 
         public async Task UpdateRegularExpenseScheduleAsync(int expenseId, decimal amount, Frequency frequency, DateTime startDate)
         {
-            var existingExpense = await _context.RegularExpenses
-                .Include(e => e.Schedules)
-                .FirstOrDefaultAsync(e => e.Id == expenseId);
-
-            if (existingExpense == null)
+            try
             {
-                throw new ArgumentException("Expense not found");
-            }
+                _logger.LogInformation("Updating regular expense schedule for expense {ExpenseId}: Amount {Amount}, Frequency {Frequency}, StartDate {StartDate}", 
+                    expenseId, amount, frequency, startDate.ToString("yyyy-MM-dd"));
+                    
+                var existingExpense = await _context.RegularExpenses
+                    .Include(e => e.Schedules)
+                    .FirstOrDefaultAsync(e => e.Id == expenseId);
 
-            // Find the most recent schedule that would be active at the time of the change
-            var currentSchedule = existingExpense.Schedules
-                .Where(s => s.StartDate <= DateTime.Today && (s.EndDate == null || s.EndDate >= DateTime.Today))
-                .OrderByDescending(s => s.StartYear)
-                .ThenByDescending(s => s.StartMonth)
-                .ThenByDescending(s => s.StartDay)
-                .FirstOrDefault();
-
-            // If we're setting a future start date, we need to handle it differently
-            if (startDate > DateTime.Today)
-            {
-                // For future changes, end the current schedule and create a new one starting on the future date
-                if (currentSchedule != null)
+                if (existingExpense == null)
                 {
-                    // End current schedule as of the day before the new start date
-                    var endDateTime = startDate.AddDays(-1);
-                    currentSchedule.EndYear = endDateTime.Year;
-                    currentSchedule.EndMonth = endDateTime.Month;
+                    _logger.LogError("Regular expense with ID {ExpenseId} not found for schedule update", expenseId);
+                    throw new ArgumentException("Expense not found");
                 }
 
-                // Create new schedule for the future date
-                var newSchedule = new ExpenseSchedule
-                {
-                    StartYear = startDate.Year,
-                    StartMonth = startDate.Month,
-                    Amount = amount,
-                    Frequency = frequency
-                };
+                // Find the most recent schedule that would be active at the time of the change
+                var currentSchedule = existingExpense.Schedules
+                    .Where(s => s.StartDate <= DateTime.Today && (s.EndDate == null || s.EndDate >= DateTime.Today))
+                    .OrderByDescending(s => s.StartYear)
+                    .ThenByDescending(s => s.StartMonth)
+                    .ThenByDescending(s => s.StartDay)
+                    .FirstOrDefault();
 
-                existingExpense.Schedules.Add(newSchedule);
-            }
-            else
-            {
-                // For current/past changes, modify the existing schedule or create a new one
-                if (currentSchedule != null)
+                // If we're setting a future start date, we need to handle it differently
+                if (startDate > DateTime.Today)
                 {
-                    // If the current schedule has different values, end it and create a new one
-                    if (currentSchedule.Amount != amount ||
-                        currentSchedule.Frequency != frequency)
+                    _logger.LogDebug("Setting future start date for expense {ExpenseId}", expenseId);
+                    // For future changes, end the current schedule and create a new one starting on the future date
+                    if (currentSchedule != null)
                     {
                         // End current schedule as of the day before the new start date
                         var endDateTime = startDate.AddDays(-1);
                         currentSchedule.EndYear = endDateTime.Year;
                         currentSchedule.EndMonth = endDateTime.Month;
-
-                        // Create new schedule
-                        var newSchedule = new ExpenseSchedule
-                        {
-                            StartYear = startDate.Year,
-                            StartMonth = startDate.Month,
-                            Amount = amount,
-                            Frequency = frequency
-                        };
-
-                        existingExpense.Schedules.Add(newSchedule);
                     }
-                    // If values are the same, just update the existing schedule
-                }
-                else
-                {
-                    // No current schedule, create a new one
+
+                    // Create new schedule for the future date
                     var newSchedule = new ExpenseSchedule
                     {
                         StartYear = startDate.Year,
@@ -1018,54 +1295,179 @@ namespace InvestmentTracker.Services
 
                     existingExpense.Schedules.Add(newSchedule);
                 }
-            }
+                else
+                {
+                    _logger.LogDebug("Setting current/past start date for expense {ExpenseId}", expenseId);
+                    // For current/past changes, modify the existing schedule or create a new one
+                    if (currentSchedule != null)
+                    {
+                        // If the current schedule has different values, end it and create a new one
+                        if (currentSchedule.Amount != amount ||
+                            currentSchedule.Frequency != frequency)
+                        {
+                            // End current schedule as of the day before the new start date
+                            var endDateTime = startDate.AddDays(-1);
+                            currentSchedule.EndYear = endDateTime.Year;
+                            currentSchedule.EndMonth = endDateTime.Month;
 
-            await _context.SaveChangesAsync();
+                            // Create new schedule
+                            var newSchedule = new ExpenseSchedule
+                            {
+                                StartYear = startDate.Year,
+                                StartMonth = startDate.Month,
+                                Amount = amount,
+                                Frequency = frequency
+                            };
+
+                            existingExpense.Schedules.Add(newSchedule);
+                        }
+                        // If values are the same, just update the existing schedule
+                    }
+                    else
+                    {
+                        // No current schedule, create a new one
+                        var newSchedule = new ExpenseSchedule
+                        {
+                            StartYear = startDate.Year,
+                            StartMonth = startDate.Month,
+                            Amount = amount,
+                            Frequency = frequency
+                        };
+
+                        existingExpense.Schedules.Add(newSchedule);
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Successfully updated regular expense schedule for expense {ExpenseId}", expenseId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update regular expense schedule for expense {ExpenseId}", expenseId);
+                throw;
+            }
         }
 
         public async Task<IEnumerable<RegularExpense>> GetAllRegularExpensesAsync()
         {
-            return await _context.RegularExpenses
-                .Include(e => e.Category)
-                .Include(e => e.FamilyMember)
-                .Include(e => e.Schedules)
-                .ToListAsync();
+            try
+            {
+                _logger.LogDebug("Retrieving all regular expenses");
+                var expenses = await _context.RegularExpenses
+                    .Include(e => e.Category)
+                    .Include(e => e.FamilyMember)
+                    .Include(e => e.Schedules)
+                    .ToListAsync();
+                _logger.LogDebug("Retrieved {ExpenseCount} regular expenses", expenses.Count);
+                return expenses;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve regular expenses");
+                throw;
+            }
         }
 
         public async Task<IEnumerable<FamilyMember>> GetFamilyMembersAsync()
         {
-            return await _context.FamilyMember
-                .Where(fm => fm.IsActive)
-                .OrderBy(fm => fm.Name)
-                .ToListAsync();
+            try
+            {
+                _logger.LogDebug("Retrieving active family members");
+                var familyMembers = await _context.FamilyMember
+                    .Where(fm => fm.IsActive)
+                    .OrderBy(fm => fm.Name)
+                    .ToListAsync();
+                _logger.LogDebug("Retrieved {FamilyMemberCount} active family members", familyMembers.Count);
+                return familyMembers;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve family members");
+                throw;
+            }
         }
 
         public async Task AddFamilyMemberAsync(FamilyMember familyMember)
         {
-            _context.Add(familyMember);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _logger.LogInformation("Adding new family member: {FamilyMemberName}", familyMember.Name);
+                _context.Add(familyMember);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Successfully added family member {FamilyMemberName} with ID {FamilyMemberId}", 
+                    familyMember.Name, familyMember.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add family member {FamilyMemberName}", familyMember.Name);
+                throw;
+            }
         }
 
         public async Task<FamilyMember?> GetFamilyMemberAsync(int id)
         {
-            return await _context.FamilyMember.FindAsync(id);
+            try
+            {
+                _logger.LogDebug("Retrieving family member {FamilyMemberId}", id);
+                var familyMember = await _context.FamilyMember.FindAsync(id);
+                
+                if (familyMember == null)
+                {
+                    _logger.LogWarning("Family member {FamilyMemberId} not found", id);
+                }
+                else
+                {
+                    _logger.LogDebug("Retrieved family member {FamilyMemberId}: {FamilyMemberName}", id, familyMember.Name);
+                }
+                
+                return familyMember;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve family member {FamilyMemberId}", id);
+                throw;
+            }
         }
 
         public async Task UpdateFamilyMemberAsync(FamilyMember familyMember)
         {
-            _context.Update(familyMember);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _logger.LogInformation("Updating family member {FamilyMemberId}: {FamilyMemberName}", 
+                    familyMember.Id, familyMember.Name);
+                _context.Update(familyMember);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Successfully updated family member {FamilyMemberId}: {FamilyMemberName}", 
+                    familyMember.Id, familyMember.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update family member {FamilyMemberId}: {FamilyMemberName}", 
+                    familyMember.Id, familyMember.Name);
+                throw;
+            }
         }
 
         public async Task<List<CategoryBudget>> GetEffectiveBudgetsAsync(int year, int month)
         {
-            var monthIndex = year * 12 + month;
-            return await _context.CategoryBudgets
-                .AsNoTracking()
-                .Include(cb => cb.ExpenseCategory)
-                .Where(cb => (cb.StartYear * 12 + cb.StartMonth) <= monthIndex &&
-                             (cb.EndYear == null || cb.EndMonth == null || (cb.EndYear * 12 + cb.EndMonth) >= monthIndex))
-                .ToListAsync();
+            try
+            {
+                _logger.LogDebug("Retrieving effective budgets for {Year}/{Month}", year, month);
+                var monthIndex = year * 12 + month;
+                var budgets = await _context.CategoryBudgets
+                    .AsNoTracking()
+                    .Include(cb => cb.ExpenseCategory)
+                    .Where(cb => (cb.StartYear * 12 + cb.StartMonth) <= monthIndex &&
+                                 (cb.EndYear == null || cb.EndMonth == null || (cb.EndYear * 12 + cb.EndMonth) >= monthIndex))
+                    .ToListAsync();
+                _logger.LogDebug("Retrieved {BudgetCount} effective budgets for {Year}/{Month}", budgets.Count, year, month);
+                return budgets;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve effective budgets for {Year}/{Month}", year, month);
+                throw;
+            }
         }
 
         public async Task SetCategoryBudgetAsync(int categoryId, decimal amount, int year, int month, bool applyToFuture)
@@ -1179,113 +1581,155 @@ namespace InvestmentTracker.Services
 
         public async Task<IEnumerable<IrregularExpenseCategoryAnalysis>> GetIrregularExpenseAnalysisAsync(DateTime startDate, DateTime endDate)
         {
-            return await _context.IrregularExpenses
-                .AsNoTracking()
-                .Where(e => e.Date >= startDate && e.Date <= endDate)
-                .GroupBy(e => e.Category)
-                .Select(g => new IrregularExpenseCategoryAnalysis
-                {
-                    CategoryName = g.Key != null ? g.Key.Name : "Unknown",
-                    TotalAmount = g.Sum(e => e.Amount)
-                })
-                .OrderByDescending(a => a.TotalAmount)
-                .ToListAsync();
+            try
+            {
+                _logger.LogDebug("Analyzing irregular expenses for period {StartDate} to {EndDate}", 
+                    startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"));
+                    
+                var analysis = await _context.IrregularExpenses
+                    .AsNoTracking()
+                    .Where(e => e.Date >= startDate && e.Date <= endDate)
+                    .GroupBy(e => e.Category)
+                    .Select(g => new IrregularExpenseCategoryAnalysis
+                    {
+                        CategoryName = g.Key != null ? g.Key.Name : "Unknown",
+                        TotalAmount = g.Sum(e => e.Amount)
+                    })
+                    .OrderByDescending(a => a.TotalAmount)
+                    .ToListAsync();
+                    
+                _logger.LogDebug("Completed irregular expense analysis for {CategoryCount} categories", analysis.Count);
+                return analysis;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to analyze irregular expenses for period {StartDate} to {EndDate}", 
+                    startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"));
+                throw;
+            }
         }
 
         public async Task<IEnumerable<RegularExpenseCategoryAnalysis>> GetRegularExpenseAnalysisAsync(DateTime startDate, DateTime endDate)
         {
-            var regularExpenses = await _context.RegularExpenses
-                .AsNoTracking()
-                .Include(e => e.Category)
-                .Include(e => e.Schedules)
-                .ToListAsync();
-
-            var categoryTotals = new Dictionary<string, decimal>();
-
-            foreach (var expense in regularExpenses)
+            try
             {
-                foreach (var schedule in expense.Schedules)
-                {
-                    // Calculate the total amount for this expense in the period
-                    var occurrences = CalculateOccurrencesInPeriod(schedule, startDate, endDate);
-                    var totalForExpense = occurrences * schedule.Amount;
+                _logger.LogDebug("Analyzing regular expenses for period {StartDate} to {EndDate}", 
+                    startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"));
                     
-                    var categoryName = expense.Category?.Name ?? "Unknown";
-                    if (categoryTotals.ContainsKey(categoryName))
+                var regularExpenses = await _context.RegularExpenses
+                    .AsNoTracking()
+                    .Include(e => e.Category)
+                    .Include(e => e.Schedules)
+                    .ToListAsync();
+
+                var categoryTotals = new Dictionary<string, decimal>();
+
+                foreach (var expense in regularExpenses)
+                {
+                    foreach (var schedule in expense.Schedules)
                     {
-                        categoryTotals[categoryName] += totalForExpense;
-                    }
-                    else
-                    {
-                        categoryTotals[categoryName] = totalForExpense;
+                        // Calculate the total amount for this expense in the period
+                        var occurrences = CalculateOccurrencesInPeriod(schedule, startDate, endDate);
+                        var totalForExpense = occurrences * schedule.Amount;
+                        
+                        var categoryName = expense.Category?.Name ?? "Unknown";
+                        if (categoryTotals.ContainsKey(categoryName))
+                        {
+                            categoryTotals[categoryName] += totalForExpense;
+                        }
+                        else
+                        {
+                            categoryTotals[categoryName] = totalForExpense;
+                        }
                     }
                 }
-            }
 
-            return categoryTotals
-                .Select(kvp => new RegularExpenseCategoryAnalysis
-                {
-                    CategoryName = kvp.Key,
-                    TotalAmount = kvp.Value
-                })
-                .OrderByDescending(a => a.TotalAmount)
-                .ToList();
+                var analysis = categoryTotals
+                    .Select(kvp => new RegularExpenseCategoryAnalysis
+                    {
+                        CategoryName = kvp.Key,
+                        TotalAmount = kvp.Value
+                    })
+                    .OrderByDescending(a => a.TotalAmount)
+                    .ToList();
+                    
+                _logger.LogDebug("Completed regular expense analysis for {CategoryCount} categories", analysis.Count);
+                return analysis;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to analyze regular expenses for period {StartDate} to {EndDate}", 
+                    startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"));
+                throw;
+            }
         }
 
         public async Task<IEnumerable<MonthlyExpenseTrends>> GetMonthlyExpenseTrendsAsync(int monthsBack)
         {
-            var config = await _context.FinancialScheduleConfigs.AsNoTracking().FirstOrDefaultAsync();
-            string scheduleType = config?.ScheduleType ?? "Calendar";
-            int startDay = config?.StartDay ?? 1;
-
-            var today = DateTime.Today;
-            var trends = new List<MonthlyExpenseTrends>();
-
-            // Calculate the periods going backwards
-            for (int i = monthsBack - 1; i >= 0; i--)
+            try
             {
-                DateTime periodStart, periodEnd;
-                string periodLabel;
+                _logger.LogDebug("Retrieving monthly expense trends for last {MonthsBack} months", monthsBack);
+                
+                var config = await _context.FinancialScheduleConfigs.AsNoTracking().FirstOrDefaultAsync();
+                string scheduleType = config?.ScheduleType ?? "Calendar";
+                int startDay = config?.StartDay ?? 1;
 
-                if (scheduleType == "Custom")
+                var today = DateTime.Today;
+                var trends = new List<MonthlyExpenseTrends>();
+
+                // Calculate the periods going backwards
+                for (int i = monthsBack - 1; i >= 0; i--)
                 {
-                    // Use the shared calculation method for consistency
-                    var targetDate = today.AddMonths(-i);
-                    var (start, end) = await CalculateFinancialMonthDatesAsync(targetDate.Year, targetDate.Month);
-                    periodStart = start;
-                    periodEnd = end;
-                    periodLabel = $"{periodStart:MMM yyyy}";
+                    DateTime periodStart, periodEnd;
+                    string periodLabel;
+
+                    if (scheduleType == "Custom")
+                    {
+                        // Use the shared calculation method for consistency
+                        var targetDate = today.AddMonths(-i);
+                        var (start, end) = await CalculateFinancialMonthDatesAsync(targetDate.Year, targetDate.Month);
+                        periodStart = start;
+                        periodEnd = end;
+                        periodLabel = $"{periodStart:MMM yyyy}";
+                    }
+                    else
+                    {
+                        // Calendar months
+                        var targetDate = today.AddMonths(-i);
+                        periodStart = new DateTime(targetDate.Year, targetDate.Month, 1);
+                        periodEnd = periodStart.AddMonths(1).AddDays(-1);
+                        periodLabel = $"{periodStart:MMM yyyy}";
+                    }
+
+                    // Get irregular expenses for this period
+                    var irregularExpenses = await _context.IrregularExpenses
+                        .AsNoTracking()
+                        .Where(e => e.Date >= periodStart && e.Date <= periodEnd)
+                        .SumAsync(e => (decimal?)e.Amount) ?? 0;
+
+                    // Calculate regular expenses for this period
+                    // This is complex because regular expenses are scheduled and may span multiple periods
+                    var regularExpensesTotal = await CalculateRegularExpensesForPeriodAsync(periodStart, periodEnd);
+
+                    trends.Add(new MonthlyExpenseTrends
+                    {
+                        PeriodLabel = periodLabel,
+                        StartDate = periodStart,
+                        EndDate = periodEnd,
+                        RegularExpenses = regularExpensesTotal,
+                        IrregularExpenses = irregularExpenses
+                    });
                 }
-                else
-                {
-                    // Calendar months
-                    var targetDate = today.AddMonths(-i);
-                    periodStart = new DateTime(targetDate.Year, targetDate.Month, 1);
-                    periodEnd = periodStart.AddMonths(1).AddDays(-1);
-                    periodLabel = $"{periodStart:MMM yyyy}";
-                }
 
-                // Get irregular expenses for this period
-                var irregularExpenses = await _context.IrregularExpenses
-                    .AsNoTracking()
-                    .Where(e => e.Date >= periodStart && e.Date <= periodEnd)
-                    .SumAsync(e => (decimal?)e.Amount) ?? 0;
-
-                // Calculate regular expenses for this period
-                // This is complex because regular expenses are scheduled and may span multiple periods
-                var regularExpensesTotal = await CalculateRegularExpensesForPeriodAsync(periodStart, periodEnd);
-
-                trends.Add(new MonthlyExpenseTrends
-                {
-                    PeriodLabel = periodLabel,
-                    StartDate = periodStart,
-                    EndDate = periodEnd,
-                    RegularExpenses = regularExpensesTotal,
-                    IrregularExpenses = irregularExpenses
-                });
+                var result = trends.OrderBy(t => t.StartDate);
+                _logger.LogDebug("Retrieved monthly expense trends for {TrendCount} periods", result.Count());
+                return result;
             }
-
-            return trends.OrderBy(t => t.StartDate);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve monthly expense trends for last {MonthsBack} months", monthsBack);
+                throw;
+            }
         }
 
         private async Task<decimal> CalculateRegularExpensesForPeriodAsync(DateTime periodStart, DateTime periodEnd)
@@ -1345,50 +1789,67 @@ namespace InvestmentTracker.Services
 
         public async Task<(DateTime startDate, DateTime endDate)> CalculateFinancialMonthDatesAsync(int year, int month)
         {
-            // Load financial schedule config
-            var config = await _context.FinancialScheduleConfigs.AsNoTracking().FirstOrDefaultAsync();
-            string scheduleType = config?.ScheduleType ?? "Calendar";
-            int startDay = config?.StartDay ?? 1;
-
-            DateTime startDate, endDate;
-            if (scheduleType == "Custom")
+            try
             {
-                var currentTargetMonth = new DateTime(year, month, 1);
-                var nextTargetMonth = currentTargetMonth.AddMonths(1);
+                _logger.LogDebug("Calculating financial month dates for {Year}/{Month}", year, month);
+                
+                // Load financial schedule config
+                var config = await _context.FinancialScheduleConfigs.AsNoTracking().FirstOrDefaultAsync();
+                string scheduleType = config?.ScheduleType ?? "Calendar";
+                int startDay = config?.StartDay ?? 1;
 
-                var overrides = await _context.FinancialMonthOverrides
-                    .AsNoTracking()
-                    .Where(o => o.TargetMonth == currentTargetMonth || o.TargetMonth == nextTargetMonth)
-                    .ToDictionaryAsync(o => o.TargetMonth);
-
-                var currentMonthOverride = overrides.GetValueOrDefault(currentTargetMonth);
-                var nextMonthOverride = overrides.GetValueOrDefault(nextTargetMonth);
-
-                // Determine the start date for the current financial month
-                startDate = currentMonthOverride?.OverrideStartDate ?? new DateTime(year, month, startDay);
-
-                // Determine the start date for the next financial month to calculate the current month's end date
-                DateTime nextMonthStartDate;
-                if (nextMonthOverride != null)
+                DateTime startDate, endDate;
+                if (scheduleType == "Custom")
                 {
-                    nextMonthStartDate = nextMonthOverride.OverrideStartDate;
+                    _logger.LogDebug("Using custom schedule with start day {StartDay}", startDay);
+                    
+                    var currentTargetMonth = new DateTime(year, month, 1);
+                    var nextTargetMonth = currentTargetMonth.AddMonths(1);
+
+                    var overrides = await _context.FinancialMonthOverrides
+                        .AsNoTracking()
+                        .Where(o => o.TargetMonth == currentTargetMonth || o.TargetMonth == nextTargetMonth)
+                        .ToDictionaryAsync(o => o.TargetMonth);
+
+                    var currentMonthOverride = overrides.GetValueOrDefault(currentTargetMonth);
+                    var nextMonthOverride = overrides.GetValueOrDefault(nextTargetMonth);
+
+                    // Determine the start date for the current financial month
+                    startDate = currentMonthOverride?.OverrideStartDate ?? new DateTime(year, month, startDay);
+
+                    // Determine the start date for the next financial month to calculate the current month's end date
+                    DateTime nextMonthStartDate;
+                    if (nextMonthOverride != null)
+                    {
+                        nextMonthStartDate = nextMonthOverride.OverrideStartDate;
+                    }
+                    else
+                    {
+                        var nextMonthDate = new DateTime(year, month, startDay).AddMonths(1);
+                        nextMonthStartDate = new DateTime(nextMonthDate.Year, nextMonthDate.Month, startDay);
+                    }
+                    
+                    endDate = nextMonthStartDate.AddDays(-1);
+                    _logger.LogDebug("Calculated custom financial month: {StartDate} to {EndDate}", 
+                        startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"));
                 }
                 else
                 {
-                    var nextMonthDate = new DateTime(year, month, startDay).AddMonths(1);
-                    nextMonthStartDate = new DateTime(nextMonthDate.Year, nextMonthDate.Month, startDay);
+                    _logger.LogDebug("Using calendar schedule");
+                    // Calendar month
+                    startDate = new DateTime(year, month, 1);
+                    endDate = startDate.AddMonths(1).AddDays(-1);
+                    _logger.LogDebug("Calculated calendar month: {StartDate} to {EndDate}", 
+                        startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"));
                 }
-                
-                endDate = nextMonthStartDate.AddDays(-1);
-            }
-            else
-            {
-                // Calendar month
-                startDate = new DateTime(year, month, 1);
-                endDate = startDate.AddMonths(1).AddDays(-1);
-            }
 
-            return (startDate, endDate);
+                return (startDate, endDate);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to calculate financial month dates for {Year}/{Month}", year, month);
+                throw;
+            }
         }
     }
 }
