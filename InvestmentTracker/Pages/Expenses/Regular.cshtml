@@ -515,12 +515,14 @@
             const selectedCount = document.getElementById('selectedCount');
             const bulkUpdateCount = document.getElementById('bulkUpdateCount');
 
-            if (count > 0) {
-                bulkActionsBar.classList.remove('d-none');
-                selectedCount.textContent = count;
-                bulkUpdateCount.textContent = count;
-            } else {
-                bulkActionsBar.classList.add('d-none');
+            if (bulkActionsBar && selectedCount && bulkUpdateCount) {
+                if (count > 0) {
+                    bulkActionsBar.classList.remove('d-none');
+                    selectedCount.textContent = count;
+                    bulkUpdateCount.textContent = count;
+                } else {
+                    bulkActionsBar.classList.add('d-none');
+                }
             }
         }
 
@@ -544,19 +546,22 @@
         // Event listeners for checkboxes
         document.addEventListener('DOMContentLoaded', function() {
             // Select All checkbox
-            document.getElementById('selectAll').addEventListener('change', function(e) {
-                const isChecked = e.target.checked;
-                document.querySelectorAll('.expense-checkbox').forEach(checkbox => {
-                    checkbox.checked = isChecked;
-                    const expenseId = parseInt(checkbox.value);
-                    if (isChecked) {
-                        selectedExpenses.add(expenseId);
-                    } else {
-                        selectedExpenses.delete(expenseId);
-                    }
+            const selectAllCheckbox = document.getElementById('selectAll');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function(e) {
+                    const isChecked = e.target.checked;
+                    document.querySelectorAll('.expense-checkbox').forEach(checkbox => {
+                        checkbox.checked = isChecked;
+                        const expenseId = parseInt(checkbox.value);
+                        if (isChecked) {
+                            selectedExpenses.add(expenseId);
+                        } else {
+                            selectedExpenses.delete(expenseId);
+                        }
+                    });
+                    updateBulkActions();
                 });
-                updateBulkActions();
-            });
+            }
 
             // Individual checkboxes
             document.addEventListener('change', function(e) {
@@ -571,17 +576,19 @@
                     // Update select all checkbox state
                     const allCheckboxes = document.querySelectorAll('.expense-checkbox');
                     const checkedCheckboxes = document.querySelectorAll('.expense-checkbox:checked');
-                    const selectAllCheckbox = document.getElementById('selectAll');
+                    const selectAllCheckbox2 = document.getElementById('selectAll');
                     
-                    if (checkedCheckboxes.length === 0) {
-                        selectAllCheckbox.checked = false;
-                        selectAllCheckbox.indeterminate = false;
-                    } else if (checkedCheckboxes.length === allCheckboxes.length) {
-                        selectAllCheckbox.checked = true;
-                        selectAllCheckbox.indeterminate = false;
-                    } else {
-                        selectAllCheckbox.checked = false;
-                        selectAllCheckbox.indeterminate = true;
+                    if (selectAllCheckbox2) {
+                        if (checkedCheckboxes.length === 0) {
+                            selectAllCheckbox2.checked = false;
+                            selectAllCheckbox2.indeterminate = false;
+                        } else if (checkedCheckboxes.length === allCheckboxes.length) {
+                            selectAllCheckbox2.checked = true;
+                            selectAllCheckbox2.indeterminate = false;
+                        } else {
+                            selectAllCheckbox2.checked = false;
+                            selectAllCheckbox2.indeterminate = true;
+                        }
                     }
 
                     updateBulkActions();
@@ -590,73 +597,97 @@
         });
 
         // Bulk update form submission
-        document.getElementById('bulkUpdateForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+        const bulkUpdateForm = document.getElementById('bulkUpdateForm');
+        if (bulkUpdateForm) {
+            bulkUpdateForm.addEventListener('submit', function(e) {
+                e.preventDefault();
 
-            if (selectedExpenses.size === 0) {
-                Toast.warning('No expenses selected for update.');
-                return;
-            }
-
-            const bulkStartYearEl = document.getElementById('bulkStartYear');
-            const bulkStartMonthEl = document.getElementById('bulkStartMonth');
-            const bulkStartDayEl = document.getElementById('bulkStartDay');
-
-            if (!bulkStartYearEl || !bulkStartMonthEl || !bulkStartDayEl) {
-                Toast.error('Form is missing required fields. Please reload the page.');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('expenseIds', Array.from(selectedExpenses).join(','));
-            formData.append('startYear', bulkStartYearEl.value);
-            formData.append('startMonth', bulkStartMonthEl.value);
-            formData.append('startDay', bulkStartDayEl.value);
-
-            fetch('/expenses/regular?handler=BulkUpdateStartDate', {
-                method: 'POST',
-                headers: {
-                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
-                },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Close modal and clear selection
-                    bootstrap.Modal.getInstance(document.getElementById('bulkUpdateModal')).hide();
-                    clearSelection();
-                    
-                    // Show success message and reload
-                    Toast.success(data.message);
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    Toast.error('Error updating expenses: ' + data.message);
+                if (selectedExpenses.size === 0) {
+                    Toast.warning('No expenses selected for update.');
+                    return;
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Toast.error('An error occurred while updating the expenses.');
+
+                const bulkStartYearEl = document.getElementById('bulkStartYear');
+                const bulkStartMonthEl = document.getElementById('bulkStartMonth');
+                const bulkStartDayEl = document.getElementById('bulkStartDay');
+
+                if (!bulkStartYearEl || !bulkStartMonthEl || !bulkStartDayEl) {
+                    Toast.error('Form is missing required fields. Please reload the page.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('expenseIds', Array.from(selectedExpenses).join(','));
+                formData.append('startYear', bulkStartYearEl.value);
+                formData.append('startMonth', bulkStartMonthEl.value);
+                formData.append('startDay', bulkStartDayEl.value);
+
+                fetch('/expenses/regular?handler=BulkUpdateStartDate', {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Close modal and clear selection
+                        const bulkUpdateModal = document.getElementById('bulkUpdateModal');
+                        if (bulkUpdateModal) {
+                            bootstrap.Modal.getInstance(bulkUpdateModal).hide();
+                        }
+                        clearSelection();
+                        
+                        // Show success message and reload
+                        Toast.success(data.message);
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        Toast.error('Error updating expenses: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Toast.error('An error occurred while updating the expenses.');
+                });
             });
-        });
+        }
 
         // Reset bulk update modal when closed
-        document.getElementById('bulkUpdateModal').addEventListener('hidden.bs.modal', function() {
-            document.getElementById('bulkUpdateForm').reset();
-        });
+        const bulkUpdateModal = document.getElementById('bulkUpdateModal');
+        if (bulkUpdateModal) {
+            bulkUpdateModal.addEventListener('hidden.bs.modal', function() {
+                const bulkUpdateForm = document.getElementById('bulkUpdateForm');
+                if (bulkUpdateForm) {
+                    bulkUpdateForm.reset();
+                }
+            });
+        }
 
         function clearFilters() {
-            document.getElementById('categoryFilter').value = '';
-            document.getElementById('frequencyFilter').value = '';
-            document.getElementById('sortBy').value = 'name';
+            const categoryFilter = document.getElementById('categoryFilter');
+            const frequencyFilter = document.getElementById('frequencyFilter');
+            const sortBy = document.getElementById('sortBy');
+            
+            if (categoryFilter) categoryFilter.value = '';
+            if (frequencyFilter) frequencyFilter.value = '';
+            if (sortBy) sortBy.value = 'name';
+            
             filterAndSortTable();
         }
 
         function filterAndSortTable() {
-            const categoryFilter = document.getElementById('categoryFilter').value;
-            const frequencyFilter = document.getElementById('frequencyFilter').value;
-            const sortBy = document.getElementById('sortBy').value;
+            const categoryFilter = document.getElementById('categoryFilter');
+            const frequencyFilter = document.getElementById('frequencyFilter');
+            const sortBy = document.getElementById('sortBy');
             const tbody = document.querySelector('#expensesTable tbody');
+            
+            if (!tbody) return;
+            
+            const categoryFilterValue = categoryFilter ? categoryFilter.value : '';
+            const frequencyFilterValue = frequencyFilter ? frequencyFilter.value : '';
+            const sortByValue = sortBy ? sortBy.value : 'name';
+            
             const rows = Array.from(tbody.querySelectorAll('tr'));
 
             // Filter rows
@@ -664,8 +695,8 @@
                 const category = row.dataset.category;
                 const frequency = row.dataset.frequency;
                 
-                const categoryMatch = !categoryFilter || category === categoryFilter;
-                const frequencyMatch = !frequencyFilter || frequency === frequencyFilter;
+                const categoryMatch = !categoryFilterValue || category === categoryFilterValue;
+                const frequencyMatch = !frequencyFilterValue || frequency === frequencyFilterValue;
                 
                 row.style.display = categoryMatch && frequencyMatch ? '' : 'none';
             });
@@ -676,7 +707,7 @@
             visibleRows.sort((a, b) => {
                 let aValue, bValue;
                 
-                switch (sortBy) {
+                switch (sortByValue) {
                     case 'name':
                         aValue = a.cells[1].textContent.trim().toLowerCase();
                         bValue = b.cells[1].textContent.trim().toLowerCase();
@@ -705,7 +736,7 @@
                         return 0;
                 }
                 
-                if (sortBy !== 'amount') {
+                if (sortByValue !== 'amount') {
                     return aValue.localeCompare(bValue);
                 }
             });
@@ -715,9 +746,13 @@
         }
 
         // Event listeners
-        document.getElementById('categoryFilter').addEventListener('change', filterAndSortTable);
-        document.getElementById('frequencyFilter').addEventListener('change', filterAndSortTable);
-        document.getElementById('sortBy').addEventListener('change', filterAndSortTable);
+        const categoryFilter = document.getElementById('categoryFilter');
+        const frequencyFilter = document.getElementById('frequencyFilter');
+        const sortBy = document.getElementById('sortBy');
+        
+        if (categoryFilter) categoryFilter.addEventListener('change', filterAndSortTable);
+        if (frequencyFilter) frequencyFilter.addEventListener('change', filterAndSortTable);
+        if (sortBy) sortBy.addEventListener('change', filterAndSortTable);
 
         function editExpense(id) {
             fetch(`/expenses/regular?handler=ExpenseDetails&id=${id}`)
@@ -775,66 +810,76 @@
             }
         }
 
-        document.getElementById('expenseForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+        const expenseForm = document.getElementById('expenseForm');
+        if (expenseForm) {
+            expenseForm.addEventListener('submit', function(e) {
+                e.preventDefault();
 
-            const formData = new FormData();
-            const expenseIdEl = document.getElementById('expenseId');
-            const expenseNameEl = document.getElementById('expenseName');
-            const expenseCategoryEl = document.getElementById('expenseCategory');
-            const expenseAmountEl = document.getElementById('expenseAmount');
-            const expenseFrequencyEl = document.getElementById('expenseFrequency');
-            const expenseStartYearEl = document.getElementById('expenseStartYear');
-            const expenseStartMonthEl = document.getElementById('expenseStartMonth');
-            const expenseStartDayEl = document.getElementById('expenseStartDay');
-            const expenseDescriptionEl = document.getElementById('expenseDescription');
+                const formData = new FormData();
+                const expenseIdEl = document.getElementById('expenseId');
+                const expenseNameEl = document.getElementById('expenseName');
+                const expenseCategoryEl = document.getElementById('expenseCategory');
+                const expenseAmountEl = document.getElementById('expenseAmount');
+                const expenseFrequencyEl = document.getElementById('expenseFrequency');
+                const expenseStartYearEl = document.getElementById('expenseStartYear');
+                const expenseStartMonthEl = document.getElementById('expenseStartMonth');
+                const expenseStartDayEl = document.getElementById('expenseStartDay');
+                const expenseDescriptionEl = document.getElementById('expenseDescription');
 
-            if (!expenseIdEl || !expenseNameEl || !expenseCategoryEl || !expenseAmountEl || !expenseFrequencyEl || !expenseStartYearEl || !expenseStartMonthEl || !expenseStartDayEl || !expenseDescriptionEl) {
-                Toast.error('Form is missing required fields. Please reload the page.');
-                return;
-            }
-
-            formData.append('id', expenseIdEl.value);
-            formData.append('name', expenseNameEl.value);
-            formData.append('categoryId', expenseCategoryEl.value);
-            formData.append('amount', expenseAmountEl.value);
-            formData.append('frequency', expenseFrequencyEl.value);
-            formData.append('startYear', expenseStartYearEl.value);
-            formData.append('startMonth', expenseStartMonthEl.value);
-            formData.append('startDay', expenseStartDayEl.value);
-            formData.append('description', expenseDescriptionEl.value);
-
-            const isEdit = expenseIdEl.value && expenseIdEl.value !== '0';
-            const handler = isEdit ? 'Update' : 'Create';
-
-            fetch(`/expenses/regular?handler=${handler}`, {
-                method: 'POST',
-                headers: {
-                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
-                },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Toast.success('Expense saved successfully!');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    Toast.error('Error saving expense: ' + data.message);
+                if (!expenseIdEl || !expenseNameEl || !expenseCategoryEl || !expenseAmountEl || !expenseFrequencyEl || !expenseStartYearEl || !expenseStartMonthEl || !expenseStartDayEl || !expenseDescriptionEl) {
+                    Toast.error('Form is missing required fields. Please reload the page.');
+                    return;
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Toast.error('An error occurred while saving the expense.');
+
+                formData.append('id', expenseIdEl.value);
+                formData.append('name', expenseNameEl.value);
+                formData.append('categoryId', expenseCategoryEl.value);
+                formData.append('amount', expenseAmountEl.value);
+                formData.append('frequency', expenseFrequencyEl.value);
+                formData.append('startYear', expenseStartYearEl.value);
+                formData.append('startMonth', expenseStartMonthEl.value);
+                formData.append('startDay', expenseStartDayEl.value);
+                formData.append('description', expenseDescriptionEl.value);
+
+                const isEdit = expenseIdEl.value && expenseIdEl.value !== '0';
+                const handler = isEdit ? 'Update' : 'Create';
+
+                fetch(`/expenses/regular?handler=${handler}`, {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Toast.success('Expense saved successfully!');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        Toast.error('Error saving expense: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Toast.error('An error occurred while saving the expense.');
+                });
             });
-        });
+        }
 
         // Reset form when modal is closed
-        document.getElementById('addExpenseModal').addEventListener('hidden.bs.modal', function() {
-            document.getElementById('expenseForm').reset();
-            document.getElementById('expenseId').value = '0';
-            document.querySelector('#addExpenseModal .modal-title').textContent = 'Add Recurring Expense';
-        });
+        const addExpenseModal = document.getElementById('addExpenseModal');
+        if (addExpenseModal) {
+            addExpenseModal.addEventListener('hidden.bs.modal', function() {
+                const expenseForm = document.getElementById('expenseForm');
+                const expenseId = document.getElementById('expenseId');
+                const modalTitle = document.querySelector('#addExpenseModal .modal-title');
+                
+                if (expenseForm) expenseForm.reset();
+                if (expenseId) expenseId.value = '0';
+                if (modalTitle) modalTitle.textContent = 'Add Recurring Expense';
+            });
+        }
 
         // Keyboard shortcuts
         document.addEventListener('keydown', function(event) {
@@ -858,10 +903,17 @@
                 case 'A':
                     event.preventDefault();
                     // Reset form and show add modal
-                    document.getElementById('expenseForm').reset();
-                    document.getElementById('expenseId').value = '0';
-                    document.querySelector('#addExpenseModal .modal-title').textContent = 'Add Recurring Expense';
-                    new bootstrap.Modal(document.getElementById('addExpenseModal')).show();
+                    const expenseForm = document.getElementById('expenseForm');
+                    const expenseId = document.getElementById('expenseId');
+                    const modalTitle = document.querySelector('#addExpenseModal .modal-title');
+                    const addExpenseModal = document.getElementById('addExpenseModal');
+                    
+                    if (expenseForm) expenseForm.reset();
+                    if (expenseId) expenseId.value = '0';
+                    if (modalTitle) modalTitle.textContent = 'Add Recurring Expense';
+                    if (addExpenseModal) {
+                        new bootstrap.Modal(addExpenseModal).show();
+                    }
                     break;
             }
         });

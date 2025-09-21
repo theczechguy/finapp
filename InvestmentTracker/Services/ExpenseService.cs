@@ -1756,35 +1756,89 @@ namespace InvestmentTracker.Services
 
         private int CalculateOccurrencesInPeriod(ExpenseSchedule schedule, DateTime periodStart, DateTime periodEnd)
         {
-            // This is a simplified calculation - in a real implementation you'd need more complex logic
-            // to handle different frequencies (monthly, quarterly, etc.)
-            
-            if (schedule.Frequency == Frequency.Monthly)
+            _logger.LogDebug("Calculating occurrences for schedule {ScheduleId} with frequency {Frequency} in period {Start} to {End}",
+                schedule.Id, schedule.Frequency, periodStart.ToString("yyyy-MM-dd"), periodEnd.ToString("yyyy-MM-dd"));
+
+            // If the schedule ends before the period starts, no occurrences
+            if (schedule.EndDate.HasValue && schedule.EndDate.Value < periodStart)
             {
-                // For monthly expenses, count how many months in the period
-                var monthsInPeriod = ((periodEnd.Year - periodStart.Year) * 12) + periodEnd.Month - periodStart.Month + 1;
-                return Math.Max(1, monthsInPeriod); // At least 1 occurrence
-            }
-            else if (schedule.Frequency == Frequency.Quarterly)
-            {
-                // Simplified quarterly calculation
-                var quarters = Math.Ceiling((double)((periodEnd.Year - periodStart.Year) * 12 + periodEnd.Month - periodStart.Month + 1) / 3);
-                return Math.Max(1, (int)quarters);
-            }
-            else if (schedule.Frequency == Frequency.SemiAnnually)
-            {
-                // Simplified semi-annual calculation
-                var halfYears = Math.Ceiling((double)((periodEnd.Year - periodStart.Year) * 12 + periodEnd.Month - periodStart.Month + 1) / 6);
-                return Math.Max(1, (int)halfYears);
-            }
-            else if (schedule.Frequency == Frequency.Annually)
-            {
-                // Simplified annual calculation
-                var years = periodEnd.Year - periodStart.Year + 1;
-                return Math.Max(1, years);
+                _logger.LogDebug("Schedule ends before period starts, 0 occurrences");
+                return 0;
             }
 
-            return 1; // Default to 1 occurrence
+            // If the schedule starts after the period ends, no occurrences
+            if (schedule.StartDate > periodEnd)
+            {
+                _logger.LogDebug("Schedule starts after period ends, 0 occurrences");
+                return 0;
+            }
+
+            int occurrences = 0;
+            var currentDate = schedule.StartDate;
+
+            // Ensure we start from the first occurrence that could be in the period
+            if (currentDate < periodStart)
+            {
+                // Find the first occurrence on or after periodStart
+                var monthsToAdd = 0;
+                switch (schedule.Frequency)
+                {
+                    case Frequency.Monthly:
+                        monthsToAdd = ((periodStart.Year - currentDate.Year) * 12) + periodStart.Month - currentDate.Month;
+                        if (periodStart.Day > currentDate.Day) monthsToAdd++;
+                        break;
+                    case Frequency.Quarterly:
+                        var quartersToAdd = ((periodStart.Year - currentDate.Year) * 4) + (periodStart.Month - currentDate.Month) / 3;
+                        if (periodStart.Day > currentDate.Day || (periodStart.Month - currentDate.Month) % 3 != 0) quartersToAdd++;
+                        monthsToAdd = quartersToAdd * 3;
+                        break;
+                    case Frequency.SemiAnnually:
+                        var halfYearsToAdd = ((periodStart.Year - currentDate.Year) * 2) + (periodStart.Month - currentDate.Month) / 6;
+                        if (periodStart.Day > currentDate.Day || (periodStart.Month - currentDate.Month) % 6 != 0) halfYearsToAdd++;
+                        monthsToAdd = halfYearsToAdd * 6;
+                        break;
+                    case Frequency.Annually:
+                        monthsToAdd = (periodStart.Year - currentDate.Year) * 12;
+                        if (periodStart.Month > currentDate.Month || (periodStart.Month == currentDate.Month && periodStart.Day > currentDate.Day))
+                            monthsToAdd += 12;
+                        break;
+                }
+                currentDate = currentDate.AddMonths(monthsToAdd);
+            }
+
+            // Count occurrences within the period
+            while (currentDate <= periodEnd)
+            {
+                if (currentDate >= periodStart)
+                {
+                    occurrences++;
+                    _logger.LogDebug("Found occurrence on {Date}", currentDate.ToString("yyyy-MM-dd"));
+                }
+
+                // Move to next occurrence
+                switch (schedule.Frequency)
+                {
+                    case Frequency.Monthly:
+                        currentDate = currentDate.AddMonths(1);
+                        break;
+                    case Frequency.Quarterly:
+                        currentDate = currentDate.AddMonths(3);
+                        break;
+                    case Frequency.SemiAnnually:
+                        currentDate = currentDate.AddMonths(6);
+                        break;
+                    case Frequency.Annually:
+                        currentDate = currentDate.AddYears(1);
+                        break;
+                }
+
+                // Stop if we've gone past the schedule end date
+                if (schedule.EndDate.HasValue && currentDate > schedule.EndDate.Value)
+                    break;
+            }
+
+            _logger.LogDebug("Calculated {Occurrences} occurrences for schedule {ScheduleId}", occurrences, schedule.Id);
+            return Math.Max(1, occurrences); // At least 1 occurrence if the schedule is active in the period
         }
 
         public async Task<(DateTime startDate, DateTime endDate)> CalculateFinancialMonthDatesAsync(int year, int month)

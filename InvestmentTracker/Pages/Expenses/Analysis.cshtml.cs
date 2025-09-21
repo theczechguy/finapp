@@ -51,7 +51,16 @@ public class AnalysisModel : PageModel
 
         var analysisData = await _expenseService.GetIrregularExpenseAnalysisAsync(FinancialMonthStartDate, FinancialMonthEndDate);
 
-        var colors = new[] { "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40", "#FF6384", "#C9CBCF", "#4BC0C0", "#FF6384" };
+        // Expanded color palette with 50+ distinct colors for better category differentiation
+        var colors = new[] {
+            "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40", "#FF6384", "#C9CBCF", "#4BC0C0", "#FF6384", // Original 10
+            "#E91E63", "#9C27B0", "#673AB7", "#3F51B5", "#2196F3", "#00BCD4", "#009688", "#4CAF50", "#8BC34A", "#CDDC39", // Material Design colors
+            "#FFEB3B", "#FFC107", "#FF9800", "#FF5722", "#795548", "#9E9E9E", "#607D8B", "#F44336", "#E91E63", "#9C27B0", // More Material colors
+            "#673AB7", "#3F51B5", "#2196F3", "#00BCD4", "#009688", "#4CAF50", "#8BC34A", "#CDDC39", "#FFEB3B", "#FFC107", // Extended palette
+            "#FF9800", "#FF5722", "#795548", "#9E9E9E", "#607D8B", "#F44336", "#E91E63", "#9C27B0", "#673AB7", "#3F51B5", // Even more colors
+            "#2196F3", "#00BCD4", "#009688", "#4CAF50", "#8BC34A", "#CDDC39", "#FFEB3B", "#FFC107", "#FF9800", "#FF5722", // Comprehensive palette
+            "#795548", "#9E9E9E", "#607D8B", "#F44336", "#E91E63", "#9C27B0", "#673AB7", "#3F51B5", "#2196F3", "#00BCD4"  // Final set
+        };
 
         var chartData = new
         {
@@ -119,7 +128,7 @@ public class AnalysisModel : PageModel
                 {
                     label = "Regular Expenses by Category",
                     data = regularAnalysisData.Select(d => d.TotalAmount),
-                    backgroundColor = analysisData.Select((d, index) => colors[(index + 3) % colors.Length]) // Offset colors to differentiate from irregular
+                    backgroundColor = regularAnalysisData.Select((d, index) => colors[(index + 10) % colors.Length]) // Offset by 10 to differentiate from irregular
                 }
             }
         };

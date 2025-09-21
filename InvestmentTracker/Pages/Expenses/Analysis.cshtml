@@ -47,8 +47,15 @@
 <div class="row">
     <div class="col-md-6">
         <div class="card bg-dark-2 border-secondary">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5>Irregular Expenses by Category</h5>
+                <div class="d-flex gap-2">
+                    <select class="form-select form-select-sm" id="irregularChartType" style="width: auto;">
+                        <option value="pie">Pie Chart</option>
+                        <option value="doughnut">Donut Chart</option>
+                        <option value="bar">Bar Chart</option>
+                    </select>
+                </div>
             </div>
             <div class="card-body">
                 <canvas id="expenseChart"></canvas>
@@ -57,8 +64,15 @@
     </div>
     <div class="col-md-6">
         <div class="card bg-dark-2 border-secondary">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5>Regular Expenses by Category</h5>
+                <div class="d-flex gap-2">
+                    <select class="form-select form-select-sm" id="regularChartType" style="width: auto;">
+                        <option value="pie">Pie Chart</option>
+                        <option value="doughnut">Donut Chart</option>
+                        <option value="bar">Bar Chart</option>
+                    </select>
+                </div>
             </div>
             <div class="card-body">
                 <canvas id="regularExpenseChart"></canvas>
@@ -80,66 +94,193 @@
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        let irregularChart = null;
+        let regularChart = null;
+
         document.addEventListener('DOMContentLoaded', function () {
-            const ctx = document.getElementById('expenseChart').getContext('2d');
+            // Initial render
+            renderIrregularChart();
+            renderRegularChart();
+            renderTrendsChart();
+            
+            // Chart type change listeners
+            const irregularChartType = document.getElementById('irregularChartType');
+            const regularChartType = document.getElementById('regularChartType');
+            
+            if (irregularChartType) irregularChartType.addEventListener('change', renderIrregularChart);
+            if (regularChartType) regularChartType.addEventListener('change', renderRegularChart);
+        });
+
+        function renderIrregularChart() {
+            const ctx = document.getElementById('expenseChart');
+            if (!ctx) return;
+            
             const chartData = JSON.parse('@Html.Raw(Model.ChartDataJson)');
+            const chartType = document.getElementById('irregularChartType').value;
+            
+            // Destroy existing chart
+            if (irregularChart) {
+                irregularChart.destroy();
+            }
 
             if (chartData.labels && chartData.labels.length > 0) {
-                new Chart(ctx, {
-                    type: 'doughnut',
-                    data: chartData,
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                            },
-                            title: {
-                                display: true,
-                                text: 'Irregular Expenses by Category'
+                const config = getChartConfig(chartType, chartData, 'Irregular Expenses by Category');
+                irregularChart = new Chart(ctx, config);
+            } else {
+                showNoDataMessage(ctx, 'No irregular expense data available for the selected period.');
+            }
+        }
+
+        function renderRegularChart() {
+            const ctx = document.getElementById('regularExpenseChart');
+            if (!ctx) return;
+            
+            const chartData = JSON.parse('@Html.Raw(Model.RegularChartDataJson)');
+            const chartType = document.getElementById('regularChartType').value;
+            
+            // Destroy existing chart
+            if (regularChart) {
+                regularChart.destroy();
+            }
+
+            if (chartData.labels && chartData.labels.length > 0) {
+                const config = getChartConfig(chartType, chartData, 'Regular Expenses by Category');
+                regularChart = new Chart(ctx, config);
+            } else {
+                showNoDataMessage(ctx, 'No regular expense data available for the selected period.');
+            }
+        }
+
+        function getChartConfig(chartType, chartData, title) {
+            const baseConfig = {
+                data: chartData,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: chartType === 'bar' ? 'top' : 'right',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 8
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: title
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += new Intl.NumberFormat('cs-CZ', {
+                                        style: 'currency',
+                                        currency: 'CZK'
+                                    }).format(context.parsed.y || context.parsed);
+                                    return label;
+                                }
                             }
                         }
                     }
-                });
-            } else {
-                const canvas = document.getElementById('expenseChart');
-                const p = document.createElement('p');
-                p.textContent = 'No irregular expense data available for the selected period.';
-                p.classList.add('text-center', 'text-muted');
-                canvas.parentElement.replaceChild(p, canvas);
-            }
+                }
+            };
 
-            // Render regular expense chart
-            const regularCtx = document.getElementById('regularExpenseChart').getContext('2d');
-            const regularChartData = JSON.parse('@Html.Raw(Model.RegularChartDataJson)');
-
-            if (regularChartData.labels && regularChartData.labels.length > 0) {
-                new Chart(regularCtx, {
-                    type: 'doughnut',
-                    data: regularChartData,
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                            },
-                            title: {
-                                display: true,
-                                text: 'Regular Expenses by Category'
+            switch (chartType) {
+                case 'pie':
+                    return {
+                        type: 'pie',
+                        ...baseConfig,
+                        options: {
+                            ...baseConfig.options,
+                            plugins: {
+                                ...baseConfig.options.plugins,
+                                legend: {
+                                    ...baseConfig.options.plugins.legend,
+                                    position: 'right'
+                                }
                             }
                         }
-                    }
-                });
-            } else {
-                const regularCanvas = document.getElementById('regularExpenseChart');
-                const p = document.createElement('p');
-                p.textContent = 'No regular expense data available for the selected period.';
-                p.classList.add('text-center', 'text-muted');
-                regularCanvas.parentElement.replaceChild(p, regularCanvas);
+                    };
+                
+                case 'doughnut':
+                    return {
+                        type: 'doughnut',
+                        ...baseConfig,
+                        options: {
+                            ...baseConfig.options,
+                            cutout: '50%',
+                            plugins: {
+                                ...baseConfig.options.plugins,
+                                legend: {
+                                    ...baseConfig.options.plugins.legend,
+                                    position: 'right'
+                                }
+                            }
+                        }
+                    };
+                
+                case 'bar':
+                    return {
+                        type: 'bar',
+                        ...baseConfig,
+                        options: {
+                            ...baseConfig.options,
+                            indexAxis: 'y', // Horizontal bar chart
+                            plugins: {
+                                ...baseConfig.options.plugins,
+                                legend: {
+                                    display: false // Hide legend for bar chart
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return new Intl.NumberFormat('cs-CZ', {
+                                                style: 'currency',
+                                                currency: 'CZK',
+                                                notation: 'compact'
+                                            }).format(value);
+                                        }
+                                    }
+                                },
+                                y: {
+                                    ticks: {
+                                        // Truncate long labels
+                                        callback: function(value, index) {
+                                            const label = this.getLabelForValue(index);
+                                            return label.length > 20 ? label.substring(0, 17) + '...' : label;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    };
+                
+                default:
+                    return {
+                        type: 'pie',
+                        ...baseConfig
+                    };
             }
+        }
 
-            // Render trends chart
-            const trendsCtx = document.getElementById('trendsChart').getContext('2d');
+        function showNoDataMessage(canvas, message) {
+            const container = canvas.parentElement;
+            const p = document.createElement('p');
+            p.textContent = message;
+            p.classList.add('text-center', 'text-muted', 'mt-4');
+            container.replaceChild(p, canvas);
+        }
+
+        // Render trends chart
+        function renderTrendsChart() {
+            const trendsCtx = document.getElementById('trendsChart');
+            if (!trendsCtx) return;
+            
             const trendsData = JSON.parse('@Html.Raw(Model.TrendsChartDataJson)');
 
             if (trendsData.labels && trendsData.labels.length > 0) {
@@ -214,9 +355,7 @@
                 p.classList.add('text-center', 'text-muted');
                 trendsCanvas.parentElement.replaceChild(p, trendsCanvas);
             }
-        });
-
-        // Month navigation function
+        }
         window.navigateMonth = function(direction) {
             const dateInput = document.getElementById('monthPicker');
             const currentDate = new Date(dateInput.value);
