@@ -40,7 +40,7 @@
             <label for="monthPicker" class="form-label mb-0">Month</label>
             <input type="date" id="monthPicker" name="selectedDate" class="form-control" value="@Model.ViewModel.SelectedDate.ToString("yyyy-MM-dd")" />
         </div>
-        <button type="submit" class="btn btn-primary">View</button>
+        <button type="submit" class="btn btn-primary">Update View</button>
         <div class="btn-group ms-2" role="group">
             <button type="button" class="btn btn-secondary" onclick="navigateMonth(-1)" title="Previous Month">
                 <i class="bi bi-chevron-left"></i> Previous
@@ -61,7 +61,7 @@
                 Schedule: @activeScheduleType
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="/expenses/financialscheduleconfig">Configure Schedule</a></li>
+                <li><a class="dropdown-item" href="/expenses/financialscheduleconfig">Configure Financial Schedule</a></li>
                 @if (activeScheduleType == "Custom")
                 {
                     <li><hr class="dropdown-divider"></li>
@@ -111,7 +111,7 @@
                     <i class="bi bi-caret-down-fill me-1" id="regularIncomesChevron"></i>
                     <span class="fw-semibold">Regular Incomes</span>
                 </button>
-                <a asp-page="./IncomeSources" class="btn btn-sm btn-primary">Manage Sources</a>
+                <a asp-page="./IncomeSources" class="btn btn-sm btn-primary">Manage Income Sources</a>
             </div>
             <div class="card-body collapse show" id="regularIncomesCollapse">
                 <div class="table-responsive">
@@ -228,7 +228,7 @@
         </button>
         <a href="./Budgets?year=@Model.ViewModel.SelectedDate.Year&month=@Model.ViewModel.SelectedDate.Month" class="btn btn-sm btn-primary">
             <i class="bi bi-gear"></i>
-            <span class="d-none d-sm-inline ms-1">Manage</span>
+            <span class="d-none d-sm-inline ms-1">Manage Budgets</span>
         </a>
     </div>
     <div class="card-body collapse show" id="budgetsCollapse">
@@ -439,16 +439,16 @@
     <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#irregularExpensesCollapse" aria-expanded="true" aria-controls="irregularExpensesCollapse" id="irregularToggleBtn" aria-label="Toggle Irregular Expenses" title="Collapse/Expand">
+                    <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#irregularExpensesCollapse" aria-expanded="true" aria-controls="irregularExpensesCollapse" id="irregularToggleBtn" aria-label="Toggle One-Time Expenses" title="Collapse/Expand">
                         <i class="bi bi-caret-down-fill me-1" id="irregularChevron"></i>
-                        <span class="fw-semibold">Irregular Expenses</span>
+                        <span class="fw-semibold">One-Time Expenses</span>
                     </button>
                     <small class="text-muted ms-1">
                         @("Total: " + Model.ViewModel.IrregularExpenses.Sum(e => e.Amount).ToString("C", new System.Globalization.CultureInfo("cs-CZ")))
                     </small>
                 </div>
                 <div>
-                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Quick Add <kbd>Q</kbd></button>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Add One-Time Expense <kbd>Q</kbd></button>
                 </div>
             </div>
             <div class="card-body collapse show" id="irregularExpensesCollapse">
@@ -489,7 +489,7 @@
                                                 <button type="button" class="btn btn-sm btn-secondary" onclick="editIrregularExpense(@expense.Id)" title="Edit" aria-label="Edit">
                                                     <i class="bi bi-pencil"></i>
                                                 </button>
-                                                <form method="post" asp-page-handler="DeleteIrregularExpense" asp-route-expenseId="@expense.Id" class="d-inline" data-confirm="Delete this irregular expense? This action cannot be undone." data-loading="Deleting expense...">
+                                                <form method="post" asp-page-handler="DeleteIrregularExpense" asp-route-expenseId="@expense.Id" class="d-inline" data-confirm="Delete this one-time expense? This action cannot be undone." data-loading="Deleting expense...">
                                                     <input type="hidden" name="SelectedDate" value="@Model.ViewModel.SelectedDate.ToString("yyyy-MM-dd")" />
                                                     <button type="submit" class="btn btn-sm btn-danger align-middle" title="Delete" aria-label="Delete">
                                                         <i class="bi bi-trash"></i>
@@ -503,7 +503,7 @@
                             else
                             {
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted">No irregular expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Add your first expense</a></td>
+                                    <td colspan="6" class="text-center text-muted">No one-time expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Add your first expense</a></td>
                                 </tr>
                             }
                         </tbody>
@@ -603,7 +603,7 @@
                                 <input type="number" id="regularExpenseStartDay" name="startDay" min="1" max="31" value="1" class="form-control" required />
                             </div>
                         </div>
-                        <div class="form-text">Select year, month, and day when this expense should start (e.g., 2025, September, 15).</div>
+                        <div class="form-text">Select the year, month, and day when this recurring expense should start.</div>
                     </div>
                     <button type="submit" class="btn btn-primary" title="Add Expense" aria-label="Add Expense">
                         <i class="bi bi-plus-lg"></i>
@@ -615,12 +615,12 @@
     </div>
 </div>
 
-<!-- Add Irregular Expense Modal -->
+<!-- Add One-Time Expense Modal -->
 <div class="modal fade" id="addIrregularExpenseModal" tabindex="-1" aria-labelledby="addIrregularExpenseModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addIrregularExpenseModalLabel">Quick Add Irregular Expense</h5>
+                <h5 class="modal-title" id="addIrregularExpenseModalLabel">Add One-Time Expense</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -790,12 +790,12 @@
                             </table>
                         </div>
                         <div class="form-text">
-                            <small class="text-muted">This table shows all historical and future schedules for this expense.</small>
+                            <small class="text-muted">This table shows all historical and future schedule changes for this recurring expense.</small>
                         </div>
                     </div>
 
                     <div class="alert alert-info">
-                        <small><strong>Note:</strong> Changes will only apply from the selected month forward. Historical data will remain unchanged.</small>
+                        <small><strong>Note:</strong> Changes will only apply from the selected start month forward. Historical expense data will remain unchanged.</small>
                     </div>
                     <button type="submit" class="btn btn-primary" title="Update Expense" aria-label="Update Expense">
                         <i class="bi bi-save"></i>

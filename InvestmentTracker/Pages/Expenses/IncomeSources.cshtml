@@ -47,7 +47,7 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-header">
-                Add New Source
+                Add New Income Source
             </div>
             <div class="card-body">
                 <form method="post" data-loading="Adding income source...">
@@ -63,9 +63,9 @@
                         <label asp-for="NewIncomeSource.Currency" class="form-label"></label>
                         <select asp-for="NewIncomeSource.Currency" asp-items="Html.GetEnumSelectList<Currency>()" class="form-control"></select>
                     </div>
-                    <button type="submit" class="btn btn-primary" title="Add Source" aria-label="Add Source">
+                    <button type="submit" class="btn btn-primary" title="Add Income Source" aria-label="Add Income Source">
                         <i class="bi bi-plus-lg"></i>
-                        <span class="d-none d-sm-inline ms-1">Add Source</span>
+                        <span class="d-none d-sm-inline ms-1">Add Income Source</span>
                     </button>
                 </form>
             </div>

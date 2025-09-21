@@ -28,7 +28,7 @@
             <label for="monthPicker" class="form-label mb-0">Month</label>
             <input type="date" id="monthPicker" name="selectedDate" class="form-control" value="@Model.SelectedDate?.ToString("yyyy-MM-dd")" />
         </div>
-        <button type="submit" class="btn btn-primary">View</button>
+        <button type="submit" class="btn btn-primary">Update View</button>
         <div class="btn-group ms-2" role="group">
             <button type="button" class="btn btn-secondary" onclick="navigateMonth(-1)" title="Previous Month">
                 <i class="bi bi-chevron-left"></i> Previous
@@ -48,7 +48,7 @@
     <div class="col-md-6">
         <div class="card bg-dark-2 border-secondary">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5>Irregular Expenses by Category</h5>
+                <h5>One-Time Expenses by Category</h5>
                 <div class="d-flex gap-2">
                     <select class="form-select form-select-sm" id="irregularChartType" style="width: auto;">
                         <option value="pie">Pie Chart</option>
@@ -84,7 +84,7 @@
 <div class="card bg-dark-2 border-secondary mt-4">
     <div class="card-header">
         <h5>Expense Trends (Last 12 Months)</h5>
-        <small class="text-muted">Regular vs Irregular Expenses Over Time</small>
+        <small class="text-muted">Regular vs One-Time Expenses Over Time</small>
     </div>
     <div class="card-body">
         <canvas id="trendsChart" width="800" height="600" style="max-width: 100%; height: auto;"></canvas>
@@ -124,10 +124,10 @@
             }
 
             if (chartData.labels && chartData.labels.length > 0) {
-                const config = getChartConfig(chartType, chartData, 'Irregular Expenses by Category');
+                const config = getChartConfig(chartType, chartData, 'One-Time Expenses by Category');
                 irregularChart = new Chart(ctx, config);
             } else {
-                showNoDataMessage(ctx, 'No irregular expense data available for the selected period.');
+                showNoDataMessage(ctx, 'No one-time expense data available for the selected period.');
             }
         }
 
