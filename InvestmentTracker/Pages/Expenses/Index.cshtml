@@ -406,12 +406,15 @@
                                         </td>
                                         <td>
                                             <span class="badge bg-@(expense.ExpenseType == ExpenseType.Family ? "primary" : "secondary")">
-                                                @expense.ExpenseType
+                                                @if (expense.ExpenseType == ExpenseType.Family)
+                                                {
+                                                    <text>Family</text>
+                                                }
+                                                else
+                                                {
+                                                    @($"Individual: {expense.FamilyMember?.Name ?? "Unknown"}")
+                                                }
                                             </span>
-                                            @if (expense.FamilyMember != null)
-                                            {
-                                                <small class="text-muted d-block">@expense.FamilyMember.Name</small>
-                                            }
                                         </td>
                                         <td>
                                             <div class="d-flex flex-wrap align-items-center gap-2">
@@ -477,12 +480,15 @@
                                         <td data-sort-value="@expense.Amount">@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
                                         <td>
                                             <span class="badge bg-@(expense.ExpenseType == ExpenseType.Family ? "primary" : "secondary")">
-                                                @expense.ExpenseType
+                                                @if (expense.ExpenseType == ExpenseType.Family)
+                                                {
+                                                    <text>Family</text>
+                                                }
+                                                else
+                                                {
+                                                    @($"Individual: {expense.FamilyMember?.Name ?? "Unknown"}")
+                                                }
                                             </span>
-                                            @if (expense.FamilyMember != null)
-                                            {
-                                                <small class="text-muted d-block">@expense.FamilyMember.Name</small>
-                                            }
                                         </td>
                                         <td>
                                             <div class="d-flex flex-wrap align-items-center gap-2">
