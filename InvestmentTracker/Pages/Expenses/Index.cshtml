@@ -107,13 +107,13 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#regularIncomesCollapse" aria-expanded="true" aria-controls="regularIncomesCollapse" id="regularIncomesToggleBtn" aria-label="Toggle Regular Incomes" title="Collapse/Expand">
+                <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#regularIncomesCollapse" aria-expanded="false" aria-controls="regularIncomesCollapse" id="regularIncomesToggleBtn" aria-label="Toggle Regular Incomes" title="Collapse/Expand">
                     <i class="bi bi-caret-down-fill me-1" id="regularIncomesChevron"></i>
                     <span class="fw-semibold">Regular Incomes</span>
                 </button>
                 <a asp-page="./IncomeSources" class="btn btn-sm btn-primary">Manage Income Sources</a>
             </div>
-            <div class="card-body collapse show" id="regularIncomesCollapse">
+            <div class="card-body collapse" id="regularIncomesCollapse">
                 <div class="table-responsive">
                 <table class="table table-striped mb-0">
                     <thead>
@@ -158,7 +158,7 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#oneTimeIncomesCollapse" aria-expanded="true" aria-controls="oneTimeIncomesCollapse" id="oneTimeIncomesToggleBtn" aria-label="Toggle One-Time Incomes" title="Collapse/Expand">
+                <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#oneTimeIncomesCollapse" aria-expanded="false" aria-controls="oneTimeIncomesCollapse" id="oneTimeIncomesToggleBtn" aria-label="Toggle One-Time Incomes" title="Collapse/Expand">
                     <i class="bi bi-caret-down-fill me-1" id="oneTimeIncomesChevron"></i>
                     <span class="fw-semibold">One-Time Incomes</span>
                 </button>
@@ -167,7 +167,7 @@
                     <span class="d-none d-sm-inline ms-1">Add Income <kbd>O</kbd></span>
                 </button>
             </div>
-            <div class="card-body collapse show" id="oneTimeIncomesCollapse">
+            <div class="card-body collapse" id="oneTimeIncomesCollapse">
                 <div class="table-responsive">
                 <table class="table table-striped mb-0">
                     <thead>
@@ -222,7 +222,7 @@
 <!-- Budgets Card -->
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#budgetsCollapse" aria-expanded="true" aria-controls="budgetsCollapse" id="budgetsToggleBtn" aria-label="Toggle Budgets" title="Collapse/Expand">
+        <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#budgetsCollapse" aria-expanded="false" aria-controls="budgetsCollapse" id="budgetsToggleBtn" aria-label="Toggle Budgets" title="Collapse/Expand">
             <i class="bi bi-caret-down-fill me-1" id="budgetsChevron"></i>
             <span class="fw-semibold">Budgets</span>
         </button>
@@ -231,7 +231,7 @@
             <span class="d-none d-sm-inline ms-1">Manage Budgets</span>
         </a>
     </div>
-    <div class="card-body collapse show" id="budgetsCollapse">
+    <div class="card-body collapse" id="budgetsCollapse">
         @if (Model.ViewModel.Budgets.Any(b => b.BudgetAmount.HasValue))
         {
             <div class="table-responsive">
