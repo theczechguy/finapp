@@ -111,7 +111,10 @@
                     <i class="bi bi-caret-down-fill me-1" id="regularIncomesChevron"></i>
                     <span class="fw-semibold">Regular Incomes</span>
                 </button>
-                <a asp-page="./IncomeSources" class="btn btn-sm btn-primary">Manage Income Sources</a>
+                <a asp-page="./IncomeSources" class="btn btn-sm btn-primary">
+                    <i class="bi bi-gear"></i>
+                    <span class="d-none d-sm-inline ms-1">Manage Income Sources</span>
+                </a>
             </div>
             <div class="card-body collapse" id="regularIncomesCollapse">
                 <div class="table-responsive">
@@ -451,7 +454,10 @@
                     </small>
                 </div>
                 <div>
-                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Add One-Time Expense <kbd>Q</kbd></button>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal" title="Add One-Time Expense" aria-label="Add One-Time Expense">
+                        <i class="bi bi-plus-lg"></i>
+                        <span class="d-none d-sm-inline ms-1">Add One-Time Expense <kbd>Q</kbd></span>
+                    </button>
                 </div>
             </div>
             <div class="card-body collapse show" id="irregularExpensesCollapse">
