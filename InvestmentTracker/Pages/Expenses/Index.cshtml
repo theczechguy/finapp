@@ -1526,6 +1526,17 @@
             document.addEventListener('DOMContentLoaded', function () {
                 makeTableSortable('regularExpensesTable');
                 makeTableSortable('irregularExpensesTable');
+                
+                // Auto-sort irregular expenses table by date (newest first)
+                const irregularTable = document.getElementById('irregularExpensesTable');
+                if (irregularTable && irregularTable.tHead) {
+                    const dateHeader = irregularTable.tHead.querySelectorAll('th')[0]; // Date column is first
+                    if (dateHeader && dateHeader.dataset.sort === 'date') {
+                        // Trigger sort twice to get descending order (newest first)
+                        dateHeader.click();
+                        dateHeader.click();
+                    }
+                }
             });
         })();
     </script>
