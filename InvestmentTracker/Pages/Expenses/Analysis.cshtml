@@ -82,9 +82,19 @@
 </div>
 
 <div class="card bg-dark-2 border-secondary mt-4">
-    <div class="card-header">
-        <h5>Expense Trends (Last 12 Months)</h5>
-        <small class="text-muted">Regular vs One-Time Expenses Over Time</small>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h5>Expense Trends</h5>
+            <small class="text-muted">Regular vs One-Time Expenses Over Time</small>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <label for="trendsTimeRange" class="form-label mb-0">Time Range:</label>
+            <select class="form-select form-select-sm" id="trendsTimeRange" style="width: auto;">
+                <option value="3" selected="@(Model.TrendsMonthsBack == 3)">3 Months</option>
+                <option value="6" selected="@(Model.TrendsMonthsBack == 6)">6 Months</option>
+                <option value="12" selected="@(Model.TrendsMonthsBack == 12)">1 Year</option>
+            </select>
+        </div>
     </div>
     <div class="card-body">
         <canvas id="trendsChart" width="800" height="600" style="max-width: 100%; height: auto;"></canvas>
@@ -277,16 +287,106 @@
         }
 
         // Render trends chart
-        function renderTrendsChart() {
+        let trendsChart = null;
+
+        async function fetchAndRenderTrends(months) {
+            const selectElement = document.getElementById('trendsTimeRange');
+            const canvas = document.getElementById('trendsChart');
+            if (!canvas) return;
+            const container = canvas.parentElement;
+
+            selectElement.classList.add('is-loading');
+
+            try {
+                const response = await fetch(`/api/expenses/trends?monthsBack=${months}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const trendsData = await response.json();
+
+                // Ensure canvas is present if it was replaced by a message
+                const existingMessage = container.querySelector('p');
+                if (existingMessage) {
+                    container.replaceChild(canvas, existingMessage);
+                }
+
+                updateTrendsChart(trendsData);
+
+                const url = new URL(window.location);
+                url.searchParams.set('TrendsMonthsBack', months);
+                window.history.replaceState({}, '', url);
+
+            } catch (error) {
+                console.error('Error loading trend data:', error);
+                Toast.error('Failed to load trend data.');
+                showNoDataMessage(canvas, 'No trend data available.');
+            } finally {
+                selectElement.classList.remove('is-loading');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initial render
+            renderIrregularChart();
+            renderRegularChart();
+            
+            const initialMonths = document.getElementById('trendsTimeRange').value;
+            fetchAndRenderTrends(initialMonths);
+
+            // Chart type change listeners
+            const irregularChartType = document.getElementById('irregularChartType');
+            const regularChartType = document.getElementById('regularChartType');
+            
+            if (irregularChartType) irregularChartType.addEventListener('change', renderIrregularChart);
+            if (regularChartType) regularChartType.addEventListener('change', renderRegularChart);
+            
+            document.getElementById('trendsTimeRange').addEventListener('change', function() {
+                fetchAndRenderTrends(this.value);
+            });
+        });
+
+        // Function to update trends chart with new data
+        function updateTrendsChart(trendsData) {
             const trendsCtx = document.getElementById('trendsChart');
             if (!trendsCtx) return;
-            
-            const trendsData = JSON.parse('@Html.Raw(Model.TrendsChartDataJson)');
 
-            if (trendsData.labels && trendsData.labels.length > 0) {
-                new Chart(trendsCtx, {
+            // Destroy existing chart if it exists
+            if (window.trendsChart && typeof window.trendsChart.destroy === 'function') {
+                window.trendsChart.destroy();
+            }
+
+            if (trendsData && trendsData.length > 0) {
+                const chartData = {
+                    labels: trendsData.map(t => t.periodLabel),
+                    datasets: [
+                        {
+                            label: 'Regular Expenses',
+                            data: trendsData.map(t => t.regularExpenses),
+                            borderColor: '#36A2EB',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Irregular Expenses',
+                            data: trendsData.map(t => t.irregularExpenses),
+                            borderColor: '#FF6384',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Total Expenses',
+                            data: trendsData.map(t => t.totalExpenses),
+                            borderColor: '#FFCE56',
+                            backgroundColor: 'rgba(255, 206, 86, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4
+                        }
+                    ]
+                };
+
+                window.trendsChart = new Chart(trendsCtx, {
                     type: 'line',
-                    data: trendsData,
+                    data: chartData,
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
@@ -349,121 +449,60 @@
                     }
                 });
             } else {
+                // Show no data message
                 const trendsCanvas = document.getElementById('trendsChart');
+                const container = trendsCanvas.parentElement;
                 const p = document.createElement('p');
                 p.textContent = 'No trend data available.';
                 p.classList.add('text-center', 'text-muted');
-                trendsCanvas.parentElement.replaceChild(p, trendsCanvas);
+                container.replaceChild(p, trendsCanvas);
             }
         }
-        window.navigateMonth = function(direction) {
-            const dateInput = document.getElementById('monthPicker');
-            const currentDate = new Date(dateInput.value);
 
-            // Add/subtract months
-            currentDate.setMonth(currentDate.getMonth() + direction);
-
-            // Format as YYYY-MM-DD
-            const newDateStr = currentDate.toISOString().split('T')[0];
-
-            // Update the input value
-            dateInput.value = newDateStr;
-
-            // Submit the form to navigate
-            const form = dateInput.closest('form');
-            form.submit();
-        };
-
-        window.navigateToCurrentMonth = function() {
-            const dateInput = document.getElementById('monthPicker');
-            const currentDate = new Date();
-
-            // Get schedule configuration from server-rendered values
-            const scheduleType = '@(Model.ScheduleConfig?.ScheduleType ?? "Calendar")';
-            const startDay = parseInt('@(Model.ScheduleConfig?.StartDay ?? 1)');
-
-            let targetDate;
-
-            if (scheduleType === 'Custom') {
-                // For custom schedules, find the start date of the period containing current date
-                const currentYear = currentDate.getFullYear();
-                const currentMonth = currentDate.getMonth(); // 0-based
-                const currentDay = currentDate.getDate();
-
-                if (currentDay >= startDay) {
-                    // Current date is in the period starting this month
-                    targetDate = new Date(currentYear, currentMonth, startDay);
-                } else {
-                    // Current date is in the period starting last month
-                    if (currentMonth === 0) {
-                        // January, so go to December of previous year
-                        targetDate = new Date(currentYear - 1, 11, startDay);
-                    } else {
-                        targetDate = new Date(currentYear, currentMonth - 1, startDay);
-                    }
-                }
-            } else {
-                // For calendar months, use the first day of current month
-                targetDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            // Don't trigger shortcuts when user is typing in input fields
+            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.tagName === 'SELECT') {
+                return;
             }
 
-            // Format as YYYY-MM-DD for the date input
-            const targetDateStr = targetDate.toISOString().split('T')[0];
+            // Don't trigger shortcuts when modal is open
+            if (document.querySelector('.modal.show')) {
+                return;
+            }
 
-            // Update the input value
-            dateInput.value = targetDateStr;
+            // Don't trigger shortcuts when modifier keys are pressed (Cmd, Ctrl, Alt, Shift)
+            if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
+                return;
+            }
 
-            // Submit the form to navigate
-            const form = dateInput.closest('form');
-            form.submit();
-        };
-
-        // Keyboard shortcuts for month navigation
-        document.addEventListener('DOMContentLoaded', function() {
-            document.addEventListener('keydown', function(event) {
-                // Don't trigger shortcuts when user is typing in input fields
-                if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.tagName === 'SELECT') {
-                    return;
-                }
-
-                // Don't trigger shortcuts when modal is open
-                if (document.querySelector('.modal.show')) {
-                    return;
-                }
-
-                // Don't trigger shortcuts when modifier keys are pressed (Cmd, Ctrl, Alt, Shift)
-                if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
-                    return;
-                }
-
-                switch(event.key) {
-                    case 'ArrowLeft':
-                    case 'p':
-                    case 'P':
-                        event.preventDefault();
-                        navigateMonth(-1);
-                        break;
-                    case 'ArrowRight':
-                    case 'n':
-                    case 'N':
-                        event.preventDefault();
-                        navigateMonth(1);
-                        break;
-                    case 'c':
-                    case 'C':
-                    case 't':
-                    case 'T':
-                    case 'Home':
-                        event.preventDefault();
-                        navigateToCurrentMonth();
-                        break;
-                    case 'h':
-                    case 'H':
-                        event.preventDefault();
-                        navigateToCurrentMonth();
-                        break;
-                }
-            });
+            switch(event.key) {
+                case 'ArrowLeft':
+                case 'p':
+                case 'P':
+                    event.preventDefault();
+                    navigateMonth(-1);
+                    break;
+                case 'ArrowRight':
+                case 'n':
+                case 'N':
+                    event.preventDefault();
+                    navigateMonth(1);
+                    break;
+                case 'c':
+                case 'C':
+                case 't':
+                case 'T':
+                case 'Home':
+                    event.preventDefault();
+                    navigateToCurrentMonth();
+                    break;
+                case 'h':
+                case 'H':
+                    event.preventDefault();
+                    navigateToCurrentMonth();
+                    break;
+            }
         });
     </script>
 }

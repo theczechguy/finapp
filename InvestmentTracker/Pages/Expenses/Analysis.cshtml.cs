@@ -18,12 +18,14 @@ public class AnalysisModel : PageModel
     [BindProperty(SupportsGet = true)]
     public DateTime? SelectedDate { get; set; }
 
+    [BindProperty(SupportsGet = true)]
+    public int TrendsMonthsBack { get; set; } = 3;
+
     public string ChartDataJson { get; private set; } = "{}";
     public string RegularChartDataJson { get; private set; } = "{}";
     public DateTime FinancialMonthStartDate { get; private set; }
     public DateTime FinancialMonthEndDate { get; private set; }
     public FinancialScheduleConfig? ScheduleConfig { get; private set; }
-    public string TrendsChartDataJson { get; private set; } = "{}";
 
     public async Task OnGetAsync()
     {
@@ -77,44 +79,6 @@ public class AnalysisModel : PageModel
         };
 
         ChartDataJson = JsonSerializer.Serialize(chartData);
-
-        // Get trend data for the last 12 months
-        var trendData = await _expenseService.GetMonthlyExpenseTrendsAsync(12);
-
-        var trendsChartData = new
-        {
-            labels = trendData.Select(t => t.PeriodLabel).ToArray(),
-            datasets = new object[]
-            {
-                new
-                {
-                    label = "Regular Expenses",
-                    data = trendData.Select(t => t.RegularExpenses).ToArray(),
-                    borderColor = "#36A2EB",
-                    backgroundColor = "rgba(54, 162, 235, 0.1)",
-                    tension = 0.4
-                },
-                new
-                {
-                    label = "Irregular Expenses",
-                    data = trendData.Select(t => t.IrregularExpenses).ToArray(),
-                    borderColor = "#FF6384",
-                    backgroundColor = "rgba(255, 99, 132, 0.1)",
-                    tension = 0.4
-                },
-                new
-                {
-                    label = "Total Expenses",
-                    data = trendData.Select(t => t.TotalExpenses).ToArray(),
-                    borderColor = "#FFCE56",
-                    backgroundColor = "rgba(255, 206, 86, 0.1)",
-                    borderDash = new[] { 5, 5 },
-                    tension = 0.4
-                }
-            }
-        };
-
-        TrendsChartDataJson = JsonSerializer.Serialize(trendsChartData);
 
         // Get regular expense analysis data
         var regularAnalysisData = await _expenseService.GetRegularExpenseAnalysisAsync(FinancialMonthStartDate, FinancialMonthEndDate);

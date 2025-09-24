@@ -94,5 +94,6 @@ using (var scope = app.Services.CreateScope())
 
 // Map API endpoints
 app.MapInvestmentApi();
+app.MapExpenseApi();
 
 app.Run();
