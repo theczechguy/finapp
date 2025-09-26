@@ -57,4 +57,11 @@ namespace InvestmentTracker.Models
         public decimal IrregularExpenses { get; set; }
         public decimal TotalExpenses => RegularExpenses + IrregularExpenses;
     }
+
+    public class InvestmentSeriesPoint
+    {
+        public DateTime AsOf { get; set; }
+        public decimal Value { get; set; }
+        public decimal Invested { get; set; }
+    }
 }

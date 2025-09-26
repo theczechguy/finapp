@@ -260,4 +260,91 @@ public class InvestmentService : IInvestmentService
             .Where(v => v.AsOf.Date >= fromDate)
             .ToListAsync();
     }
+
+    public async Task<IEnumerable<InvestmentTracker.Models.InvestmentSeriesPoint>> GetInvestmentSeriesAsync(int investmentId, DateTime from, DateTime to)
+    {
+        _logger.LogInformation("Building investment series for {InvestmentId} from {From} to {To}", investmentId, from, to);
+
+        // Fetch investment with related data
+        var inv = await GetInvestmentAsync(investmentId);
+        if (inv is null) return Enumerable.Empty<InvestmentTracker.Models.InvestmentSeriesPoint>();
+
+        // Normalize date range to month boundaries (use month-end dates)
+        if (from > to) return Enumerable.Empty<InvestmentTracker.Models.InvestmentSeriesPoint>();
+
+        var points = new List<InvestmentTracker.Models.InvestmentSeriesPoint>();
+
+        // Helper: find latest value as of a date
+        InvestmentValue? FindLatestValue(DateTime asOf)
+        {
+            return inv.Values
+                .Where(v => v.AsOf.Date <= asOf.Date)
+                .OrderByDescending(v => v.AsOf)
+                .FirstOrDefault();
+        }
+
+        // Helper: compute invested total up to date
+        decimal ComputeInvestedUpTo(DateTime asOf)
+        {
+            decimal sum = 0m;
+            // one-time contributions
+            if (inv.OneTimeContributions?.Any() == true)
+            {
+                sum += inv.OneTimeContributions.Where(c => c.Date.Date <= asOf.Date).Sum(c => c.Amount);
+            }
+
+            // schedules (monthly only)
+            if (inv.Schedules?.Any() == true)
+            {
+                foreach (var s in inv.Schedules)
+                {
+                    var start = s.StartDate.Date;
+                    var end = s.EndDate?.Date ?? DateTime.MaxValue.Date;
+                    if (start > asOf.Date) continue;
+                    var last = asOf.Date < end ? asOf.Date : end;
+
+                    // iterate month by month from start to last and count occurrences where occurrenceDate <= asOf
+                    var day = s.DayOfMonth ?? s.StartDate.Day;
+                    var year = start.Year;
+                    var month = start.Month;
+
+                    while (true)
+                    {
+                        var dim = DateTime.DaysInMonth(year, month);
+                        var occurrenceDay = Math.Min(day, dim);
+                        var occurrence = new DateTime(year, month, occurrenceDay);
+                        if (occurrence.Date > last) break;
+                        if (occurrence.Date <= asOf.Date)
+                        {
+                            sum += s.Amount;
+                        }
+                        // move to next month
+                        month++;
+                        if (month > 12) { month = 1; year++; }
+                    }
+                }
+            }
+
+            return sum;
+        }
+
+        // Generate month-end dates between from and to inclusive
+        var cur = new DateTime(from.Year, from.Month, DateTime.DaysInMonth(from.Year, from.Month));
+        var end = new DateTime(to.Year, to.Month, DateTime.DaysInMonth(to.Year, to.Month));
+
+        for (var d = cur; d <= end; d = d.AddMonths(1))
+        {
+            var latest = FindLatestValue(d);
+            var value = latest?.Value ?? 0m;
+            var invested = ComputeInvestedUpTo(d);
+            points.Add(new InvestmentTracker.Models.InvestmentSeriesPoint
+            {
+                AsOf = d,
+                Value = value,
+                Invested = invested
+            });
+        }
+
+        return points;
+    }
 }

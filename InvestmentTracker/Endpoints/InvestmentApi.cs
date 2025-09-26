@@ -147,5 +147,17 @@ public static class InvestmentApi
             var providers = await service.GetProvidersAsync(query);
             return Results.Ok(providers);
         });
+
+        api.MapGet("/investments/{id:int}/series", async (int id, string? from, string? to, IInvestmentService service) =>
+        {
+            DateTime toDate = DateTime.Today;
+            DateTime fromDate = DateTime.Today.AddMonths(-12);
+
+            if (!string.IsNullOrWhiteSpace(from) && DateTime.TryParse(from, out var f)) fromDate = f.Date;
+            if (!string.IsNullOrWhiteSpace(to) && DateTime.TryParse(to, out var t)) toDate = t.Date;
+
+            var series = await service.GetInvestmentSeriesAsync(id, fromDate, toDate);
+            return Results.Ok(series.Select(p => new { asOf = p.AsOf.ToString("yyyy-MM-dd"), value = p.Value, invested = p.Invested }));
+        });
     }
 }

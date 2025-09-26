@@ -232,6 +232,23 @@
     </div>
 }
 
+<div class="card mb-4">
+        <div class="card-header">
+            Value vs Invested
+            <div class="float-end">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Time range selector">
+                    <button type="button" data-range="3m" class="btn time-range-btn btn-secondary">3M</button>
+                    <button type="button" data-range="6m" class="btn time-range-btn btn-secondary">6M</button>
+                    <button type="button" data-range="12m" class="btn time-range-btn btn-primary">12M</button>
+                    <button type="button" data-range="all" class="btn time-range-btn btn-secondary">All</button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <canvas id="investment-series-chart" height="200"></canvas>
+        </div>
+    </div>
+
 @section Scripts{
     <partial name="_ValidationScriptsPartial" />
     <script>
@@ -251,5 +268,102 @@
             // initial run
             updateUi();
         });
+
+        (function() {
+            const investmentId = '@Model.Investment?.Id';
+            const earliestValueFromModel = '@(Model.Investment?.Values?.OrderBy(v => v.AsOf).FirstOrDefault()?.AsOf.ToString("yyyy-MM-dd") ?? "")';
+            if (!investmentId) return;
+            const canvas = document.getElementById('investment-series-chart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            function formatCurrency(val) {
+                try { return val.toLocaleString(undefined, { style: 'currency', currency: '@Model.Investment?.Currency' }); } catch { return val.toFixed(2); }
+            }
+
+            let seriesChart = null;
+
+            function fetchAndRender(fromDate, toDate) {
+                let url = `/api/investments/${investmentId}/series`;
+                const params = new URLSearchParams();
+                if (fromDate) params.append('from', fromDate);
+                if (toDate) params.append('to', toDate);
+                if (Array.from(params).length > 0) url += `?${params.toString()}`;
+
+                fetch(url)
+                    .then(r => r.ok ? r.json() : Promise.reject('Failed'))
+                    .then(data => {
+                        const labels = data.map(d => d.asOf);
+                        const values = data.map(d => d.value);
+                        const invested = data.map(d => d.invested);
+
+                        if (seriesChart) {
+                            seriesChart.data.labels = labels;
+                            seriesChart.data.datasets[0].data = invested;
+                            seriesChart.data.datasets[1].data = values;
+                            seriesChart.update();
+                        } else {
+                            seriesChart = new Chart(ctx, {
+                                type: 'line',
+                                data: {
+                                    labels: labels,
+                                    datasets: [
+                                        { label: 'Invested', data: invested, borderColor: '#2ca02c', tension: 0.2, fill: false },
+                                        { label: 'Value', data: values, borderColor: '#1f77b4', tension: 0.2, fill: true, backgroundColor: 'rgba(31,119,180,0.08)' }
+                                    ]
+                                },
+                                options: {
+                                    responsive: true,
+                                    interaction: { mode: 'index', intersect: false },
+                                    plugins: {
+                                        tooltip: {
+                                            callbacks: {
+                                                label: function(context) {
+                                                    const label = context.dataset.label || '';
+                                                    const v = context.parsed.y;
+                                                    return `${label}: ${formatCurrency(v)}`;
+                                                }
+                                            }
+                                        }
+                                    },
+                                    scales: {
+                                        y: { beginAtZero: false }
+                                    }
+                                }
+                            });
+                        }
+                    })
+                    .catch(() => { /* silent - chart stays empty */ });
+            }
+
+            function toISODate(d) { return d.toISOString().slice(0,10); }
+
+            function computeFromDateForRange(range) {
+                const today = new Date();
+                if (range === '3m') { const d = new Date(today.getFullYear(), today.getMonth() - 2, 1); return toISODate(d); }
+                if (range === '6m') { const d = new Date(today.getFullYear(), today.getMonth() - 5, 1); return toISODate(d); }
+                if (range === '12m') { const d = new Date(today.getFullYear(), today.getMonth() - 11, 1); return toISODate(d); }
+                if (range === 'all') { return earliestValueFromModel || ''; }
+                return '';
+            }
+
+            // wire buttons
+            document.querySelectorAll('.time-range-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const range = this.dataset.range;
+                    document.querySelectorAll('.time-range-btn').forEach(b => b.classList.remove('btn-primary'));
+                    document.querySelectorAll('.time-range-btn').forEach(b => b.classList.add('btn-secondary'));
+                    this.classList.remove('btn-secondary');
+                    this.classList.add('btn-primary');
+                    const from = computeFromDateForRange(range);
+                    const to = toISODate(new Date());
+                    fetchAndRender(from, to);
+                });
+            });
+
+            // initial load - default 12m
+            const defaultBtn = document.querySelector('.time-range-btn[data-range="12m"]');
+            if (defaultBtn) defaultBtn.click();
+        })();
     </script>
 }

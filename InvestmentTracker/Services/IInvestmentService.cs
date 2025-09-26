@@ -26,4 +26,6 @@ public interface IInvestmentService
     Task<List<InvestmentValue>> GetInvestmentValuesFromDateAsync(DateTime fromDate);
     Task<IEnumerable<string>> GetProvidersAsync(string? query);
     Task EnsureProviderExistsAsync(string? providerName);
+
+    Task<IEnumerable<InvestmentTracker.Models.InvestmentSeriesPoint>> GetInvestmentSeriesAsync(int investmentId, DateTime from, DateTime to);
 }
