@@ -4,6 +4,7 @@ public enum ValueChangeType
 {
     MarketValue,
     Buy,
+    Interest,
     Sell,
     Other
 }

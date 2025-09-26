@@ -58,9 +58,10 @@
         </div>
         <div class="col-auto">
             <label asp-for="NewValue.ChangeType" class="form-label">Type</label>
-            <select asp-for="NewValue.ChangeType" class="form-control">
+            <select asp-for="NewValue.ChangeType" class="form-control" id="change-type-select">
                 <option value="@ValueChangeType.MarketValue">Market Value</option>
                 <option value="@ValueChangeType.Buy">Buy</option>
+                <option value="@ValueChangeType.Interest">Interest</option>
                 <option value="@ValueChangeType.Sell">Sell</option>
                 <option value="@ValueChangeType.Other">Other</option>
             </select>
@@ -75,6 +76,9 @@
     </form>
     <div class="text-muted small mb-3">
         <i class="bi bi-keyboard me-1"></i>Tip: Press <kbd>A</kbd> to focus value form, <kbd>Enter</kbd> to add
+    </div>
+    <div class="alert alert-info small mb-3 d-none" id="interest-help">
+        <strong>Interest — note:</strong> Enter only the interest amount; it will be added to the previous total.
     </div>
 
     <h5 class="mt-4">One-time Contributions</h5>
@@ -147,6 +151,7 @@
                 <span class="badge me-2 
                     @(summary.Type == ValueChangeType.MarketValue ? "bg-secondary" : 
                       summary.Type == ValueChangeType.Buy ? "bg-success" : 
+                      summary.Type == ValueChangeType.Interest ? "bg-success" : 
                       summary.Type == ValueChangeType.Sell ? "bg-danger" : "bg-warning")">
                     @summary.Type (@summary.Count)
                 </span>
@@ -200,6 +205,7 @@
                     <span class="badge 
                         @(v.ChangeType == ValueChangeType.MarketValue ? "bg-secondary" : 
                           v.ChangeType == ValueChangeType.Buy ? "bg-success" : 
+                          v.ChangeType == ValueChangeType.Interest ? "bg-success" : 
                           v.ChangeType == ValueChangeType.Sell ? "bg-danger" : "bg-warning")">
                         @v.ChangeType.ToString()
                     </span>
@@ -228,4 +234,22 @@
 
 @section Scripts{
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const select = document.getElementById('change-type-select');
+            const helpText = document.getElementById('interest-help');
+            if (!select || !helpText) return;
+
+            function updateUi() {
+                const isInterest = select.value === '@ValueChangeType.Interest';
+                helpText.classList.toggle('d-none', !isInterest);
+            }
+
+            select.addEventListener('change', updateUi);
+            // Also update on focus in case the user tabs into the control
+            select.addEventListener('input', updateUi);
+            // initial run
+            updateUi();
+        });
+    </script>
 }

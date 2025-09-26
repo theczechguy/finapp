@@ -27,6 +27,41 @@ public class ValuesModel(IInvestmentService investmentService) : PageModel
     public async Task<IActionResult> OnPostAddValueAsync(int id)
     {
         ModelState.Clear();
+
+        // If the value being added is an Interest entry, treat the entered Value as an interest amount
+        // and compute the new stored Value as previousTotal + interestAmount.
+        if (NewValue.ChangeType == ValueChangeType.Interest)
+        {
+            var invPrev = await investmentService.GetInvestmentAsync(id);
+            decimal previousTotal = 0m;
+            if (invPrev is not null)
+            {
+                var latest = invPrev.Values.OrderByDescending(v => v.AsOf).FirstOrDefault();
+                if (latest is not null)
+                {
+                    previousTotal = latest.Value;
+                }
+                else if (invPrev.OneTimeContributions?.Any() == true)
+                {
+                    previousTotal = invPrev.OneTimeContributions.Sum(c => c.Amount);
+                }
+            }
+
+            // Validate interest amount is non-negative
+            if (NewValue.Value < 0)
+            {
+                ModelState.AddModelError("NewValue.Value", "Interest amount must be non-negative.");
+                Investment = invPrev;
+                if (Investment is not null)
+                    Investment.Values = Investment.Values.OrderByDescending(v => v.AsOf).ToList();
+                return Page();
+            }
+
+            // Store total value (previous + interest) but keep ChangeType = Interest so we know the reason
+            var interestAmount = NewValue.Value;
+            NewValue.Value = previousTotal + interestAmount;
+        }
+
         if (!TryValidateModel(NewValue, nameof(NewValue)))
         {
             // reload investment list for view
