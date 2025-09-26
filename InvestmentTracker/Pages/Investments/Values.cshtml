@@ -167,14 +167,32 @@
         </thead>
         <tbody>
         @{
-            var previousValue = Model.Investment?.Values?.OrderBy(v => v.AsOf).FirstOrDefault()?.Value ?? 0;
+            // Prepare a list of values ordered newest-first and compute month-over-month percent changes
+            var valuesList = Model.Investment?.Values?.OrderByDescending(v => v.AsOf).ToList() ?? new List<InvestmentValue>();
+            var changeMap = new Dictionary<int, decimal?>();
+            for (int i = 0; i < valuesList.Count; i++)
+            {
+                var current = valuesList[i];
+                var older = (i + 1) < valuesList.Count ? valuesList[i + 1] : null; // the immediately previous (older) snapshot
+                if (older is not null && older.Value != 0)
+                {
+                    changeMap[current.Id] = ((current.Value - older.Value) / older.Value) * 100;
+                }
+                else
+                {
+                    changeMap[current.Id] = null; // not applicable (no prior snapshot or division by zero)
+                }
+            }
         }
-        @foreach (var v in Model.Investment?.Values?.OrderByDescending(v => v.AsOf) ?? Enumerable.Empty<InvestmentValue>())
+        @foreach (var v in valuesList)
         {
-            var changePercent = previousValue != 0 ? ((v.Value - previousValue) / previousValue) * 100 : 0;
-            var changeClass = changePercent > 0 ? "text-success" : changePercent < 0 ? "text-danger" : "text-muted";
-            var changeSymbol = changePercent > 0 ? "+" : changePercent < 0 ? "" : "";
-            previousValue = v.Value;
+            decimal? changePercentNullable = changeMap.ContainsKey(v.Id) ? changeMap[v.Id] : null;
+            var changeClass = changePercentNullable.HasValue
+                ? (changePercentNullable.Value > 0 ? "text-success" : changePercentNullable.Value < 0 ? "text-danger" : "text-muted")
+                : "text-muted";
+            string? changeDisplay = changePercentNullable.HasValue
+                ? changePercentNullable.Value.ToString("+#.##;-#.##;0") + "%"
+                : null;
             <tr>
                 <td>@v.AsOf.ToShortDateString()</td>
                 <td>@v.Value.ToString("C", culture)</td>
@@ -187,9 +205,9 @@
                     </span>
                 </td>
                 <td class="@changeClass">
-                    @if (changePercent != 0)
+                    @if (changePercentNullable.HasValue)
                     {
-                        <small>@changeSymbol@changePercent.ToString("+#.##;-#.##;0")%</small>
+                        <small>@(changeDisplay)</small>
                     }
                     else
                     {
