@@ -141,5 +141,11 @@ public static class InvestmentApi
                 return Results.Problem($"Import failed: {ex.Message}");
             }
         });
+
+        api.MapGet("/providers", async (string? query, IInvestmentService service) =>
+        {
+            var providers = await service.GetProvidersAsync(query);
+            return Results.Ok(providers);
+        });
     }
 }

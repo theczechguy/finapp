@@ -21,6 +21,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<CategoryBudget> CategoryBudgets => Set<CategoryBudget>();
     public DbSet<FinancialScheduleConfig> FinancialScheduleConfigs => Set<FinancialScheduleConfig>();
     public DbSet<FinancialMonthOverride> FinancialMonthOverrides => Set<FinancialMonthOverride>();
+    public DbSet<InvestmentProvider> InvestmentProviders => Set<InvestmentProvider>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -134,12 +135,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<CategoryBudget>()
             .HasIndex(cb => new { cb.ExpenseCategoryId, cb.StartYear, cb.StartMonth });
 
-        // Performance optimization indexes for temporal queries
-        modelBuilder.Entity<CategoryBudget>()
-            .HasIndex(cb => new { cb.ExpenseCategoryId, cb.StartYear, cb.StartMonth, cb.EndYear, cb.EndMonth })
-            .HasDatabaseName("IX_CategoryBudgets_TemporalLookup");
+        // Investment provider lookup table to persist provider names and avoid duplication
+        modelBuilder.Entity<InvestmentProvider>()
+            .HasIndex(p => p.Name)
+            .IsUnique();
 
-        // Covering index for most common budget lookup
+        // Performance optimization indexes for temporal queries
         modelBuilder.Entity<CategoryBudget>()
             .HasIndex(cb => new { cb.StartYear, cb.StartMonth, cb.EndYear, cb.EndMonth, cb.ExpenseCategoryId, cb.Amount })
             .HasDatabaseName("IX_CategoryBudgets_CoveringQuery");

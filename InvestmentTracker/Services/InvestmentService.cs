@@ -51,9 +51,42 @@ public class InvestmentService : IInvestmentService
         return investment;
     }
 
+    public async Task<IEnumerable<string>> GetProvidersAsync(string? query)
+    {
+        _logger.LogInformation("Fetching providers with query: {Query}", query);
+        var q = _db.InvestmentProviders.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            q = q.Where(p => p.Name.ToLower().Contains(query.ToLower()));
+        }
+
+        return await q.OrderBy(p => p.Name)
+                      .Select(p => p.Name)
+                      .Take(50)
+                      .ToListAsync();
+    }
+
+    public async Task EnsureProviderExistsAsync(string? providerName)
+    {
+        if (string.IsNullOrWhiteSpace(providerName)) return;
+
+        var normalized = providerName.Trim();
+        var exists = await _db.InvestmentProviders.AnyAsync(p => p.Name == normalized);
+        if (!exists)
+        {
+            _db.InvestmentProviders.Add(new Models.InvestmentProvider { Name = normalized });
+            await _db.SaveChangesAsync();
+            _logger.LogInformation("Added new provider to lookup table: {Provider}", normalized);
+        }
+    }
+
     public async Task<Investment> AddInvestmentAsync(Investment investment)
     {
         _logger.LogInformation("Adding new investment: {InvestmentName}", investment.Name);
+
+        // Persist provider name to lookup table (silent upsert)
+        await EnsureProviderExistsAsync(investment.Provider);
+
         _db.Investments.Add(investment);
         await _db.SaveChangesAsync();
         _logger.LogInformation("Successfully added new investment with ID: {InvestmentId}", investment.Id);

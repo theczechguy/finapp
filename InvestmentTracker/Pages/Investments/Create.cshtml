@@ -13,7 +13,7 @@
 
     <div class="mb-3">
         <label asp-for="Investment.Provider" class="form-label"></label>
-        <input asp-for="Investment.Provider" class="form-control" />
+        <input asp-for="Investment.Provider" class="form-control" id="provider-input" autocomplete="off" />
         <span asp-validation-for="Investment.Provider" class="text-danger"></span>
     </div>
 
@@ -57,4 +57,49 @@
 
 @section Scripts{
     <partial name="_ValidationScriptsPartial" />
+
+    <!-- Include bootstrap-3-typeahead from CDN and initialize on the provider input -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-3-typeahead/4.0.2/bootstrap3-typeahead.min.js"></script>
+    <script>
+        (function ($) {
+            $(function () {
+                var $input = $('#provider-input');
+                var providersCache = null;
+
+                function ensureProviders() {
+                    if (providersCache) return $.Deferred().resolve(providersCache).promise();
+                    return $.get('/api/providers').then(function (data) {
+                        providersCache = Array.isArray(data) ? data : [];
+                        return providersCache;
+                    }).catch(function () { providersCache = []; return providersCache; });
+                }
+
+                var MAX_ITEMS = 5;
+                $input.typeahead({
+                    source: function (query, process) {
+                        ensureProviders().then(function (list) {
+                            var results;
+                            if (!query || !query.trim()) {
+                                // no query -> show top MAX_ITEMS
+                                results = list.slice(0, MAX_ITEMS);
+                                return process(results);
+                            }
+                            var q = query.toLowerCase();
+                            var filtered = list.filter(function (it) { return it.toLowerCase().indexOf(q) !== -1; });
+                            results = filtered.slice(0, MAX_ITEMS);
+                            return process(results);
+                        }).catch(function () { process([]); });
+                    },
+                    items: MAX_ITEMS,
+                    minLength: 0,
+                    afterSelect: function (item) { $input.val(item); }
+                });
+
+                // Show full list on focus if not typing yet
+                $input.on('focus', function () {
+                    ensureProviders().then(function () { $input.typeahead('lookup'); });
+                });
+            });
+        })(jQuery);
+    </script>
 }

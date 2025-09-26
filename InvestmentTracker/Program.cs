@@ -90,6 +90,20 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
+
+    // Optional automatic backfill of provider names from existing investments.
+    // Controlled by configuration: BackfillProvidersOnStartup (bool, default true).
+    try
+    {
+        var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        await StartupBackfillHelper.BackfillProvidersAsync(db, config, logger);
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Provider backfill failed during startup. Proceeding without blocking application startup.");
+    }
 }
 
 // Map API endpoints

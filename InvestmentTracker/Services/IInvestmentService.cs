@@ -24,4 +24,6 @@ public interface IInvestmentService
     Task<(ContributionSchedule? schedule, string? error)> AddContributionScheduleAsync(int investmentId, ContributionSchedule schedule);
     Task<bool> DeleteContributionScheduleAsync(int investmentId, int scheduleId);
     Task<List<InvestmentValue>> GetInvestmentValuesFromDateAsync(DateTime fromDate);
+    Task<IEnumerable<string>> GetProvidersAsync(string? query);
+    Task EnsureProviderExistsAsync(string? providerName);
 }
