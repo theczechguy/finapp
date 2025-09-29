@@ -4,6 +4,7 @@ using InvestmentTracker.Services;
 using Microsoft.EntityFrameworkCore;
 using InvestmentTracker.Endpoints;
 using Microsoft.AspNetCore.DataProtection;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,13 +52,51 @@ builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<CsvImportService>();
 
 // Configure Data Protection for persistent keys in production
+var keyDirectory = builder.Configuration["DataProtection:KeyDirectory"] ?? Environment.GetEnvironmentVariable("DATAPROTECTION__KEY_DIRECTORY") ?? "/keys";
 if (!builder.Environment.IsDevelopment())
 {
+    // Ensure the directory exists and is writable; fail startup if not.
+    try
+    {
+        Directory.CreateDirectory(keyDirectory);
+    }
+    catch (Exception ex)
+    {
+        throw new InvalidOperationException($"Unable to create DataProtection key directory '{keyDirectory}': {ex.Message}", ex);
+    }
+
+    // Verify we can write to the directory (fail-closed)
+    var testFile = Path.Combine(keyDirectory, $".dp-write-test-{Guid.NewGuid():N}");
+    try
+    {
+        File.WriteAllText(testFile, "test");
+        File.Delete(testFile);
+    }
+    catch (Exception ex)
+    {
+        throw new InvalidOperationException($"DataProtection key directory '{keyDirectory}' is not writable by the process. Ensure the directory is mounted and writable by the application user. Error: {ex.Message}", ex);
+    }
+
+    // Allow application name to be configured via appsettings (DataProtection:ApplicationName)
+    var dataProtectionAppName = builder.Configuration["DataProtection:ApplicationName"] ?? Environment.GetEnvironmentVariable("DATAPROTECTION__APPLICATION_NAME") ?? "FinApp";
+
     builder.Services.AddDataProtection()
-        .SetApplicationName("FinApp");
+        .SetApplicationName(dataProtectionAppName)
+        .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
 }
 
 var app = builder.Build();
+
+// Log DataProtection status at startup for easier diagnostics
+var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
+var dpAppNameConfigured = builder.Configuration["DataProtection:ApplicationName"] ?? Environment.GetEnvironmentVariable("DATAPROTECTION__APPLICATION_NAME") ?? "FinApp";
+startupLogger.LogInformation("Environment: {Env}", app.Environment.EnvironmentName);
+startupLogger.LogInformation("DataProtection configured application name: {DPAppName}", dpAppNameConfigured);
+startupLogger.LogInformation("DataProtection key directory: {KeyDir}", keyDirectory);
+if (!app.Environment.IsDevelopment())
+{
+    startupLogger.LogWarning("DataProtection key ring is persisted to '{KeyDir}' and is stored unencrypted. Ensure the volume is permissioned and backed up.", keyDirectory);
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

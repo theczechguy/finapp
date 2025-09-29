@@ -82,7 +82,9 @@ ssh -T $DOCKER_HOST << EOF
     fi
 
     echo "🏗️  Building and starting application with PostgreSQL..."
-    cd "$DEPLOY_PATH/FinApp/deployment" && docker compose up -d --build
+    cd "$DEPLOY_PATH/FinApp/deployment"
+
+    docker compose up -d --build
     
     echo "⏳ Waiting for PostgreSQL and application to start..."
     sleep 30

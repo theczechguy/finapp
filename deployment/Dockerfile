@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app .
 
 # Create directory for SQLite database and logs
-RUN mkdir -p /app/data /app/logs
+RUN mkdir -p /app/data /app/logs /keys && chmod 700 /keys
 
 # For now, run as root to avoid permission issues
 # In production, you'd want to set up proper user permissions
