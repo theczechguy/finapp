@@ -18,6 +18,7 @@ namespace InvestmentTracker.Services
         Task UpdateOneTimeIncomeAsync(OneTimeIncome income);
         Task DeleteOneTimeIncomeAsync(int incomeId);
         Task<IEnumerable<OneTimeIncome>> GetOneTimeIncomesForMonthAsync(int year, int month);
+        Task<IEnumerable<OneTimeIncome>> GetOneTimeIncomesForDateRangeAsync(DateTime startDate, DateTime endDate);
         Task<IEnumerable<ExpenseCategory>> GetExpenseCategoriesAsync();
         Task AddExpenseCategoryAsync(ExpenseCategory category);
         Task<ExpenseCategory?> GetExpenseCategoryAsync(int id);

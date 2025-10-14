@@ -103,6 +103,7 @@
     </div>
 </div>
 
+<!-- Restore: Regular and One-Time Incomes row (unchanged original content) -->
 <div class="row mt-4">
     <div class="col-md-6">
         <div class="card">
@@ -296,7 +297,7 @@
 </div>
 
 <div class="row mt-4">
-    <div class="col-md-6">
+    <div class="col-12 mb-3">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-2">
@@ -316,59 +317,6 @@
                 </div>
             </div>
             <div class="card-body collapse" id="regularExpensesCollapse">
-                @{
-                    var selectedMonth = new DateTime(Model.ViewModel.Year, Model.ViewModel.Month, 1);
-                    var lastIncluded = selectedMonth.AddMonths(2); // next 2 months window
-                    var allRegular = await Model.GetAllRegularExpensesAsync();
-                    var upcoming = allRegular
-                        .Where(e => e.Schedules.Any())
-                        .Where(e => e.Schedules.OrderByDescending(s => s.StartYear * 12 + s.StartMonth).First().Frequency != InvestmentTracker.Models.Frequency.Monthly)
-                        .Select(e => new { Expense = e, Next = GetNextOccurrenceFrom(selectedMonth, e) })
-                        .Where(x => x.Next.HasValue && x.Next.Value >= selectedMonth && x.Next.Value <= lastIncluded)
-                        .OrderBy(x => x.Next)
-                        .ToList();
-
-                    DateTime? GetNextOccurrenceFrom(DateTime fromMonth, InvestmentTracker.Models.RegularExpense exp)
-                    {
-                        var latest = exp.Schedules.OrderByDescending(s => s.StartYear * 12 + s.StartMonth).First();
-                        var interval = latest.Frequency switch
-                        {
-                            InvestmentTracker.Models.Frequency.Quarterly => 3,
-                            InvestmentTracker.Models.Frequency.SemiAnnually => 6,
-                            InvestmentTracker.Models.Frequency.Annually => 12,
-                            _ => 1
-                        };
-
-                        if (interval == 1)
-                            return null; // monthly not considered here
-
-                        // compute next month >= fromMonth based on schedule start month cadence
-                        var start = new DateTime(latest.StartYear, latest.StartMonth, 1);
-                        // If fromMonth is before start, next is start
-                        if (fromMonth <= start)
-                            return start;
-
-                        var monthsDiff = (fromMonth.Year - start.Year) * 12 + fromMonth.Month - start.Month;
-                        var remainder = monthsDiff % interval;
-                        var add = remainder == 0 ? 0 : interval - remainder;
-                        return fromMonth.AddMonths(add);
-                    }
-                }
-                @if (upcoming.Any())
-                {
-                    <div class="alert alert-info py-2 mb-3" role="alert">
-                        <small>
-                            <i class="bi bi-info-circle me-1"></i>
-                            <strong>Upcoming non-monthly expenses:</strong>
-                            @{
-                                var preview = upcoming.Take(5).Select(x => $"{x.Expense.Name} ({x.Next:MMM yyyy})");
-                                var list = string.Join(", ", preview);
-                                var extra = Math.Max(0, upcoming.Count - 5);
-                            }
-                            @list@if (extra > 0) { <text> + @extra more</text>; }
-                        </small>
-                    </div>
-                }
                 <div id="regularExpensesContainer">
                     <div class="table-responsive">
                     <table class="table table-striped mb-0" id="regularExpensesTable">
@@ -441,90 +389,90 @@
             </div>
         </div>
     </div>
-    <div class="col-md-6">
-    <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#irregularExpensesCollapse" aria-expanded="true" aria-controls="irregularExpensesCollapse" id="irregularToggleBtn" aria-label="Toggle One-Time Expenses" title="Collapse/Expand">
-                        <i class="bi bi-caret-down-fill me-1" id="irregularChevron"></i>
-                        <span class="fw-semibold">One-Time Expenses</span>
-                    </button>
-                    <small class="text-muted ms-1">
-                        @("Total: " + Model.ViewModel.IrregularExpenses.Sum(e => e.Amount).ToString("C", new System.Globalization.CultureInfo("cs-CZ")))
-                    </small>
-                </div>
-                <div>
-                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal" title="Add One-Time Expense" aria-label="Add One-Time Expense">
-                        <i class="bi bi-plus-lg"></i>
-                        <span class="d-none d-sm-inline ms-2">Add One-Time Expense <kbd>Q</kbd></span>
-                    </button>
-                </div>
-            </div>
-            <div class="card-body collapse show" id="irregularExpensesCollapse">
-                <div id="irregularExpensesContainer">
-                    <div class="table-responsive">
-                    <table class="table table-striped mb-0" id="irregularExpensesTable">
-                        <thead>
-                            <tr>
-                                <th data-sort="date">Date</th>
-                                <th data-sort="text">Name</th>
-                                <th data-sort="text">Category</th>
-                                <th data-sort="number">Amount</th>
-                                <th data-sort="text">Type</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (Model.ViewModel.IrregularExpenses.Any())
-                            {
-                                @foreach (var expense in Model.ViewModel.IrregularExpenses)
-                                {
-                                    <tr class="fade-in">
-                                        <td data-sort-value="@expense.Date.ToString("yyyy-MM-dd")">@expense.Date.ToString("dd/MM/yyyy")</td>
-                                        <td>@expense.Name</td>
-                                        <td>@(expense.Category?.Name ?? "Uncategorized")</td>
-                                        <td data-sort-value="@expense.Amount">@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
-                                        <td>
-                                            <span class="badge bg-@(expense.ExpenseType == ExpenseType.Family ? "primary" : "secondary")">
-                                                @if (expense.ExpenseType == ExpenseType.Family)
-                                                {
-                                                    <text>Family</text>
-                                                }
-                                                else
-                                                {
-                                                    @($"Individual: {expense.FamilyMember?.Name ?? "Unknown"}")
-                                                }
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex flex-wrap align-items-center gap-2">
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="editIrregularExpense(@expense.Id)" title="Edit" aria-label="Edit">
-                                                    <i class="bi bi-pencil"></i>
-                                                </button>
-                                                <form method="post" asp-page-handler="DeleteIrregularExpense" asp-route-expenseId="@expense.Id" class="d-inline" data-confirm="Delete this one-time expense? This action cannot be undone." data-loading="Deleting expense...">
-                                                    <input type="hidden" name="SelectedDate" value="@Model.ViewModel.SelectedDate.ToString("yyyy-MM-dd")" />
-                                                    <button type="submit" class="btn btn-sm btn-danger align-middle" title="Delete" aria-label="Delete">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            }
-                            else
-                            {
-                                <tr>
-                                    <td colspan="6" class="text-center text-muted">No one-time expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Add your first expense</a></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div class="col-12">
+         <div class="card">
+             <div class="card-header d-flex justify-content-between align-items-center">
+                 <div class="d-flex align-items-center gap-2">
+                     <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#irregularExpensesCollapse" aria-expanded="true" aria-controls="#irregularExpensesCollapse" id="irregularToggleBtn" aria-label="Toggle One-Time Expenses" title="Collapse/Expand">
+                         <i class="bi bi-caret-down-fill me-1" id="irregularChevron"></i>
+                         <span class="fw-semibold">One-Time Expenses</span>
+                     </button>
+                     <small class="text-muted ms-1">
+                         @("Total: " + Model.ViewModel.IrregularExpenses.Sum(e => e.Amount).ToString("C", new System.Globalization.CultureInfo("cs-CZ")))
+                     </small>
+                 </div>
+                 <div>
+                     <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal" title="Add One-Time Expense" aria-label="Add One-Time Expense">
+                         <i class="bi bi-plus-lg"></i>
+                         <span class="d-none d-sm-inline ms-2">Add One-Time Expense <kbd>Q</kbd></span>
+                     </button>
+                 </div>
+             </div>
+             <div class="card-body collapse show" id="irregularExpensesCollapse">
+                 <div id="irregularExpensesContainer">
+                     <div class="table-responsive">
+                     <table class="table table-striped mb-0" id="irregularExpensesTable">
+                         <thead>
+                             <tr>
+                                 <th data-sort="date">Date</th>
+                                 <th data-sort="text">Name</th>
+                                 <th data-sort="text">Category</th>
+                                 <th data-sort="number">Amount</th>
+                                 <th data-sort="text">Type</th>
+                                 <th></th>
+                             </tr>
+                         </thead>
+                         <tbody>
+                             @if (Model.ViewModel.IrregularExpenses.Any())
+                             {
+                                 @foreach (var expense in Model.ViewModel.IrregularExpenses)
+                                 {
+                                     <tr class="fade-in">
+                                         <td data-sort-value="@expense.Date.ToString("yyyy-MM-dd")">@expense.Date.ToString("dd/MM/yyyy")</td>
+                                         <td>@expense.Name</td>
+                                         <td>@(expense.Category?.Name ?? "Uncategorized")</td>
+                                         <td data-sort-value="@expense.Amount">@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
+                                         <td>
+                                             <span class="badge bg-@(expense.ExpenseType == ExpenseType.Family ? "primary" : "secondary")">
+                                                 @if (expense.ExpenseType == ExpenseType.Family)
+                                                 {
+                                                     <text>Family</text>
+                                                 }
+                                                 else
+                                                 {
+                                                     @($"Individual: {expense.FamilyMember?.Name ?? "Unknown"}")
+                                                 }
+                                             </span>
+                                         </td>
+                                         <td>
+                                             <div class="d-flex flex-wrap align-items-center gap-2">
+                                                 <button type="button" class="btn btn-sm btn-secondary" onclick="editIrregularExpense(@expense.Id)" title="Edit" aria-label="Edit">
+                                                     <i class="bi bi-pencil"></i>
+                                                 </button>
+                                                 <form method="post" asp-page-handler="DeleteIrregularExpense" asp-route-expenseId="@expense.Id" class="d-inline" data-confirm="Delete this one-time expense? This action cannot be undone." data-loading="Deleting expense...">
+                                                     <input type="hidden" name="SelectedDate" value="@Model.ViewModel.SelectedDate.ToString("yyyy-MM-dd")" />
+                                                     <button type="submit" class="btn btn-sm btn-danger align-middle" title="Delete" aria-label="Delete">
+                                                         <i class="bi bi-trash"></i>
+                                                     </button>
+                                                 </form>
+                                             </div>
+                                         </td>
+                                     </tr>
+                                 }
+                             }
+                             else
+                             {
+                                 <tr>
+                                     <td colspan="6" class="text-center text-muted">No one-time expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Add your first expense</a></td>
+                                 </tr>
+                             }
+                         </tbody>
+                     </table>
+                     </div>
+                 </div>
+             </div>
+         </div>
+     </div>
 </div>
 
 <!-- Add Regular Expense Modal -->

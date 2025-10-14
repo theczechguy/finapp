@@ -99,7 +99,7 @@ namespace InvestmentTracker.Services
                 // Execute queries sequentially to avoid DbContext concurrency issues
                 var queryStopwatch = Stopwatch.StartNew();
                 var incomeViewModels = await GetMonthlyIncomeDataAsync(year, month);
-                var oneTimeIncomes = await GetOneTimeIncomesForMonthAsync(year, month);
+                var oneTimeIncomes = await GetOneTimeIncomesForDateRangeAsync(startDate, endDate);
                 var (applicableRegularExpenses, expenseAmounts) = await GetApplicableRegularExpensesAsync(year, month);
                 var irregularExpenses = await GetIrregularExpensesForMonthAsync(startDate, endDate);
                 var effectiveBudgets = await GetEffectiveBudgetsAsync(year, month);
@@ -757,6 +757,27 @@ namespace InvestmentTracker.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to retrieve one-time incomes for {Year}/{Month}", year, month);
+                throw;
+            }
+        }
+
+        public async Task<IEnumerable<OneTimeIncome>> GetOneTimeIncomesForDateRangeAsync(DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                _logger.LogDebug("Retrieving one-time incomes for date range {StartDate} to {EndDate}", startDate, endDate);
+                var incomes = await _context.OneTimeIncomes
+                    .AsNoTracking()
+                    .Include(oti => oti.IncomeSource)
+                    .Where(oti => oti.Date >= startDate && oti.Date <= endDate)
+                    .ToListAsync();
+                 
+                 _logger.LogDebug("Retrieved {IncomeCount} one-time incomes for range {StartDate} to {EndDate}", incomes.Count, startDate, endDate);
+                return incomes;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve one-time incomes for {StartDate} to {EndDate}", startDate, endDate);
                 throw;
             }
         }
