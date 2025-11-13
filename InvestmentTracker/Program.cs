@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using InvestmentTracker.Endpoints;
 using Microsoft.AspNetCore.DataProtection;
 using System.IO;
+using InvestmentTracker.Services.ImportProfiles;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,6 +51,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IInvestmentService, InvestmentService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<CsvImportService>();
+builder.Services.AddSingleton<IBankImportProfileProvider, FileSystemBankImportProfileProvider>();
 
 // Configure Data Protection for persistent keys in production
 var keyDirectory = builder.Configuration["DataProtection:KeyDirectory"] ?? Environment.GetEnvironmentVariable("DATAPROTECTION__KEY_DIRECTORY") ?? "/keys";

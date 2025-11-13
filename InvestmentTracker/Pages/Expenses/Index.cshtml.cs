@@ -1,20 +1,26 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using InvestmentTracker.Services;
 using InvestmentTracker.ViewModels;
 using InvestmentTracker.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using InvestmentTracker.Services.ImportProfiles;
+using InvestmentTracker.Models.ImportProfiles;
 
 namespace InvestmentTracker.Pages.Expenses
 {
     public class IndexModel : PageModel
     {
         private readonly IExpenseService _expenseService;
+        private readonly IBankImportProfileProvider _bankImportProfileProvider;
 
-        public IndexModel(IExpenseService expenseService)
+        public IndexModel(IExpenseService expenseService, IBankImportProfileProvider bankImportProfileProvider)
         {
             _expenseService = expenseService;
+            _bankImportProfileProvider = bankImportProfileProvider;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -22,6 +28,8 @@ namespace InvestmentTracker.Pages.Expenses
 
         public MonthlyExpenseViewModel ViewModel { get; set; } = new();
         public string PrefilledOverrideDate { get; private set; } = "";
+        public IReadOnlyList<BankImportProfileSummary> BankProfiles { get; private set; } = Array.Empty<BankImportProfileSummary>();
+        public IReadOnlyList<BankImportProfile> BankProfilesDetailed { get; private set; } = Array.Empty<BankImportProfile>();
 
         public async Task OnGetAsync()
         {
@@ -47,6 +55,13 @@ namespace InvestmentTracker.Pages.Expenses
             
             // Set the prefilled override date for the modal
             PrefilledOverrideDate = (await GetPrefilledOverrideDateAsync(selectedDate)).ToString("yyyy-MM-dd");
+
+            var allProfiles = await _bankImportProfileProvider.GetAllProfilesAsync();
+            BankProfilesDetailed = allProfiles;
+            BankProfiles = allProfiles
+                .Select(p => p.ToSummary())
+                .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
 

@@ -1,6 +1,7 @@
 @page
 @model InvestmentTracker.Pages.Expenses.IndexModel
 @using System.Text.Json
+@using System.Linq
 @using InvestmentTracker.Models
 @{
     // currentDate already declared above if needed
@@ -74,6 +75,12 @@
             </ul>
         </div>
     </form>
+    <div class="text-center text-lg-end mt-3 mt-lg-0">
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#importStatementModal">
+            <i class="bi bi-cloud-upload me-1"></i>
+            Import Statement
+        </button>
+    </div>
 </div>
 
 <div class="row mb-4">
@@ -964,7 +971,75 @@
     </div>
 </div>
 
+<!-- Import Statement Modal -->
+<div class="modal fade" id="importStatementModal" tabindex="-1" aria-labelledby="importStatementModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importStatementModalLabel">Import Bank Statement</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3 mb-3 align-items-end">
+                    <div class="col-md-6">
+                        <label for="bankProfileSelect" class="form-label">Bank profile</label>
+                        <select class="form-select" id="bankProfileSelect">
+                            <option value="">Select a bank profile...</option>
+                            @foreach (var profile in Model.BankProfiles.OrderBy(p => p.DisplayName))
+                            {
+                                <option value="@profile.Id" data-default-skip="@profile.DefaultSkipRows">@profile.DisplayName</option>
+                            }
+                        </select>
+                        <div class="form-text" id="bankProfileHint">Pick the bank export format so FinApp can interpret the columns correctly.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="alert alert-info mb-0 py-2 px-3 small" id="bankProfileDescription" role="note">
+                            Select a profile to view details and enable statement uploads.
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="bankStatementFile" class="form-label">Choose CSV File</label>
+                    <input type="file" class="form-control" id="bankStatementFile" accept=".csv,.txt" />
+                    <div class="form-text">Select the exported statement (CSV). Contents will be previewed below.</div>
+                </div>
+                <div class="row g-3 align-items-end mb-3">
+                    <div class="col-sm-4">
+                        <label for="importSkipRows" class="form-label">Metadata rows to skip</label>
+                        <input type="number" class="form-control" id="importSkipRows" min="0" value="0" disabled />
+                    </div>
+                    <div class="col-sm-8">
+                        <div class="form-text d-flex flex-wrap align-items-center gap-2">
+                            <span id="importAutoDetectedDesc">Auto-detected 0 metadata rows.</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="importApplyAutoSkip" disabled>
+                                Use auto-detected value
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div id="importPreviewStatus" class="alert alert-secondary" role="status">
+                    No file selected.
+                </div>
+                <div class="table-responsive d-none" id="importPreviewTableContainer">
+                    <table class="table table-striped table-sm mb-0 text-center" id="importPreviewTable">
+                        <thead>
+                            <tr id="importPreviewTableHead"></tr>
+                        </thead>
+                        <tbody id="importPreviewTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
+    <script>
+    window.bankImportProfiles = @Html.Raw(JsonSerializer.Serialize(Model.BankProfilesDetailed, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+    </script>
     <!-- Native month input provides best mobile experience -->
     <script>
         // Toggle icons for collapsible sections
@@ -990,6 +1065,1203 @@
                 });
             });
         });
+    </script>
+    <script>
+        (function () {
+            const bankProfiles = Array.isArray(window.bankImportProfiles) ? window.bankImportProfiles : [];
+            const fileInputId = 'bankStatementFile';
+            const profileSelectId = 'bankProfileSelect';
+            const profileDescriptionId = 'bankProfileDescription';
+            const statusId = 'importPreviewStatus';
+            const containerId = 'importPreviewTableContainer';
+            const headId = 'importPreviewTableHead';
+            const bodyId = 'importPreviewTableBody';
+            const modalId = 'importStatementModal';
+            const skipInputId = 'importSkipRows';
+            const autoDescId = 'importAutoDetectedDesc';
+            const autoButtonId = 'importApplyAutoSkip';
+
+            const fieldLabels = {
+                transactionDate: 'Transaction Date',
+                bookingDate: 'Booking Date',
+                amount: 'Amount',
+                currency: 'Currency',
+                direction: 'Direction',
+                counterparty: 'Counterparty',
+                counterpartyAccount: 'Counterparty Account',
+                counterpartyAccountName: 'Counterparty Account Name',
+                memo: 'Personal Note',
+                recipientMessage: 'Message to Recipient',
+                bankNote: 'Bank Note',
+                bankCategory: 'Bank Category',
+                transactionType: 'Transaction Type',
+                originalAmount: 'Original Amount',
+                originalCurrency: 'Original Currency',
+                exchangeRate: 'Exchange Rate',
+                merchantLocation: 'Merchant Location',
+                cardName: 'Card Name',
+                cardNumber: 'Card Number',
+                cardHolder: 'Card Holder',
+                reference: 'Reference',
+                vs: 'Variable Symbol',
+                ks: 'Constant Symbol',
+                ss: 'Specific Symbol'
+            };
+
+            const expenseFieldLabels = {
+                name: 'Expense Name',
+                amount: 'Amount',
+                currency: 'Currency',
+                date: 'Date',
+                expenseType: 'Expense Type',
+                memo: 'Memo',
+                categoryId: 'Category',
+                familyMemberId: 'Family Member'
+            };
+
+            const requiredExpenseFields = new Set(['name', 'amount', 'currency', 'date']);
+
+            let currentFileName = null;
+            let pendingFile = null;
+            let parsedRows = [];
+            let autoSkipRows = 0;
+            let currentSkipRows = 0;
+            let requestedSkipRows = 0;
+            let activeProfile = null;
+            let activeProfileColumns = [];
+            let activeProfileMappings = [];
+            let latestHeaderRow = [];
+            let latestDataRows = [];
+            let resolvedTargetMap = new Map();
+            let resolvedHeaderMap = new Map();
+            let previewFields = [];
+            let missingRequiredFields = [];
+
+            const LOG_PREFIX = '[StatementImport]';
+
+            function logEvent(level, message, details) {
+                try {
+                    const logger = console?.[level] ?? console?.log;
+                    if (typeof logger !== 'function') {
+                        return;
+                    }
+                    if (details !== undefined) {
+                        logger(`${LOG_PREFIX} ${message}`, details);
+                    } else {
+                        logger(`${LOG_PREFIX} ${message}`);
+                    }
+                } catch (err) {
+                    // Swallow logging failures to avoid breaking UI
+                }
+            }
+
+            const statusEl = () => document.getElementById(statusId);
+            const containerEl = () => document.getElementById(containerId);
+            const headEl = () => document.getElementById(headId);
+            const bodyEl = () => document.getElementById(bodyId);
+            const skipInputEl = () => document.getElementById(skipInputId);
+            const autoDescEl = () => document.getElementById(autoDescId);
+            const autoButtonEl = () => document.getElementById(autoButtonId);
+            const fileInputEl = () => document.getElementById(fileInputId);
+            const profileSelectEl = () => document.getElementById(profileSelectId);
+            const profileDescriptionEl = () => document.getElementById(profileDescriptionId);
+
+            const getParserSettings = () => activeProfile?.parser ?? {};
+            const getProfileDisplayName = () => activeProfile?.metadata?.displayName ?? activeProfile?.id ?? 'Profile';
+            const getProfileDescription = () => activeProfile?.metadata?.description ?? '';
+            const getProfileSample = () => activeProfile?.metadata?.sampleFile ?? '';
+
+            function normalizeText(value) {
+                return (value ?? '')
+                    .toString()
+                    .trim()
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\x00-\x1F]/g, '')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/\s+/g, ' ');
+            }
+
+            function normalizeHeader(value) {
+                return normalizeText(value);
+            }
+
+            function getTargetLabel(target) {
+                if (!target) return '';
+                if (fieldLabels[target]) {
+                    return fieldLabels[target];
+                }
+                return target
+                    .replace(/([a-z])([A-Z])/g, '$1 $2')
+                    .replace(/_/g, ' ')
+                    .replace(/^./, c => c.toUpperCase());
+            }
+
+            function setStatus(message, type = 'secondary') {
+                const status = statusEl();
+                if (!status) return;
+                status.className = `alert alert-${type}`;
+                status.setAttribute('tabindex', '-1');
+                status.textContent = message;
+            }
+
+            function disableSkipControls(message) {
+                const skipInput = skipInputEl();
+                const autoButton = autoButtonEl();
+                if (skipInput) {
+                    skipInput.disabled = true;
+                }
+                if (autoButton) {
+                    autoButton.disabled = true;
+                }
+                const desc = autoDescEl();
+                if (desc) {
+                    desc.textContent = message ?? (activeProfile
+                        ? 'Metadata skip controls will unlock once the statement is loaded.'
+                        : 'Select a bank profile to configure metadata skipping.');
+                }
+            }
+
+            function enableSkipControls() {
+                const skipInput = skipInputEl();
+                const autoButton = autoButtonEl();
+                if (skipInput) {
+                    skipInput.disabled = false;
+                }
+                if (autoButton) {
+                    autoButton.disabled = false;
+                }
+                updateSkipDescription();
+            }
+
+            function clearPreviewTable() {
+                const container = containerEl();
+                const head = headEl();
+                const body = bodyEl();
+                if (container) {
+                    container.classList.add('d-none');
+                }
+                if (head) {
+                    head.replaceChildren();
+                }
+                if (body) {
+                    body.replaceChildren();
+                }
+            }
+
+            function resetPreview(message, { clearFile = true } = {}) {
+                logEvent('debug', `Reset preview (clearFile=${clearFile}) triggered${message ? `: ${message}` : ''}`);
+                currentFileName = null;
+                parsedRows = [];
+                autoSkipRows = 0;
+                previewFields = [];
+                missingRequiredFields = [];
+                latestHeaderRow = [];
+                latestDataRows = [];
+                resolvedTargetMap = new Map();
+                resolvedHeaderMap = new Map();
+
+                const parser = getParserSettings();
+                currentSkipRows = activeProfile ? Number(parser.defaultSkipRows ?? 0) : 0;
+                requestedSkipRows = currentSkipRows;
+
+                const defaultMessage = message
+                    ?? (activeProfile ? 'Select a statement file to preview.' : 'Choose a bank profile to begin.');
+                const statusType = activeProfile ? 'secondary' : 'info';
+                setStatus(defaultMessage, statusType);
+
+                disableSkipControls();
+                clearPreviewTable();
+
+                if (clearFile) {
+                    pendingFile = null;
+                }
+
+                const input = fileInputEl();
+                if (input && clearFile) {
+                    input.value = '';
+                }
+
+                const skipInput = skipInputEl();
+                if (skipInput) {
+                    skipInput.value = String(currentSkipRows);
+                }
+            }
+
+            function showError(message) {
+                logEvent('error', message);
+                setStatus(message, 'danger');
+                clearPreviewTable();
+            }
+
+            function showLoading(filename) {
+                logEvent('info', `Reading file '${filename}' with profile '${getProfileDisplayName()}'`);
+                const status = statusEl();
+                if (status) {
+                    status.className = 'alert alert-info';
+                    status.setAttribute('tabindex', '-1');
+                    status.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Reading ${filename}...`;
+                }
+            }
+
+            function updateProfileDescription() {
+                const description = profileDescriptionEl();
+                if (!description) {
+                    return;
+                }
+
+                if (!activeProfile) {
+                    logEvent('debug', 'No active profile selected. Description reset.');
+                    description.className = 'alert alert-info mb-0 py-2 px-3 small';
+                    description.textContent = 'Select a profile to view details and enable statement uploads.';
+                    return;
+                }
+
+                const parser = getParserSettings();
+                const details = [];
+                const profileDescription = getProfileDescription();
+                if (profileDescription) {
+                    details.push(profileDescription);
+                }
+                details.push(`Default skip rows: ${parser.defaultSkipRows ?? 0}`);
+                details.push(`Delimiter: '${parser.delimiter ?? ';'}'`);
+                if (parser.encoding) {
+                    details.push(`Encoding: ${parser.encoding}`);
+                }
+                const sample = getProfileSample();
+                if (sample) {
+                    details.push(`Sample: ${sample}`);
+                }
+
+                description.className = 'alert alert-success mb-0 py-2 px-3 small';
+                description.textContent = `${getProfileDisplayName()}: ${details.join(' • ')}`;
+            }
+
+            function updateSkipDescription() {
+                const desc = autoDescEl();
+                if (!desc) return;
+
+                if (!activeProfile) {
+                    desc.textContent = 'Select a bank profile to configure metadata skipping.';
+                    return;
+                }
+
+                const parser = getParserSettings();
+                const pieces = [`Profile default skip: ${parser.defaultSkipRows ?? 0}`];
+                if (parsedRows.length) {
+                    pieces.push(`Auto-detected header near row ${autoSkipRows + 1}`);
+                }
+                desc.textContent = `${pieces.join('. ')}.`;
+            }
+
+            function rowHasContent(row) {
+                return row.some(cell => (cell ?? '').trim().length > 0);
+            }
+
+            function isLikelyHeaderRow(row) {
+                const populated = row.filter(cell => (cell ?? '').trim().length > 0);
+                if (populated.length < 3) {
+                    return false;
+                }
+
+                const candidateText = populated.join(' ');
+                const normalized = normalizeText(candidateText);
+                const headerKeywords = ['datum', 'date', 'amount', 'castka', 'transaction', 'typ', 'mena'];
+                const keywordMatch = headerKeywords.some(keyword => normalized.includes(keyword));
+
+                const fieldThreshold = Math.max(5, populated.length);
+                return keywordMatch || row.length >= fieldThreshold;
+            }
+
+            function determineAutoSkip(rows) {
+                for (let i = 0; i < rows.length; i++) {
+                    if (isLikelyHeaderRow(rows[i])) {
+                        logEvent('debug', `Auto-detected potential header at zero-based index ${i}`);
+                        return i;
+                    }
+                }
+                return 0;
+            }
+
+            function getExpenseFieldLabel(field) {
+                if (!field) {
+                    return 'Value';
+                }
+                if (expenseFieldLabels[field]) {
+                    return expenseFieldLabels[field];
+                }
+                return field
+                    .replace(/([a-z])([A-Z])/g, '$1 $2')
+                    .replace(/_/g, ' ')
+                    .replace(/^./, c => c.toUpperCase());
+            }
+
+            function isMappingRequired(mapping) {
+                if (!mapping) {
+                    return false;
+                }
+                if (!requiredExpenseFields.has(mapping.field)) {
+                    return false;
+                }
+                const fallbackValue = typeof mapping.fallback === 'string' ? mapping.fallback.trim() : '';
+                return fallbackValue.length === 0;
+            }
+
+            function buildColumnResolution(headerRow) {
+                const headerMap = new Map();
+                headerRow.forEach((value, idx) => {
+                    const key = normalizeHeader(value);
+                    if (!headerMap.has(key) && key.length) {
+                        headerMap.set(key, { index: idx, raw: value });
+                    }
+                });
+
+                const profileColumns = Array.isArray(activeProfileColumns) ? activeProfileColumns : [];
+                const targetInfoMap = new Map();
+                const headerInfoMap = new Map();
+
+                profileColumns.forEach(column => {
+                    if (!column || !column.target || targetInfoMap.has(column.target)) {
+                        return;
+                    }
+
+                    const normalizedHeader = normalizeHeader(column.header);
+                    let columnIndex = -1;
+                    let originalHeader = '';
+
+                    if (headerMap.has(normalizedHeader)) {
+                        const match = headerMap.get(normalizedHeader);
+                        columnIndex = match.index;
+                        originalHeader = match.raw ?? column.header ?? '';
+                    } else {
+                        const fallbackIndex = headerRow.findIndex(cell => normalizeHeader(cell) === normalizedHeader);
+                        if (fallbackIndex >= 0) {
+                            columnIndex = fallbackIndex;
+                            originalHeader = headerRow[fallbackIndex] ?? column.header ?? '';
+                        }
+                    }
+
+                    const info = {
+                        index: columnIndex,
+                        column,
+                        header: column.header ?? '',
+                        originalHeader
+                    };
+
+                    targetInfoMap.set(column.target, info);
+                    const normalizedProfileHeader = normalizeHeader(column.header ?? '');
+                    if (normalizedProfileHeader.length && !headerInfoMap.has(normalizedProfileHeader)) {
+                        headerInfoMap.set(normalizedProfileHeader, info);
+                    }
+                });
+
+                const mappingTargets = activeProfileMappings
+                    .filter(mapping => mapping?.target)
+                    .map(mapping => mapping.target);
+
+                const requiredTargets = activeProfileMappings
+                    .filter(mapping => mapping?.target && isMappingRequired(mapping))
+                    .map(mapping => mapping.target);
+
+                const matchedTargets = mappingTargets.reduce((count, target) => {
+                    const info = targetInfoMap.get(target);
+                    return info && info.index !== -1 ? count + 1 : count;
+                }, 0);
+
+                const matchedRequired = requiredTargets.reduce((count, target) => {
+                    const info = targetInfoMap.get(target);
+                    return info && info.index !== -1 ? count + 1 : count;
+                }, 0);
+
+                return {
+                    targetInfoMap,
+                    headerInfoMap,
+                    matchedTargets,
+                    matchedRequired
+                };
+            }
+
+            function findBestHeaderIndex(startIndex) {
+                const lookaheadLimit = 5;
+                const mappingsWithTargets = activeProfileMappings.filter(mapping => mapping?.target);
+                const requiredCount = mappingsWithTargets.filter(mapping => isMappingRequired(mapping)).length;
+
+                let best = null;
+
+                for (let offset = 0; offset <= lookaheadLimit; offset++) {
+                    const candidateIndex = startIndex + offset;
+                    if (candidateIndex >= parsedRows.length) {
+                        break;
+                    }
+
+                    const candidateRow = parsedRows[candidateIndex];
+                    if (!rowHasContent(candidateRow)) {
+                        continue;
+                    }
+
+                    const resolution = buildColumnResolution(candidateRow);
+
+                    logEvent('debug', 'Evaluated header candidate', {
+                        candidateIndex,
+                        matchedRequired: resolution.matchedRequired,
+                        matchedTargets: resolution.matchedTargets,
+                        requiredCount
+                    });
+
+                    if (!best
+                        || resolution.matchedRequired > best.resolution.matchedRequired
+                        || (resolution.matchedRequired === best.resolution.matchedRequired && resolution.matchedTargets > best.resolution.matchedTargets)) {
+                        best = {
+                            index: candidateIndex,
+                            resolution
+                        };
+                    }
+
+                    if (requiredCount > 0 && resolution.matchedRequired === requiredCount) {
+                        if (resolution.matchedTargets === mappingsWithTargets.length) {
+                            break;
+                        }
+                    }
+                }
+
+                if (best) {
+                    logEvent('info', `Selected header row at zero-based index ${best.index}`, {
+                        matchedRequired: best.resolution.matchedRequired,
+                        matchedTargets: best.resolution.matchedTargets
+                    });
+                    return best;
+                }
+
+                const fallbackRow = parsedRows[startIndex] ?? [];
+                logEvent('warn', `Falling back to initial header index ${startIndex}; no strong candidate found.`);
+                return {
+                    index: startIndex,
+                    resolution: buildColumnResolution(fallbackRow)
+                };
+            }
+
+            function computePreviewModel() {
+                previewFields = [];
+                missingRequiredFields = [];
+                latestHeaderRow = [];
+                latestDataRows = [];
+                resolvedColumnMap = new Map();
+
+                if (!parsedRows.length) {
+                    return { success: false, reason: 'No data available. Upload a CSV to preview.' };
+                }
+
+                if (!activeProfileMappings.length) {
+                    logEvent('warn', 'Active profile does not define any expense field mappings.');
+                    return { success: false, reason: 'No expense field mappings defined for this profile.' };
+                }
+
+                if (currentSkipRows >= parsedRows.length) {
+                    logEvent('warn', `Current skip rows (${currentSkipRows}) exceeded parsed row count (${parsedRows.length}).`);
+                    return { success: false, reason: 'Skipped all rows. Reduce the metadata rows to skip.' };
+                }
+
+                let headerIndex = currentSkipRows;
+                while (headerIndex < parsedRows.length && !rowHasContent(parsedRows[headerIndex])) {
+                    headerIndex += 1;
+                }
+
+                if (headerIndex >= parsedRows.length) {
+                    return { success: false, reason: 'No header row found. Adjust the metadata rows to skip.' };
+                }
+
+                const headerSearch = findBestHeaderIndex(headerIndex);
+                headerIndex = headerSearch.index;
+                latestHeaderRow = parsedRows[headerIndex];
+                latestDataRows = parsedRows.slice(headerIndex + 1).filter(rowHasContent);
+
+                if (!latestDataRows.length) {
+                    logEvent('warn', 'Header detected but no data rows found after the header index.');
+                    return { success: false, reason: 'Header detected but no transactions found. Adjust metadata rows to skip if needed.' };
+                }
+
+                resolvedTargetMap = headerSearch.resolution.targetInfoMap;
+                resolvedHeaderMap = headerSearch.resolution.headerInfoMap ?? new Map();
+
+                previewFields = activeProfileMappings.map(mapping => {
+                    const label = getExpenseFieldLabel(mapping.field);
+                    const fallbackValue = typeof mapping.fallback === 'string' ? mapping.fallback.trim() : null;
+                    const required = requiredExpenseFields.has(mapping.field);
+
+                    const declaredHeadersRaw = Array.isArray(mapping.sourceHeaders)
+                        ? mapping.sourceHeaders
+                        : (mapping.sourceHeader ? [mapping.sourceHeader] : []);
+
+                    const declaredHeaders = [];
+                    const seenHeaderKeys = new Set();
+
+                    declaredHeadersRaw.forEach(headerName => {
+                        const trimmed = (headerName ?? '').trim();
+                        if (!trimmed) {
+                            return;
+                        }
+                        const normalized = normalizeHeader(trimmed);
+                        if (!normalized.length || seenHeaderKeys.has(normalized)) {
+                            return;
+                        }
+                        seenHeaderKeys.add(normalized);
+                        declaredHeaders.push({ label: trimmed, normalized });
+                    });
+
+                    if (!declaredHeaders.length && mapping.target) {
+                        const column = activeProfileColumns.find(col => col.target === mapping.target);
+                        if (column) {
+                            const normalized = normalizeHeader(column.header ?? mapping.target);
+                            if (!seenHeaderKeys.has(normalized)) {
+                                seenHeaderKeys.add(normalized);
+                                declaredHeaders.push({ label: column.header ?? mapping.target, normalized });
+                            }
+                        }
+                    }
+
+                    const candidates = [];
+                    declaredHeaders.forEach(({ label: declaredLabel, normalized }) => {
+                        const headerInfo = normalized ? resolvedHeaderMap.get(normalized) : undefined;
+                        const columnDefinition = headerInfo?.column
+                            ?? activeProfileColumns.find(col => normalizeHeader(col.header) === normalized)
+                            ?? null;
+                        const targetKey = headerInfo?.column?.target
+                            ?? columnDefinition?.target
+                            ?? mapping.target
+                            ?? null;
+                        const originalHeader = headerInfo?.originalHeader
+                            ?? columnDefinition?.header
+                            ?? declaredLabel;
+                        const index = headerInfo ? headerInfo.index : -1;
+
+                        candidates.push({
+                            declaredHeader: declaredLabel,
+                            normalizedHeader: normalized,
+                            originalHeader,
+                            column: columnDefinition,
+                            target: targetKey,
+                            index
+                        });
+                    });
+
+                    if (!candidates.length && mapping.target) {
+                        const info = resolvedTargetMap.get(mapping.target);
+                        const columnDefinition = info?.column
+                            ?? activeProfileColumns.find(col => col.target === mapping.target)
+                            ?? null;
+                        const normalized = columnDefinition ? normalizeHeader(columnDefinition.header ?? mapping.target) : '';
+                        candidates.push({
+                            declaredHeader: columnDefinition?.header ?? mapping.target,
+                            normalizedHeader: normalized,
+                            originalHeader: info?.originalHeader ?? columnDefinition?.header ?? mapping.target,
+                            column: columnDefinition,
+                            target: mapping.target,
+                            index: info ? info.index : -1
+                        });
+                    }
+
+                    const columnMissing = !candidates.length || candidates.every(candidate => candidate.index === -1);
+                    const structurallyMissing = required && columnMissing && !fallbackValue;
+
+                    if (structurallyMissing) {
+                        missingRequiredFields.push(label);
+                    }
+
+                    const displayHeaders = candidates.map(candidate => candidate.declaredHeader);
+
+                    return {
+                        field: mapping.field,
+                        label,
+                        displayHeaders,
+                        target: mapping.target ?? null,
+                        fallback: fallbackValue,
+                        required,
+                        candidates,
+                        hasLiteralFallback: Boolean(fallbackValue),
+                        columnMissing
+                    };
+                });
+
+                logEvent('info', 'Preview field configuration prepared', {
+                    totalFields: previewFields.length,
+                    missingRequiredFields: missingRequiredFields.length,
+                    headerIndex
+                });
+
+                return { success: true, headerIndex };
+            }
+
+            function parseAmount(rawValue) {
+                if (rawValue == null) return null;
+                const parser = getParserSettings();
+                const decimalSeparator = parser.decimalSeparator || ',';
+                let sanitized = rawValue.toString().trim();
+                if (!sanitized) return null;
+                sanitized = sanitized.replace(/\s+/g, '');
+                const separatorRegex = new RegExp(`\\${decimalSeparator}`, 'g');
+                sanitized = sanitized.replace(separatorRegex, '.');
+                sanitized = sanitized.replace(/[^0-9.+-]/g, '');
+                if (!sanitized.length) return null;
+                const numeric = Number(sanitized);
+                return Number.isNaN(numeric) ? null : numeric;
+            }
+
+            function formatNumber(value) {
+                if (value == null || Number.isNaN(value)) {
+                    return '';
+                }
+                return value.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            function applyTransform(column, rawMap) {
+                const rawValue = rawMap[column.target];
+                if (rawValue == null || rawValue === '') {
+                    return '';
+                }
+
+                if (!column.transform) {
+                    return rawValue;
+                }
+
+                switch (column.transform) {
+                    case 'signedAmount': {
+                        const numeric = parseAmount(rawValue);
+                        return numeric == null ? rawValue : formatNumber(numeric);
+                    }
+                    case 'directionSignedAmount': {
+                        const numeric = parseAmount(rawValue);
+                        if (numeric == null) {
+                            return rawValue;
+                        }
+                        const directionRaw = rawMap.direction ?? rawMap['direction'];
+                        const normalized = normalizeHeader(directionRaw);
+                        let signed = numeric;
+                        if (normalized.includes('prichozi') || normalized.includes('incoming')) {
+                            signed = Math.abs(numeric);
+                        } else if (normalized.includes('odchozi') || normalized.includes('outgoing')) {
+                            signed = -Math.abs(numeric);
+                        }
+                        return formatNumber(signed);
+                    }
+                    default:
+                        return rawValue;
+                }
+            }
+
+            function buildRawValueMap(row) {
+                const raw = {};
+                activeProfileColumns.forEach(column => {
+                    const info = resolvedTargetMap.get(column.target);
+                    if (info && info.index !== -1) {
+                        raw[column.target] = (row[info.index] ?? '').trim();
+                    } else {
+                        raw[column.target] = null;
+                    }
+                });
+                return raw;
+            }
+
+            function getDisplayValueForField(fieldConfig, rawMap) {
+                const candidates = Array.isArray(fieldConfig.candidates) ? fieldConfig.candidates : [];
+
+                for (const candidate of candidates) {
+                    if (!candidate || !candidate.target) {
+                        continue;
+                    }
+
+                    const rawValue = rawMap[candidate.target];
+                    const hasRaw = rawValue !== null && rawValue !== undefined && rawValue !== '';
+                    let transformed = '';
+
+                    if (candidate.column) {
+                        transformed = applyTransform(candidate.column, rawMap);
+                    }
+
+                    if (transformed !== '' && transformed !== null && transformed !== undefined) {
+                        return {
+                            rawValue,
+                            displayValue: transformed,
+                            usedCandidate: candidate,
+                            fromFallback: false
+                        };
+                    }
+
+                    if (hasRaw) {
+                        return {
+                            rawValue,
+                            displayValue: rawValue,
+                            usedCandidate: candidate,
+                            fromFallback: false
+                        };
+                    }
+                }
+
+                if (fieldConfig.fallback) {
+                    return {
+                        rawValue: fieldConfig.fallback,
+                        displayValue: fieldConfig.fallback,
+                        usedCandidate: null,
+                        fromFallback: true
+                    };
+                }
+
+                return {
+                    rawValue: null,
+                    displayValue: '',
+                    usedCandidate: null,
+                    fromFallback: false
+                };
+            }
+
+            function renderPreview({ requested = currentSkipRows } = {}) {
+                const container = containerEl();
+                const head = headEl();
+                const body = bodyEl();
+
+                if (!container || !head || !body) {
+                    return;
+                }
+
+                const result = computePreviewModel();
+                if (!result.success) {
+                    logEvent('warn', `Preview computation failed: ${result.reason}`);
+                    setStatus(result.reason, 'warning');
+                    clearPreviewTable();
+                    return;
+                }
+
+                if (!previewFields.length) {
+                    logEvent('warn', 'No expense field mappings available after computation.');
+                    setStatus('No fields available to preview for this profile.', 'warning');
+                    clearPreviewTable();
+                    return;
+                }
+
+                head.replaceChildren();
+                const headerRow = head;
+                const indexTh = document.createElement('th');
+                indexTh.scope = 'col';
+                indexTh.className = 'text-muted';
+                indexTh.textContent = '#';
+                headerRow.appendChild(indexTh);
+
+                previewFields.forEach(fieldConfig => {
+                    const th = document.createElement('th');
+                    th.scope = 'col';
+
+                    const titleDiv = document.createElement('div');
+                    titleDiv.textContent = fieldConfig.label;
+                    th.appendChild(titleDiv);
+
+                    const candidateHeaders = Array.isArray(fieldConfig.candidates) ? fieldConfig.candidates : [];
+                    if (candidateHeaders.length) {
+                        const primaryHeader = candidateHeaders[0]?.originalHeader ?? candidateHeaders[0]?.declaredHeader ?? '';
+                        const fallbackHeaders = candidateHeaders
+                            .slice(1)
+                            .map(candidate => candidate.originalHeader ?? candidate.declaredHeader)
+                            .filter(Boolean);
+                        const headerTextParts = [];
+                        if (primaryHeader) {
+                            headerTextParts.push(primaryHeader);
+                        }
+                        if (fallbackHeaders.length) {
+                            headerTextParts.push(`fallback: ${fallbackHeaders.join(', ')}`);
+                        }
+                        if (headerTextParts.length) {
+                            const sourceDiv = document.createElement('div');
+                            sourceDiv.className = 'small text-muted';
+                            sourceDiv.textContent = headerTextParts.join(' • ');
+                            th.appendChild(sourceDiv);
+                        }
+                    } else if (fieldConfig.hasLiteralFallback) {
+                        const fallbackDiv = document.createElement('div');
+                        fallbackDiv.className = 'small text-muted';
+                        fallbackDiv.textContent = `default: ${fieldConfig.fallback}`;
+                        th.appendChild(fallbackDiv);
+                    }
+
+                    if (fieldConfig.columnMissing && !fieldConfig.hasLiteralFallback) {
+                        th.classList.add(fieldConfig.required ? 'table-danger' : 'table-warning');
+                        const badge = document.createElement('span');
+                        badge.className = `badge ${fieldConfig.required ? 'bg-danger' : 'bg-warning text-dark'} ms-2`;
+                        badge.textContent = fieldConfig.required ? 'Required missing' : 'Missing';
+                        th.appendChild(badge);
+                    }
+
+                    headerRow.appendChild(th);
+                });
+
+                const missingSet = new Set(missingRequiredFields);
+
+                body.replaceChildren();
+                latestDataRows.forEach((row, rowIndex) => {
+                    const rawMap = buildRawValueMap(row);
+                    const tr = document.createElement('tr');
+                    tr.classList.add('align-middle');
+
+                    const rowIndexCell = document.createElement('th');
+                    rowIndexCell.scope = 'row';
+                    rowIndexCell.className = 'text-muted';
+                    rowIndexCell.textContent = String(rowIndex + 1);
+                    tr.appendChild(rowIndexCell);
+
+                    previewFields.forEach(fieldConfig => {
+                        const td = document.createElement('td');
+                        const { displayValue } = getDisplayValueForField(fieldConfig, rawMap);
+                        const valuePresent = displayValue !== null && displayValue !== undefined && displayValue !== '';
+
+                        if (!valuePresent) {
+                            const placeholder = document.createElement('span');
+                            placeholder.className = fieldConfig.required ? 'text-danger' : 'text-muted';
+                            placeholder.textContent = '—';
+                            td.appendChild(placeholder);
+                            if (fieldConfig.required) {
+                                td.classList.add('table-danger');
+                                missingSet.add(fieldConfig.label);
+                            }
+                        } else {
+                            td.textContent = displayValue;
+                        }
+
+                        tr.appendChild(td);
+                    });
+
+                    body.appendChild(tr);
+                });
+
+                const statusParts = [];
+                statusParts.push(`${getProfileDisplayName()} profile`);
+                statusParts.push(`${currentFileName ?? 'Statement'} loaded.`);
+                if (requested !== currentSkipRows) {
+                    statusParts.push(`Requested ${requested} metadata row${requested === 1 ? '' : 's'}, using ${currentSkipRows} after trimming.`);
+                } else {
+                    statusParts.push(`Skipped ${currentSkipRows} metadata row${currentSkipRows === 1 ? '' : 's'}.`);
+                }
+                statusParts.push(`Showing ${latestDataRows.length} transaction row${latestDataRows.length === 1 ? '' : 's'}.`);
+
+                const uniqueMissing = [...missingSet];
+                let statusType = 'success';
+                if (uniqueMissing.length) {
+                    statusParts.push(`Missing required fields: ${uniqueMissing.join(', ')}.`);
+                    statusType = 'warning';
+                    logEvent('warn', 'Missing required expense fields detected', uniqueMissing);
+                }
+
+                setStatus(statusParts.join(' '), statusType);
+                container.classList.remove('d-none');
+
+                logEvent('info', 'Preview rendered', {
+                    rowsRendered: latestDataRows.length,
+                    skipRows: currentSkipRows,
+                    statusType
+                });
+            }
+
+            function setSkipRows(value, { fromAuto = false } = {}) {
+                if (!Number.isFinite(value)) {
+                    value = 0;
+                }
+                value = Math.max(0, Math.min(value, Math.max(parsedRows.length - 1, 0)));
+                requestedSkipRows = value;
+                currentSkipRows = value;
+
+                const skipInput = skipInputEl();
+                if (skipInput && Number(skipInput.value) !== value) {
+                    skipInput.value = String(value);
+                }
+
+                if (fromAuto) {
+                    logEvent('info', `Applied auto-detected skip rows: ${value}`);
+                    updateSkipDescription();
+                }
+
+                if (parsedRows.length) {
+                    logEvent('debug', `Re-rendering preview with skip rows set to ${value}`);
+                    renderPreview({ requested: requestedSkipRows });
+                }
+            }
+
+            function handleParsedRows(rows) {
+                logEvent('info', `Parsed ${rows.length} raw rows from CSV.`);
+                let effectiveRows = rows.slice();
+                const parser = getParserSettings();
+                if (parser.trimEmptyPreamble) {
+                    while (effectiveRows.length && !rowHasContent(effectiveRows[0])) {
+                        effectiveRows.shift();
+                    }
+                }
+
+                parsedRows = effectiveRows;
+                autoSkipRows = determineAutoSkip(parsedRows);
+                const defaultSkip = activeProfile ? Number(parser.defaultSkipRows ?? autoSkipRows) : autoSkipRows;
+                currentSkipRows = Math.max(0, Math.min(defaultSkip, Math.max(parsedRows.length - 1, 0)));
+                requestedSkipRows = currentSkipRows;
+
+                enableSkipControls();
+
+                const skipInput = skipInputEl();
+                if (skipInput) {
+                    skipInput.value = String(currentSkipRows);
+                }
+
+                renderPreview({ requested: requestedSkipRows });
+            }
+
+            function parseCsv(text) {
+                logEvent('debug', `Beginning CSV parse (length ${text.length}).`);
+                const rows = [];
+                const parser = getParserSettings();
+                const delimiterChar = ((parser.delimiter ?? ';') || ';').charAt(0);
+                const quoteChar = ((parser.quote ?? '"') || '"').charAt(0);
+                let currentRow = [];
+                let currentField = '';
+                let inQuotes = false;
+
+                function commitField() {
+                    currentRow.push(currentField.trim());
+                    currentField = '';
+                }
+
+                function commitRow() {
+                    if (currentRow.length > 0) {
+                        rows.push(currentRow);
+                    }
+                    currentRow = [];
+                }
+
+                for (let i = 0; i < text.length; i++) {
+                    const char = text[i];
+
+                    if (char === quoteChar) {
+                        if (inQuotes && text[i + 1] === quoteChar) {
+                            currentField += quoteChar;
+                            i += 1;
+                        } else {
+                            inQuotes = !inQuotes;
+                        }
+                        continue;
+                    }
+
+                    if (char === delimiterChar && !inQuotes) {
+                        commitField();
+                        continue;
+                    }
+
+                    if ((char === '\n' || char === '\r') && !inQuotes) {
+                        commitField();
+                        commitRow();
+                        if (char === '\r' && text[i + 1] === '\n') {
+                            i += 1;
+                        }
+                        continue;
+                    }
+
+                    if (char === '\r' && inQuotes) {
+                        continue;
+                    }
+
+                    currentField += char;
+                }
+
+                if (currentField.length || inQuotes) {
+                    commitField();
+                }
+                if (currentRow.length) {
+                    commitRow();
+                }
+
+                const filtered = rows.filter(row => rowHasContent(row));
+                logEvent('debug', `CSV parse complete. Produced ${filtered.length} non-empty rows.`);
+                return filtered;
+            }
+
+            function handleFile(file, { bypassProfileCheck = false } = {}) {
+                logEvent('info', file ? `File input change detected: '${file.name}'` : 'File cleared.');
+                if (!file) {
+                    pendingFile = null;
+                    resetPreview();
+                    return;
+                }
+
+                if (!activeProfile && !bypassProfileCheck) {
+                    const warningMessage = 'Select a bank profile before uploading a statement.';
+                    pendingFile = file;
+                    logEvent('warn', `File '${file.name}' selected without choosing a profile.`);
+                    resetPreview(warningMessage, { clearFile: false });
+                    setStatus(warningMessage, 'warning');
+                    const profileSelect = profileSelectEl();
+                    if (profileSelect) {
+                        profileSelect.focus();
+                    }
+                    return;
+                }
+
+                pendingFile = null;
+                currentFileName = file.name;
+                showLoading(currentFileName);
+
+                const reader = new FileReader();
+
+                reader.onerror = () => {
+                    showError('Failed to read the selected file. Please try again.');
+                    logEvent('error', `FileReader encountered an error for '${file.name}'.`);
+                };
+
+                reader.onload = event => {
+                    try {
+                        const text = event.target?.result ?? '';
+                        if (!text) {
+                            showError('The file appears to be empty.');
+                            logEvent('warn', `File '${file.name}' contained no text.`);
+                            return;
+                        }
+
+                        const rows = parseCsv(text);
+                        if (!rows.length) {
+                            showError('No rows detected in the file.');
+                            logEvent('warn', `File '${file.name}' produced zero usable rows after parsing.`);
+                            return;
+                        }
+
+                        handleParsedRows(rows);
+                        logEvent('info', `File '${file.name}' parsed successfully.`, {
+                            totalRows: rows.length,
+                            profile: getProfileDisplayName()
+                        });
+                    } catch (error) {
+                        console.error('Error parsing CSV', error);
+                        showError('Unable to parse the file. Make sure it is a valid CSV.');
+                        logEvent('error', `Unhandled exception while parsing '${file.name}'.`, error);
+                    }
+                };
+
+                const parser = getParserSettings();
+                const encoding = parser.encoding || 'utf-8';
+                try {
+                    reader.readAsText(file, encoding);
+                } catch (e) {
+                    reader.readAsText(file);
+                }
+            }
+
+            function handleProfileChange(profileId) {
+                activeProfile = bankProfiles.find(p => p.id === profileId) ?? null;
+                activeProfileColumns = Array.isArray(activeProfile?.columns) ? activeProfile.columns : [];
+                activeProfileMappings = Array.isArray(activeProfile?.expenseFieldMappings) ? activeProfile.expenseFieldMappings : [];
+
+                const fileInput = fileInputEl();
+                if (fileInput && !activeProfile) {
+                    fileInput.value = '';
+                }
+
+                updateProfileDescription();
+                if (!activeProfile) {
+                    activeProfileMappings = [];
+                    logEvent('info', 'Profile cleared. Preview reset.');
+                    resetPreview();
+                    return;
+                }
+
+                if (!parsedRows.length) {
+                    const parser = getParserSettings();
+                    currentSkipRows = requestedSkipRows = Number(parser.defaultSkipRows ?? 0);
+                    const skipInput = skipInputEl();
+                    if (skipInput) {
+                        skipInput.value = String(currentSkipRows);
+                    }
+
+                    const fileInput = fileInputEl();
+                    const candidateFile = pendingFile ?? fileInput?.files?.[0] ?? null;
+                    if (candidateFile) {
+                        logEvent('info', `Reprocessing pending file '${candidateFile.name}' after profile change to '${getProfileDisplayName()}'.`);
+                        handleFile(candidateFile, { bypassProfileCheck: true });
+                    } else {
+                        disableSkipControls();
+                        updateSkipDescription();
+                        setStatus('Select a statement file to preview.', 'info');
+                        logEvent('debug', `Profile '${getProfileDisplayName()}' ready. Awaiting file selection.`);
+                    }
+                    return;
+                }
+
+                const parser = getParserSettings();
+                const profileSkip = Number(parser.defaultSkipRows ?? autoSkipRows);
+                setSkipRows(profileSkip);
+                updateSkipDescription();
+                logEvent('info', `Profile changed to '${getProfileDisplayName()}'. Applied skip rows ${profileSkip}.`);
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                logEvent('info', 'Statement import module initializing.', {
+                    profileCount: bankProfiles.length
+                });
+                const fileInput = fileInputEl();
+                const modalElement = document.getElementById(modalId);
+                const skipInput = skipInputEl();
+                const autoButton = autoButtonEl();
+                const profileSelect = profileSelectEl();
+
+                if (profileSelect) {
+                    if (!bankProfiles.length) {
+                        profileSelect.disabled = true;
+                        disableSkipControls('No bank profiles configured.');
+                        const fileInput = fileInputEl();
+                        if (fileInput) {
+                            fileInput.disabled = true;
+                            fileInput.value = '';
+                        }
+                        resetPreview('No bank profiles are available. Add YAML profiles under ImportProfiles/.');
+                        logEvent('warn', 'No bank profiles available. File input disabled.');
+                        return;
+                    }
+
+                    profileSelect.addEventListener('change', event => {
+                        handleProfileChange(event.target?.value ?? '');
+                    });
+                } else {
+                    setStatus('Bank profile selector not found.', 'warning');
+                }
+
+                if (fileInput) {
+                    fileInput.addEventListener('change', event => {
+                        const selectedFile = event.target?.files?.[0];
+                        handleFile(selectedFile ?? null);
+                    });
+                }
+
+                if (skipInput) {
+                    skipInput.addEventListener('input', event => {
+                        const value = Number(event.target?.value ?? 0);
+                        setSkipRows(Number.isFinite(value) ? value : 0);
+                    });
+                }
+
+                if (autoButton) {
+                    autoButton.addEventListener('click', () => {
+                        setSkipRows(autoSkipRows, { fromAuto: true });
+                    });
+                }
+
+                if (modalElement) {
+                    modalElement.addEventListener('hidden.bs.modal', () => {
+                        logEvent('debug', 'Import modal hidden. Resetting preview state.');
+                        resetPreview();
+                    });
+                    modalElement.addEventListener('shown.bs.modal', () => {
+                        const status = statusEl();
+                        if (status) {
+                            status.focus({ preventScroll: true });
+                        }
+                        logEvent('debug', 'Import modal shown.');
+                    });
+                }
+
+                disableSkipControls();
+                updateProfileDescription();
+                resetPreview();
+                logEvent('info', 'Statement import module ready.');
+            });
+        })();
     </script>
     <script>
         // Create expense data objects
