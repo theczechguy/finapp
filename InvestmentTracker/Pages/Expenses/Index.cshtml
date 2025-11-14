@@ -1088,6 +1088,7 @@
             const autoDescId = 'importAutoDetectedDesc';
             const autoButtonId = 'importApplyAutoSkip';
             const submitButtonId = 'importStatementSubmit';
+            const selectAllCheckboxId = 'importSelectAllRows';
 
             const fieldLabels = {
                 transactionDate: 'Transaction Date',
@@ -1128,7 +1129,8 @@
             };
 
             const requiredExpenseFields = new Set(['name', 'amount', 'currency', 'date']);
-            let canImportPreview = false;
+            let rowSelectionState = new Map();
+            let rowSelectionControlMap = new Map();
 
             const EXPENSE_TYPE_FAMILY_VALUE = 'family';
             const EXPENSE_TYPE_MEMBER_PREFIX = 'member:';
@@ -1325,7 +1327,6 @@
             }
 
             function updateImportButtonState(canImport, rowCount = 0) {
-                canImportPreview = canImport;
                 const button = submitButtonEl();
                 if (!button) {
                     return;
@@ -1340,6 +1341,106 @@
                 }
 
                 button.disabled = !canImport;
+            }
+
+            function getSelectedRowCount() {
+                let count = 0;
+                rowSelectionState.forEach((isSelected, rowIndex) => {
+                    if (!isSelected) {
+                        return;
+                    }
+                    const payload = previewRowData[rowIndex];
+                    if (payload && payload.isValid) {
+                        count += 1;
+                    }
+                });
+                return count;
+            }
+
+            function updateSelectAllCheckbox() {
+                const selectAll = document.getElementById(selectAllCheckboxId);
+                if (!selectAll) {
+                    return;
+                }
+
+                const validRowIndices = [];
+                rowSelectionState.forEach((_, rowIndex) => {
+                    const payload = previewRowData[rowIndex];
+                    if (payload && payload.isValid) {
+                        validRowIndices.push(rowIndex);
+                    }
+                });
+
+                if (!validRowIndices.length) {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = false;
+                    selectAll.disabled = true;
+                    return;
+                }
+
+                selectAll.disabled = false;
+                let selectedCount = 0;
+                validRowIndices.forEach(index => {
+                    if (rowSelectionState.get(index)) {
+                        selectedCount += 1;
+                    }
+                });
+
+                if (selectedCount === 0) {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = false;
+                } else if (selectedCount === validRowIndices.length) {
+                    selectAll.checked = true;
+                    selectAll.indeterminate = false;
+                } else {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = true;
+                }
+            }
+
+            function refreshSelectionState() {
+                updateSelectAllCheckbox();
+                const selectedCount = getSelectedRowCount();
+                updateImportButtonState(selectedCount > 0, selectedCount);
+            }
+
+            function setRowSelection(rowIndex, isSelected) {
+                const payload = previewRowData[rowIndex];
+                if (!payload || !payload.isValid) {
+                    rowSelectionState.set(rowIndex, false);
+                    const control = rowSelectionControlMap.get(rowIndex);
+                    if (control) {
+                        control.checked = false;
+                    }
+                    return;
+                }
+
+                rowSelectionState.set(rowIndex, isSelected);
+                const control = rowSelectionControlMap.get(rowIndex);
+                if (control) {
+                    control.checked = isSelected;
+                }
+            }
+
+            function handleSelectAllToggle(shouldSelect) {
+                let anyChanged = false;
+                previewRowData.forEach((payload, rowIndex) => {
+                    if (!payload || !payload.isValid) {
+                        return;
+                    }
+
+                    const existing = rowSelectionState.get(rowIndex) ?? false;
+                    if (existing !== shouldSelect) {
+                        anyChanged = true;
+                    }
+                    setRowSelection(rowIndex, shouldSelect);
+                });
+
+                if (anyChanged) {
+                    refreshSelectionState();
+                } else {
+                    updateSelectAllCheckbox();
+                }
             }
 
             function disableSkipControls(message) {
@@ -1400,7 +1501,8 @@
                 previewRowData = [];
                 expenseTypeControlMap = new Map();
                 expenseTypeSelectionMap.clear();
-                canImportPreview = false;
+                rowSelectionState = new Map();
+                rowSelectionControlMap = new Map();
                 updateImportButtonState(false);
 
                 const parser = getParserSettings();
@@ -2129,6 +2231,25 @@
 
                 head.replaceChildren();
                 const headerRow = head;
+                const selectTh = document.createElement('th');
+                selectTh.scope = 'col';
+                selectTh.className = 'text-center';
+                const selectAllWrapper = document.createElement('div');
+                selectAllWrapper.className = 'form-check d-inline-flex justify-content-center m-0';
+                const selectAllInput = document.createElement('input');
+                selectAllInput.type = 'checkbox';
+                selectAllInput.className = 'form-check-input';
+                selectAllInput.id = selectAllCheckboxId;
+                selectAllInput.setAttribute('aria-label', 'Select or deselect all transactions');
+                selectAllInput.addEventListener('change', event => {
+                    const shouldSelect = event.target.checked;
+                    event.target.indeterminate = false;
+                    handleSelectAllToggle(shouldSelect);
+                });
+                selectAllWrapper.appendChild(selectAllInput);
+                selectTh.appendChild(selectAllWrapper);
+                headerRow.appendChild(selectTh);
+
                 const indexTh = document.createElement('th');
                 indexTh.scope = 'col';
                 indexTh.className = 'text-muted';
@@ -2186,10 +2307,23 @@
                 body.replaceChildren();
                 previewRowData = new Array(latestDataRows.length).fill(null);
                 expenseTypeControlMap.clear();
+                rowSelectionControlMap = new Map();
+                const nextSelectionState = new Map();
+                let validRowCount = 0;
+
                 latestDataRows.forEach((row, rowIndex) => {
                     const rawMap = buildRawValueMap(row);
                     const tr = document.createElement('tr');
                     tr.classList.add('align-middle');
+
+                    const selectTd = document.createElement('td');
+                    selectTd.className = 'text-center';
+                    const selectCheckbox = document.createElement('input');
+                    selectCheckbox.type = 'checkbox';
+                    selectCheckbox.className = 'form-check-input';
+                    selectCheckbox.setAttribute('aria-label', `Select transaction row ${rowIndex + 1}`);
+                    selectTd.appendChild(selectCheckbox);
+                    tr.appendChild(selectTd);
 
                     const rowIndexCell = document.createElement('th');
                     rowIndexCell.scope = 'row';
@@ -2197,9 +2331,9 @@
                     rowIndexCell.textContent = String(rowIndex + 1);
                     tr.appendChild(rowIndexCell);
 
-                    const rowPayload = {};
-                    rowPayload.sourceRowNumber = rowIndex + 1;
+                    const rowPayload = { sourceRowNumber: rowIndex + 1 };
                     previewRowData[rowIndex] = rowPayload;
+                    let rowHasInvalidRequired = false;
 
                     previewFields.forEach(fieldConfig => {
                         const td = document.createElement('td');
@@ -2220,6 +2354,10 @@
                                 || importValue === ''
                                 || (typeof importValue === 'number' && !Number.isFinite(importValue))
                             );
+
+                            if (importValueMissing) {
+                                rowHasInvalidRequired = true;
+                            }
 
                             if (fieldConfig.field && fieldConfig.field !== 'expenseType') {
                                 rowPayload[fieldConfig.field] = importValueMissing ? null : importValue;
@@ -2267,6 +2405,7 @@
                                 if (fieldConfig.required) {
                                     td.classList.add('table-danger');
                                     missingSet.add(fieldConfig.label);
+                                    rowHasInvalidRequired = true;
                                 }
                             } else {
                                 const valueSpan = document.createElement('span');
@@ -2300,8 +2439,38 @@
                         control.value = encodeExpenseTypeSelection(selection);
                     }
 
+                    const rowIsValid = !rowHasInvalidRequired;
+                    rowPayload.isValid = rowIsValid;
+                    if (rowIsValid) {
+                        validRowCount += 1;
+                    }
+
+                    const previousSelection = rowSelectionState.has(rowIndex)
+                        ? Boolean(rowSelectionState.get(rowIndex))
+                        : undefined;
+                    const isSelected = rowIsValid && (previousSelection ?? true);
+
+                    if (!rowIsValid) {
+                        selectCheckbox.checked = false;
+                        selectCheckbox.disabled = true;
+                        selectCheckbox.title = 'Resolve required fields to import this row.';
+                    } else {
+                        selectCheckbox.checked = isSelected;
+                    }
+
+                    rowSelectionControlMap.set(rowIndex, selectCheckbox);
+                    nextSelectionState.set(rowIndex, rowIsValid ? Boolean(selectCheckbox.checked) : false);
+
+                    selectCheckbox.addEventListener('change', event => {
+                        setRowSelection(rowIndex, event.target.checked);
+                        refreshSelectionState();
+                    });
+
                     body.appendChild(tr);
                 });
+
+                rowSelectionState = nextSelectionState;
+                refreshSelectionState();
 
                 const statusParts = [];
                 statusParts.push(`${getProfileDisplayName()} profile`);
@@ -2321,15 +2490,28 @@
                     logEvent('warn', 'Missing required expense fields detected', uniqueMissing);
                 }
 
+                if (!validRowCount) {
+                    statusParts.push('No rows are currently ready to import.');
+                    statusType = 'warning';
+                }
+
+                const selectedCount = getSelectedRowCount();
+                if (validRowCount) {
+                    statusParts.push(`${selectedCount} of ${validRowCount} valid row${validRowCount === 1 ? '' : 's'} selected for import.`);
+                }
+                if (validRowCount > 0 && selectedCount === 0) {
+                    statusParts.push('Select at least one row to enable import.');
+                }
+
                 setStatus(statusParts.join(' '), statusType);
-                const canImport = statusType === 'success' && latestDataRows.length > 0;
-                updateImportButtonState(canImport, latestDataRows.length);
                 container.classList.remove('d-none');
 
                 logEvent('info', 'Preview rendered', {
                     rowsRendered: latestDataRows.length,
                     skipRows: currentSkipRows,
-                    statusType
+                    statusType,
+                    validRowCount,
+                    selectedCount
                 });
             }
 
@@ -2344,6 +2526,14 @@
 
                 previewRowData.forEach((row, index) => {
                     if (!row) {
+                        return;
+                    }
+
+                    if (!rowSelectionState.get(index)) {
+                        return;
+                    }
+
+                    if (!row.isValid) {
                         return;
                     }
 
@@ -2437,7 +2627,7 @@
                     }
 
                     delete button.dataset.originalLabel;
-                    updateImportButtonState(canImportPreview, previewRowData.length);
+                    refreshSelectionState();
                 }
             }
 
@@ -2449,6 +2639,12 @@
 
                 if (!activeProfile) {
                     Toast.warning('Select a bank profile before importing.');
+                    return;
+                }
+
+                const selectedCount = getSelectedRowCount();
+                if (selectedCount === 0) {
+                    Toast.warning('Select at least one transaction to import.');
                     return;
                 }
 
