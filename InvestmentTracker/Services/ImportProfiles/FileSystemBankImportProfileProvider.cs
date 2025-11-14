@@ -150,20 +150,36 @@ namespace InvestmentTracker.Services.ImportProfiles
             {
                 mapping.Field = mapping.Field?.Trim() ?? string.Empty;
                 mapping.SourceHeader = mapping.SourceHeader?.Trim();
-                mapping.SourceHeaders = mapping.SourceHeaders?
-                    .Select(header => header?.Trim())
-                    .Where(header => !string.IsNullOrWhiteSpace(header))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList() ?? new List<string>();
+                var normalizedHeaders = new List<string>();
+                if (mapping.SourceHeaders != null && mapping.SourceHeaders.Count > 0)
+                {
+                    var seenHeaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var header in mapping.SourceHeaders)
+                    {
+                        if (string.IsNullOrWhiteSpace(header))
+                        {
+                            continue;
+                        }
+
+                        var trimmed = header.Trim();
+                        if (seenHeaders.Add(trimmed))
+                        {
+                            normalizedHeaders.Add(trimmed);
+                        }
+                    }
+                }
+
                 if (!string.IsNullOrWhiteSpace(mapping.SourceHeader))
                 {
                     var normalizedLegacy = mapping.SourceHeader.Trim();
-                    if (!mapping.SourceHeaders.Any(header => string.Equals(header, normalizedLegacy, StringComparison.OrdinalIgnoreCase)))
+                    if (!normalizedHeaders.Any(header => string.Equals(header, normalizedLegacy, StringComparison.OrdinalIgnoreCase)))
                     {
-                        mapping.SourceHeaders.Insert(0, normalizedLegacy);
+                        normalizedHeaders.Insert(0, normalizedLegacy);
                     }
                     mapping.SourceHeader = null;
                 }
+
+                mapping.SourceHeaders = normalizedHeaders;
                 mapping.Target = mapping.Target?.Trim();
                 mapping.Fallback = mapping.Fallback?.Trim();
                 mapping.Notes = mapping.Notes?.Trim();
