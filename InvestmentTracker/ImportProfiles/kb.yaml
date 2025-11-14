@@ -80,4 +80,5 @@ expenseFieldMappings:
   - field: memo
     sourceHeaders:
       - "Popis pro me"
+      - "Zprava pro prijemce"
     target: memo
