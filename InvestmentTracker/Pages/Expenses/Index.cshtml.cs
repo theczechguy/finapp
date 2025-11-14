@@ -53,6 +53,7 @@ namespace InvestmentTracker.Pages.Expenses
             public string? Date { get; set; }
             public string? ExpenseType { get; set; }
             public int? FamilyMemberId { get; set; }
+            public int? CategoryId { get; set; }
             public string? Memo { get; set; }
         }
 
@@ -213,6 +214,9 @@ namespace InvestmentTracker.Pages.Expenses
             var activeMembers = (await _expenseService.GetFamilyMembersAsync())
                 .ToDictionary(member => member.Id, member => member);
 
+            var categoriesById = (await _expenseService.GetExpenseCategoriesAsync())
+                .ToDictionary(category => category.Id, category => category);
+
             foreach (var (row, index) in request.Rows.Select((row, index) => (row, index)))
             {
                 if (row == null)
@@ -229,7 +233,7 @@ namespace InvestmentTracker.Pages.Expenses
                     continue;
                 }
 
-                var roundedAmount = decimal.Round(row.Amount.Value, 2, MidpointRounding.AwayFromZero);
+                var roundedAmount = decimal.Round(Math.Abs(row.Amount.Value), 2, MidpointRounding.AwayFromZero);
 
                 var currencyCode = (row.Currency ?? string.Empty).Trim();
                 if (string.IsNullOrWhiteSpace(currencyCode) || !Enum.TryParse(currencyCode, true, out Currency currency))
@@ -277,12 +281,27 @@ namespace InvestmentTracker.Pages.Expenses
                     familyMemberId = member.Id;
                 }
 
+                if (!row.CategoryId.HasValue)
+                {
+                    errors.Add($"Row {rowNumber}: Category is required.");
+                    failedRows.Add(rowNumber);
+                    continue;
+                }
+
+                if (!categoriesById.TryGetValue(row.CategoryId.Value, out var category))
+                {
+                    errors.Add($"Row {rowNumber}: Category {row.CategoryId.Value} does not exist.");
+                    failedRows.Add(rowNumber);
+                    continue;
+                }
+
                 var expense = new IrregularExpense
                 {
                     Name = name,
                     Amount = roundedAmount,
                     Currency = currency,
                     Date = parsedDate,
+                    ExpenseCategoryId = category.Id,
                     ExpenseType = expenseType,
                     FamilyMemberId = familyMemberId
                 };
