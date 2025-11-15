@@ -62,19 +62,27 @@
     }
 
     .duplicate-row {
-        background-color: rgba(255, 193, 7, 0.1) !important;
-        border-left: 4px solid var(--bs-warning);
+        position: relative;
+        background-color: rgba(13, 110, 253, 0.08) !important;
+        border-left: 4px solid rgba(13, 202, 240, 0.8);
+        box-shadow: inset 0 0 0 1px rgba(13, 110, 253, 0.15);
     }
 
-    .duplicate-row .badge {
+    .duplicate-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.15rem 0.65rem;
         font-size: 0.75em;
-        font-weight: bold;
+        font-weight: 600;
+        text-transform: uppercase;
+        background-color: rgba(13, 202, 240, 0.18);
+        color: var(--bs-body-color);
+        border-radius: 999px;
+        border: 1px solid rgba(13, 110, 253, 0.2);
+        letter-spacing: 0.05em;
     }
 
-    .duplicate-row .bi-info-circle {
-        color: var(--bs-warning);
-        cursor: help;
-    }
 </style>
 
 <div class="d-block d-lg-flex align-items-lg-center justify-content-lg-between mb-3">
@@ -2991,20 +2999,24 @@
                     rowPayload.matchingExpense = duplicateResult.matchingExpense;
 
                     if (isDuplicate) {
-                        tr.classList.add('table-warning', 'duplicate-row');
-                        // Add duplicate badge with more information
+                        tr.classList.add('duplicate-row');
                         const duplicateBadge = document.createElement('span');
-                        duplicateBadge.className = 'badge bg-danger text-white me-1';
-                        duplicateBadge.textContent = 'DUPLICATE';
-                        duplicateBadge.title = `This expense matches an existing one: ${duplicateResult.matchingExpense.name} (${duplicateResult.matchingExpense.amount} ${duplicateResult.matchingExpense.currency})`;
+                        duplicateBadge.className = 'duplicate-badge me-2';
+                        duplicateBadge.textContent = 'Duplicate';
+                        const matching = duplicateResult.matchingExpense;
+                        if (matching) {
+                            const details = [matching.name];
+                            if (matching.date) {
+                                details.push(`on ${matching.date}`);
+                            }
+                            if (matching.amount && matching.currency) {
+                                details.push(`(${matching.amount} ${matching.currency})`);
+                            }
+                            duplicateBadge.title = `Already logged as ${details.join(' ')}`.trim();
+                        } else {
+                            duplicateBadge.title = 'This line already exists in expenses.';
+                        }
                         rowIndexCell.appendChild(duplicateBadge);
-
-                        // Add a small info icon that shows matching details on hover
-                        const infoIcon = document.createElement('i');
-                        infoIcon.className = 'bi bi-info-circle text-danger ms-1';
-                        infoIcon.style.cursor = 'help';
-                        infoIcon.title = `Matches: ${duplicateResult.matchingExpense.name}\nAmount: ${duplicateResult.matchingExpense.amount} ${duplicateResult.matchingExpense.currency}\nDate: ${duplicateResult.matchingExpense.date}`;
-                        rowIndexCell.appendChild(infoIcon);
                     }
 
                     const previousSelection = rowSelectionState.has(rowIndex)
