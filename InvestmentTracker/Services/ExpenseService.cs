@@ -737,6 +737,27 @@ namespace InvestmentTracker.Services
             }
         }
 
+        public async Task<IEnumerable<OneTimeIncome>> GetOneTimeIncomesForDateRangeAsync(DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                _logger.LogDebug("Retrieving one-time incomes for date range {StartDate} to {EndDate}", startDate, endDate);
+                var incomes = await _context.OneTimeIncomes
+                    .AsNoTracking()
+                    .Include(oti => oti.IncomeSource)
+                    .Where(oti => oti.Date >= startDate && oti.Date <= endDate)
+                    .ToListAsync();
+                 
+                 _logger.LogDebug("Retrieved {IncomeCount} one-time incomes for range {StartDate} to {EndDate}", incomes.Count, startDate, endDate);
+                return incomes;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve one-time incomes for {StartDate} to {EndDate}", startDate, endDate);
+                throw;
+            }
+        }
+
         public async Task<IEnumerable<OneTimeIncome>> GetOneTimeIncomesForMonthAsync(int year, int month)
         {
             try
@@ -761,23 +782,24 @@ namespace InvestmentTracker.Services
             }
         }
 
-        public async Task<IEnumerable<OneTimeIncome>> GetOneTimeIncomesForDateRangeAsync(DateTime startDate, DateTime endDate)
+        public async Task<IEnumerable<IrregularExpense>> GetIrregularExpensesForDateRangeAsync(DateTime startDate, DateTime endDate)
         {
             try
             {
-                _logger.LogDebug("Retrieving one-time incomes for date range {StartDate} to {EndDate}", startDate, endDate);
-                var incomes = await _context.OneTimeIncomes
+                _logger.LogDebug("Retrieving irregular expenses for date range {StartDate} to {EndDate}", startDate, endDate);
+                var expenses = await _context.IrregularExpenses
                     .AsNoTracking()
-                    .Include(oti => oti.IncomeSource)
-                    .Where(oti => oti.Date >= startDate && oti.Date <= endDate)
+                    .Include(e => e.Category)
+                    .Include(e => e.FamilyMember)
+                    .Where(e => e.Date >= startDate && e.Date <= endDate)
                     .ToListAsync();
                  
-                 _logger.LogDebug("Retrieved {IncomeCount} one-time incomes for range {StartDate} to {EndDate}", incomes.Count, startDate, endDate);
-                return incomes;
+                 _logger.LogDebug("Retrieved {ExpenseCount} irregular expenses for range {StartDate} to {EndDate}", expenses.Count, startDate, endDate);
+                return expenses;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to retrieve one-time incomes for {StartDate} to {EndDate}", startDate, endDate);
+                _logger.LogError(ex, "Failed to retrieve irregular expenses for {StartDate} to {EndDate}", startDate, endDate);
                 throw;
             }
         }

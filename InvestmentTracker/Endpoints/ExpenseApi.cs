@@ -21,5 +21,28 @@ public static class ExpenseApi
             var trends = await service.GetMonthlyExpenseTrendsAsync(monthsBack);
             return Results.Ok(trends);
         });
+
+        api.MapGet("/expenses/irregular", async (DateTime startDate, DateTime endDate, IExpenseService service) =>
+        {
+            if (startDate > endDate)
+            {
+                return Results.BadRequest(new { error = "Start date must be before or equal to end date" });
+            }
+
+            var expenses = await service.GetIrregularExpensesForDateRangeAsync(startDate, endDate);
+            return Results.Ok(expenses.Select(e => new
+            {
+                id = e.Id,
+                name = e.Name,
+                amount = e.Amount,
+                currency = e.Currency,
+                date = e.Date,
+                categoryId = e.ExpenseCategoryId,
+                categoryName = e.Category?.Name,
+                expenseType = e.ExpenseType,
+                familyMemberId = e.FamilyMemberId,
+                familyMemberName = e.FamilyMember?.Name
+            }));
+        });
     }
 }

@@ -60,6 +60,21 @@
         color: var(--bs-body-color);
         border-bottom: 2px solid rgba(220, 53, 69, 0.4);
     }
+
+    .duplicate-row {
+        background-color: rgba(255, 193, 7, 0.1) !important;
+        border-left: 4px solid var(--bs-warning);
+    }
+
+    .duplicate-row .badge {
+        font-size: 0.75em;
+        font-weight: bold;
+    }
+
+    .duplicate-row .bi-info-circle {
+        color: var(--bs-warning);
+        cursor: help;
+    }
 </style>
 
 <div class="d-block d-lg-flex align-items-lg-center justify-content-lg-between mb-3">
@@ -1238,6 +1253,7 @@
             const fileInputEl = () => document.getElementById(fileInputId);
             const profileSelectEl = () => document.getElementById(profileSelectId);
             const profileDescriptionEl = () => document.getElementById(profileDescriptionId);
+            const selectAllCheckboxEl = () => document.getElementById(selectAllCheckboxId);
 
             const getParserSettings = () => activeProfile?.parser ?? {};
             const getProfileDisplayName = () => activeProfile?.metadata?.displayName ?? activeProfile?.id ?? 'Profile';
@@ -2432,7 +2448,7 @@
                 };
             }
 
-            function renderPreview({ requested = currentSkipRows } = {}) {
+            async function renderPreview({ requested = currentSkipRows } = {}) {
                 const container = containerEl();
                 const head = headEl();
                 const body = bodyEl();
@@ -2448,6 +2464,109 @@
                     clearPreviewTable();
                     updateImportButtonState(false);
                     return;
+                }
+
+                // Check for duplicate expenses
+                let existingExpenses = [];
+                try {
+                    const dates = latestDataRows
+                        .map((row, index) => {
+                            const rawMap = buildRawValueMap(row);
+                            const dateField = previewFields.find(f => f.field === 'date');
+                            if (!dateField) return null;
+                            const valueResult = getDisplayValueForField(dateField, rawMap);
+                            const importValue = computeFieldValueForImport(dateField, rawMap, valueResult);
+                            return typeof importValue === 'string' && importValue.trim().length ? importValue.trim() : null;
+                        })
+                        .filter(date => date !== null);
+
+                    if (dates.length > 0) {
+                        const minDate = dates.reduce((min, date) => date < min ? date : min);
+                        const maxDate = dates.reduce((max, date) => date > max ? date : max);
+
+                        logEvent('info', `Checking for duplicate expenses between ${minDate} and ${maxDate}`);
+
+                        const response = await fetch(`/api/expenses/irregular?startDate=${encodeURIComponent(minDate)}&endDate=${encodeURIComponent(maxDate)}`);
+                        if (response.ok) {
+                            existingExpenses = await response.json();
+                            // Normalize dates to yyyy-MM-dd format for comparison
+                            existingExpenses = existingExpenses.map(expense => ({
+                                ...expense,
+                                date: normalizeDateString(expense.date) ?? (typeof expense.date === 'string' ? expense.date.trim() : '')
+                            })).filter(expense => expense.date.length > 0);
+                            logEvent('info', `Found ${existingExpenses.length} existing expenses in date range`);
+                        } else {
+                            logEvent('warn', `Failed to fetch existing expenses: ${response.status}`);
+                        }
+                    }
+                } catch (error) {
+                    logEvent('error', 'Error checking for duplicate expenses', error);
+                }
+
+                function normalizeDateString(value) {
+                    if (value == null) {
+                        return null;
+                    }
+
+                    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+                        return value.toISOString().slice(0, 10);
+                    }
+
+                    const text = value.toString().trim();
+                    if (!text.length) {
+                        return null;
+                    }
+
+                    const isoPrefixMatch = text.match(/^(\d{4}-\d{2}-\d{2})/);
+                    if (isoPrefixMatch && isoPrefixMatch[1]) {
+                        return isoPrefixMatch[1];
+                    }
+
+                    const parsed = new Date(text);
+                    if (!Number.isNaN(parsed.getTime())) {
+                        return parsed.toISOString().slice(0, 10);
+                    }
+
+                    return null;
+                }
+
+                // Helper function to check if an expense is a duplicate
+                function isDuplicateExpense(importAmount, importDate, importName, importCurrency) {
+                    if (!existingExpenses.length) {
+                        return { isDuplicate: false };
+                    }
+
+                    // Normalize the import amount to absolute value and 2 decimal places
+                    const normalizedImportAmount = Math.round(Math.abs(importAmount) * 100) / 100;
+                    const normalizedImportDate = normalizeDateString(importDate);
+
+                    if (!normalizedImportDate) {
+                        return { isDuplicate: false };
+                    }
+
+                    for (const existing of existingExpenses) {
+                        // Normalize the existing amount to absolute value and 2 decimal places
+                        const normalizedExistingAmount = Math.round(Math.abs(Number(existing.amount)) * 100) / 100;
+                        const normalizedExistingDate = normalizeDateString(existing.date);
+
+                        if (!normalizedExistingDate || Number.isNaN(normalizedExistingAmount)) {
+                            continue;
+                        }
+
+                        // Check if normalized absolute amounts match (within small tolerance for floating point)
+                        const amountMatch = Math.abs(normalizedExistingAmount - normalizedImportAmount) < 0.01;
+                        // Check if dates match
+                        const dateMatch = normalizedExistingDate === normalizedImportDate;
+
+                        if (amountMatch && dateMatch) {
+                            return {
+                                isDuplicate: true,
+                                matchingExpense: existing
+                            };
+                        }
+                    }
+
+                    return { isDuplicate: false };
                 }
 
                 if (!previewFields.length) {
@@ -2858,25 +2977,61 @@
                         validRowCount += 1;
                     }
 
+                    // Check for duplicates
+                    const importAmount = typeof rowPayload.amount === 'number' && Number.isFinite(rowPayload.amount) ? rowPayload.amount : null;
+                    const importDate = typeof rowPayload.date === 'string' && rowPayload.date.trim().length ? rowPayload.date.trim() : null;
+                    const importName = typeof rowPayload.name === 'string' && rowPayload.name.trim().length ? rowPayload.name.trim() : 'Imported transaction';
+                    const importCurrency = typeof rowPayload.currency === 'string' && rowPayload.currency.trim().length ? rowPayload.currency.trim().toUpperCase() : null;
+
+                    const duplicateResult = importAmount !== null && importDate !== null && importCurrency !== null ?
+                                          isDuplicateExpense(importAmount, importDate, importName, importCurrency) :
+                                          { isDuplicate: false };
+                    const isDuplicate = duplicateResult.isDuplicate;
+                    rowPayload.isDuplicate = isDuplicate;
+                    rowPayload.matchingExpense = duplicateResult.matchingExpense;
+
+                    if (isDuplicate) {
+                        tr.classList.add('table-warning', 'duplicate-row');
+                        // Add duplicate badge with more information
+                        const duplicateBadge = document.createElement('span');
+                        duplicateBadge.className = 'badge bg-danger text-white me-1';
+                        duplicateBadge.textContent = 'DUPLICATE';
+                        duplicateBadge.title = `This expense matches an existing one: ${duplicateResult.matchingExpense.name} (${duplicateResult.matchingExpense.amount} ${duplicateResult.matchingExpense.currency})`;
+                        rowIndexCell.appendChild(duplicateBadge);
+
+                        // Add a small info icon that shows matching details on hover
+                        const infoIcon = document.createElement('i');
+                        infoIcon.className = 'bi bi-info-circle text-danger ms-1';
+                        infoIcon.style.cursor = 'help';
+                        infoIcon.title = `Matches: ${duplicateResult.matchingExpense.name}\nAmount: ${duplicateResult.matchingExpense.amount} ${duplicateResult.matchingExpense.currency}\nDate: ${duplicateResult.matchingExpense.date}`;
+                        rowIndexCell.appendChild(infoIcon);
+                    }
+
                     const previousSelection = rowSelectionState.has(rowIndex)
                         ? Boolean(rowSelectionState.get(rowIndex))
                         : undefined;
-                    const isSelected = rowIsValid && (previousSelection ?? true);
+                    const isSelected = rowIsValid && !isDuplicate && (previousSelection ?? true);
 
                     if (!rowIsValid) {
                         selectCheckbox.checked = false;
                         selectCheckbox.disabled = true;
                         selectCheckbox.title = 'Resolve required fields to import this row.';
                         rowPayload.wasDeselectedDueToInvalid = true;
+                    } else if (isDuplicate) {
+                        selectCheckbox.checked = false;
+                        selectCheckbox.disabled = true;
+                        selectCheckbox.title = 'This appears to be a duplicate expense.';
+                        rowPayload.wasDeselectedDueToDuplicate = true;
                     } else {
                         selectCheckbox.checked = isSelected;
                         selectCheckbox.disabled = false;
                         selectCheckbox.title = '';
                         rowPayload.wasDeselectedDueToInvalid = false;
+                        rowPayload.wasDeselectedDueToDuplicate = false;
                     }
 
                     rowSelectionControlMap.set(rowIndex, selectCheckbox);
-                    nextSelectionState.set(rowIndex, rowIsValid ? Boolean(selectCheckbox.checked) : false);
+                    nextSelectionState.set(rowIndex, rowIsValid && !isDuplicate ? Boolean(selectCheckbox.checked) : false);
 
                     selectCheckbox.addEventListener('change', event => {
                         const payload = previewRowData[rowIndex];
@@ -2919,16 +3074,28 @@
                     logEvent('warn', 'Missing required expense fields detected', uniqueMissing);
                 }
 
+                const duplicateCount = latestDataRows.reduce((count, row, index) => {
+                    const payload = previewRowData[index];
+                    return count + (payload && payload.isDuplicate ? 1 : 0);
+                }, 0);
+
+                if (duplicateCount > 0) {
+                    statusParts.push(`${duplicateCount} potential duplicate${duplicateCount === 1 ? '' : 's'} found.`);
+                    if (statusType === 'success') statusType = 'warning';
+                    logEvent('warn', `${duplicateCount} potential duplicate expenses detected`);
+                }
+
                 if (!validRowCount) {
                     statusParts.push('No rows are currently ready to import.');
                     statusType = 'warning';
                 }
 
                 const selectedCount = getSelectedRowCount();
-                if (validRowCount) {
-                    statusParts.push(`${selectedCount} of ${validRowCount} valid row${validRowCount === 1 ? '' : 's'} selected for import.`);
+                const importableCount = validRowCount - duplicateCount;
+                if (importableCount > 0) {
+                    statusParts.push(`${selectedCount} of ${importableCount} importable row${importableCount === 1 ? '' : 's'} selected for import.`);
                 }
-                if (validRowCount > 0 && selectedCount === 0) {
+                if (importableCount > 0 && selectedCount === 0) {
                     statusParts.push('Select at least one row to enable import.');
                 }
 
@@ -2944,9 +3111,43 @@
                 });
             }
 
-            function getAntiForgeryToken() {
-                const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
-                return tokenInput ? tokenInput.value : null;
+            function refreshSelectionState() {
+                const button = submitButtonEl();
+                if (!button) {
+                    return;
+                }
+
+                const selectedCount = getSelectedRowCount();
+                const hasSelection = selectedCount > 0;
+
+                button.disabled = !hasSelection;
+                if (hasSelection) {
+                    button.title = `Import ${selectedCount} expense${selectedCount === 1 ? '' : 's'}`;
+                } else {
+                    button.title = 'Select at least one row to import';
+                }
+
+                const selectAllCheckbox = selectAllCheckboxEl();
+                if (selectAllCheckbox) {
+                    const totalSelectableRows = previewRowData.filter(row => row && row.isValid && !row.isDuplicate).length;
+                    const selectedRows = getSelectedRowCount();
+                    selectAllCheckbox.checked = totalSelectableRows > 0 && selectedRows === totalSelectableRows;
+                    selectAllCheckbox.indeterminate = selectedRows > 0 && selectedRows < totalSelectableRows;
+                }
+            }
+
+            function updateImportButtonState(enabled) {
+                const button = submitButtonEl();
+                if (!button) {
+                    return;
+                }
+
+                button.disabled = !enabled;
+                if (enabled) {
+                    button.title = 'Import selected expenses';
+                } else {
+                    button.title = 'No expenses available to import';
+                }
             }
 
             function buildImportPayload() {
@@ -3187,7 +3388,7 @@
                 }
             }
 
-            function setSkipRows(value, { fromAuto = false } = {}) {
+            async function setSkipRows(value, { fromAuto = false } = {}) {
                 if (!Number.isFinite(value)) {
                     value = 0;
                 }
@@ -3207,11 +3408,11 @@
 
                 if (parsedRows.length) {
                     logEvent('debug', `Re-rendering preview with skip rows set to ${value}`);
-                    renderPreview({ requested: requestedSkipRows });
+                    await renderPreview({ requested: requestedSkipRows });
                 }
             }
 
-            function handleParsedRows(rows) {
+            async function handleParsedRows(rows) {
                 logEvent('info', `Parsed ${rows.length} raw rows from CSV.`);
                 let effectiveRows = rows.slice();
                 const parser = getParserSettings();
@@ -3234,7 +3435,7 @@
                     skipInput.value = String(currentSkipRows);
                 }
 
-                renderPreview({ requested: requestedSkipRows });
+                await renderPreview({ requested: requestedSkipRows });
             }
 
             function parseCsv(text) {
@@ -3337,7 +3538,7 @@
                     logEvent('error', `FileReader encountered an error for '${file.name}'.`);
                 };
 
-                reader.onload = event => {
+                reader.onload = async event => {
                     try {
                         const text = event.target?.result ?? '';
                         if (!text) {
@@ -3353,7 +3554,7 @@
                             return;
                         }
 
-                        handleParsedRows(rows);
+                        await handleParsedRows(rows);
                         logEvent('info', `File '${file.name}' parsed successfully.`, {
                             totalRows: rows.length,
                             profile: getProfileDisplayName()
@@ -3374,7 +3575,7 @@
                 }
             }
 
-            function handleProfileChange(profileId) {
+            async function handleProfileChange(profileId) {
                 activeProfile = bankProfiles.find(p => p.id === profileId) ?? null;
                 activeProfileColumns = Array.isArray(activeProfile?.columns) ? activeProfile.columns : [];
                 activeProfileMappings = Array.isArray(activeProfile?.expenseFieldMappings) ? activeProfile.expenseFieldMappings : [];
@@ -3416,7 +3617,7 @@
 
                 const parser = getParserSettings();
                 const profileSkip = Number(parser.defaultSkipRows ?? autoSkipRows);
-                setSkipRows(profileSkip);
+                await setSkipRows(profileSkip);
                 updateSkipDescription();
                 logEvent('info', `Profile changed to '${getProfileDisplayName()}'. Applied skip rows ${profileSkip}.`);
             }
@@ -3445,8 +3646,8 @@
                         return;
                     }
 
-                    profileSelect.addEventListener('change', event => {
-                        handleProfileChange(event.target?.value ?? '');
+                    profileSelect.addEventListener('change', async event => {
+                        await handleProfileChange(event.target?.value ?? '');
                     });
                 } else {
                     setStatus('Bank profile selector not found.', 'warning');
@@ -3460,15 +3661,15 @@
                 }
 
                 if (skipInput) {
-                    skipInput.addEventListener('input', event => {
+                    skipInput.addEventListener('input', async event => {
                         const value = Number(event.target?.value ?? 0);
-                        setSkipRows(Number.isFinite(value) ? value : 0);
+                        await setSkipRows(Number.isFinite(value) ? value : 0);
                     });
                 }
 
                 if (autoButton) {
-                    autoButton.addEventListener('click', () => {
-                        setSkipRows(autoSkipRows, { fromAuto: true });
+                    autoButton.addEventListener('click', async () => {
+                        await setSkipRows(autoSkipRows, { fromAuto: true });
                     });
                 }
 
