@@ -6,6 +6,7 @@ using InvestmentTracker.Endpoints;
 using Microsoft.AspNetCore.DataProtection;
 using System.IO;
 using InvestmentTracker.Services.ImportProfiles;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,9 +32,15 @@ if (string.IsNullOrEmpty(connectionString))
     throw new InvalidOperationException("PostgreSQL connection string is required.");
 }
 
+// Configure NpgsqlDataSource with dynamic JSON enabled
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+dataSourceBuilder.EnableDynamicJson();
+var dataSource = dataSourceBuilder.Build();
+builder.Services.AddSingleton(dataSource);
+
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    options.UseNpgsql(connectionString, npgsqlOptions =>
+    options.UseNpgsql(dataSource, npgsqlOptions =>
     {
         // Configure PostgreSQL to handle DateTime properly
         npgsqlOptions.EnableRetryOnFailure();
@@ -51,7 +58,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IInvestmentService, InvestmentService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<CsvImportService>();
-builder.Services.AddSingleton<IBankImportProfileProvider, FileSystemBankImportProfileProvider>();
+builder.Services.AddScoped<ImportProfileService>();
+builder.Services.AddScoped<IBankImportProfileProvider>(sp => sp.GetRequiredService<ImportProfileService>());
+builder.Services.AddScoped<ImportProfileSeeder>();
 
 // Configure Data Protection for persistent keys in production
 var keyDirectory = builder.Configuration["DataProtection:KeyDirectory"] ?? Environment.GetEnvironmentVariable("DATAPROTECTION__KEY_DIRECTORY") ?? "/keys";
@@ -131,6 +140,18 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
+
+    // Seed import profiles from file system if database is empty
+    try
+    {
+        var seeder = scope.ServiceProvider.GetRequiredService<ImportProfileSeeder>();
+        await seeder.SeedAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Import profile seeding failed during startup.");
+    }
 
     // Optional automatic backfill of provider names from existing investments.
     // Controlled by configuration: BackfillProvidersOnStartup (bool, default true).

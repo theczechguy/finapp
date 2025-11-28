@@ -130,7 +130,6 @@ namespace InvestmentTracker.Services.ImportProfiles
             profile.Metadata ??= new BankImportProfileMetadata();
             profile.Parser ??= new BankImportProfileParser();
             profile.Columns ??= new List<BankImportProfileColumn>();
-            profile.Rules ??= new BankImportProfileRules();
             profile.ExpenseFieldMappings ??= new List<ExpenseFieldMapping>();
 
             profile.Metadata.DisplayName = profile.Metadata.DisplayName?.Trim() ?? profile.Id;
@@ -141,10 +140,7 @@ namespace InvestmentTracker.Services.ImportProfiles
                 column.Header = column.Header?.Trim() ?? string.Empty;
                 column.Target = column.Target?.Trim() ?? string.Empty;
                 column.Transform = column.Transform?.Trim();
-                column.Notes = column.Notes?.Trim();
             }
-
-            profile.Notes = profile.Notes?.Select(n => n.Trim()).Where(n => !string.IsNullOrWhiteSpace(n)).ToList() ?? new List<string>();
 
             foreach (var mapping in profile.ExpenseFieldMappings)
             {
@@ -182,7 +178,6 @@ namespace InvestmentTracker.Services.ImportProfiles
                 mapping.SourceHeaders = normalizedHeaders;
                 mapping.Target = mapping.Target?.Trim();
                 mapping.Fallback = mapping.Fallback?.Trim();
-                mapping.Notes = mapping.Notes?.Trim();
             }
         }
     }

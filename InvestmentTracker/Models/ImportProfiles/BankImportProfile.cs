@@ -9,8 +9,6 @@ namespace InvestmentTracker.Models.ImportProfiles
         public BankImportProfileMetadata Metadata { get; set; } = new();
         public BankImportProfileParser Parser { get; set; } = new();
         public List<BankImportProfileColumn> Columns { get; set; } = new();
-        public BankImportProfileRules Rules { get; set; } = new();
-        public List<string> Notes { get; set; } = new();
         public List<ExpenseFieldMapping> ExpenseFieldMappings { get; set; } = new();
 
         public BankImportProfileSummary ToSummary()
@@ -70,20 +68,6 @@ namespace InvestmentTracker.Models.ImportProfiles
         public string Header { get; set; } = string.Empty;
         public string Target { get; set; } = string.Empty;
         public string? Transform { get; set; }
-        public bool Required { get; set; }
-        public string? Notes { get; set; }
-    }
-
-    public class BankImportProfileRules
-    {
-        public List<BankImportProfileDropRowRule> DropRows { get; set; } = new();
-    }
-
-    public class BankImportProfileDropRowRule
-    {
-        public string? StartsWith { get; set; }
-        public string? Contains { get; set; }
-        public new string? Equals { get; set; }
     }
 
     public class ExpenseFieldMapping
@@ -93,6 +77,5 @@ namespace InvestmentTracker.Models.ImportProfiles
         public List<string> SourceHeaders { get; set; } = new();
         public string? Target { get; set; }
         public string? Fallback { get; set; }
-        public string? Notes { get; set; }
     }
 }

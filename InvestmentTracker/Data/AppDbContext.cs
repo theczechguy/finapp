@@ -22,6 +22,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<FinancialScheduleConfig> FinancialScheduleConfigs => Set<FinancialScheduleConfig>();
     public DbSet<FinancialMonthOverride> FinancialMonthOverrides => Set<FinancialMonthOverride>();
     public DbSet<InvestmentProvider> InvestmentProviders => Set<InvestmentProvider>();
+    public DbSet<ImportProfile> ImportProfiles => Set<ImportProfile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
