@@ -3,6 +3,36 @@
 
 // Write your JavaScript code.
 
+// Global helper to retrieve ASP.NET antiforgery token from the DOM (input or meta fallback)
+(function () {
+    if (typeof window.getAntiForgeryToken === 'function') {
+        return;
+    }
+
+    window.getAntiForgeryToken = function getAntiForgeryToken(options = {}) {
+        const scope = options.container instanceof Element ? options.container : document;
+        let tokenInput = scope.querySelector('input[name="__RequestVerificationToken"]');
+        if (!tokenInput && scope !== document) {
+            tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        }
+
+        if (tokenInput && typeof tokenInput.value === 'string' && tokenInput.value.length) {
+            return tokenInput.value;
+        }
+
+        const metaToken = document.querySelector('meta[name="csrf-token"], meta[name="request-verification-token"], meta[name="__RequestVerificationToken"]');
+        if (metaToken) {
+            const content = metaToken.getAttribute('content');
+            if (content && content.length) {
+                return content;
+            }
+        }
+
+        console.warn('getAntiForgeryToken: token element not found');
+        return null;
+    };
+})();
+
 // Allow comma as decimal separator for number/range validation
 (function ($) {
 	if (!$.validator) return;

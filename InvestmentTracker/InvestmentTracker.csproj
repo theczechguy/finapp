@@ -17,4 +17,11 @@
         <PackageReference Include="YamlDotNet" Version="15.3.0" />
     </ItemGroup>
 
+    <ItemGroup>
+        <Content Include="ImportProfiles\**\*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        </Content>
+    </ItemGroup>
+
 </Project>
