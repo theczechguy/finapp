@@ -1,6 +1,7 @@
 @page
 @model InvestmentTracker.Pages.Expenses.IndexModel
 @using System.Text.Json
+@using System.Linq
 @using InvestmentTracker.Models
 @{
     // currentDate already declared above if needed
@@ -29,7 +30,65 @@
         headingText = $"Monthly Expenses - {currentDate:MMMM yyyy}";
         ViewData["Title"] = headingText;
     }
+
+    var allExpenseCategories = (await Model.GetExpenseCategoriesAsync())
+        .OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase)
+        .ToList();
 }
+
+<style>
+    .import-invalid-cell {
+        border-left: 4px solid var(--bs-danger);
+        background-color: transparent;
+    }
+
+    .import-invalid-hint {
+        color: var(--bs-danger);
+    }
+
+    .import-detection-note {
+        color: var(--bs-secondary);
+        font-style: italic;
+    }
+
+    .import-missing-header {
+        color: var(--bs-body-color);
+        border-bottom: 2px solid var(--bs-danger);
+    }
+
+    .import-optional-header {
+        color: var(--bs-body-color);
+        border-bottom: 2px solid rgba(220, 53, 69, 0.4);
+    }
+
+    .duplicate-row {
+        position: relative;
+        background-color: rgba(13, 202, 240, 0.14) !important;
+        border-left: 4px solid rgba(13, 110, 253, 0.65);
+        box-shadow: inset 0 0 0 1px rgba(13, 110, 253, 0.2);
+    }
+
+    .duplicate-row > th,
+    .duplicate-row > td {
+        background-color: rgba(13, 202, 240, 0.08) !important;
+    }
+
+    .duplicate-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.15rem 0.65rem;
+        font-size: 0.75em;
+        font-weight: 600;
+        text-transform: uppercase;
+        background-color: rgba(13, 202, 240, 0.18);
+        color: var(--bs-body-color);
+        border-radius: 999px;
+        border: 1px solid rgba(13, 110, 253, 0.2);
+        letter-spacing: 0.05em;
+    }
+
+</style>
 
 <div class="d-block d-lg-flex align-items-lg-center justify-content-lg-between mb-3">
     <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start mb-3 mb-lg-0">
@@ -73,6 +132,10 @@
                 }
             </ul>
         </div>
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#importStatementModal">
+            <i class="bi bi-cloud-upload me-1"></i>
+            Import Statement
+        </button>
     </form>
 </div>
 
@@ -498,7 +561,7 @@
                         <label for="regularExpenseCategory" class="form-label">Category</label>
                         <select id="regularExpenseCategory" name="categoryId" class="form-control" required>
                             <option value="">Select Category</option>
-                            @foreach (var category in await Model.GetExpenseCategoriesAsync())
+                            @foreach (var category in allExpenseCategories)
                             {
                                 <option value="@category.Id">@category.Name</option>
                             }
@@ -598,7 +661,7 @@
                         <label for="irregularExpenseCategory" class="form-label">Category</label>
                         <select id="irregularExpenseCategory" name="categoryId" class="form-control" required>
                             <option value="">Select Category</option>
-                            @foreach (var category in await Model.GetExpenseCategoriesAsync())
+                            @foreach (var category in allExpenseCategories)
                             {
                                 <option value="@category.Id">@category.Name</option>
                             }
@@ -667,7 +730,7 @@
                         <label for="editRegularExpenseCategory" class="form-label">Category</label>
                         <select id="editRegularExpenseCategory" name="categoryId" class="form-control" required>
                             <option value="">Select Category</option>
-                            @foreach (var category in await Model.GetExpenseCategoriesAsync())
+                            @foreach (var category in allExpenseCategories)
                             {
                                 <option value="@category.Id">@category.Name</option>
                             }
@@ -791,7 +854,7 @@
                         <label for="editIrregularExpenseCategory" class="form-label">Category</label>
                         <select id="editIrregularExpenseCategory" name="categoryId" class="form-control" required>
                             <option value="">Select Category</option>
-                            @foreach (var category in await Model.GetExpenseCategoriesAsync())
+                            @foreach (var category in allExpenseCategories)
                             {
                                 <option value="@category.Id">@category.Name</option>
                             }
@@ -964,7 +1027,81 @@
     </div>
 </div>
 
+<!-- Import Statement Modal -->
+<div class="modal fade" id="importStatementModal" tabindex="-1" aria-labelledby="importStatementModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importStatementModalLabel">Import Bank Statement</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3 mb-3 align-items-end">
+                    <div class="col-md-6">
+                        <label for="bankProfileSelect" class="form-label">Bank profile</label>
+                        <select class="form-select" id="bankProfileSelect">
+                            <option value="">Select a bank profile...</option>
+                            @foreach (var profile in Model.BankProfiles.OrderBy(p => p.DisplayName))
+                            {
+                                <option value="@profile.Id" data-default-skip="@profile.DefaultSkipRows">@profile.DisplayName</option>
+                            }
+                        </select>
+                        <div class="form-text" id="bankProfileHint">Pick the bank export format so FinApp can interpret the columns correctly.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="alert alert-info mb-0 py-2 px-3 small" id="bankProfileDescription" role="note">
+                            Select a profile to view details and enable statement uploads.
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="bankStatementFile" class="form-label">Choose CSV File</label>
+                    <input type="file" class="form-control" id="bankStatementFile" accept=".csv,.txt" />
+                    <div class="form-text">Select the exported statement (CSV). Contents will be previewed below.</div>
+                </div>
+                <div class="row g-3 align-items-end mb-3">
+                    <div class="col-sm-4">
+                        <label for="importSkipRows" class="form-label">Metadata rows to skip</label>
+                        <input type="number" class="form-control" id="importSkipRows" min="0" value="0" disabled />
+                    </div>
+                    <div class="col-sm-8">
+                        <div class="form-text d-flex flex-wrap align-items-center gap-2">
+                            <span id="importAutoDetectedDesc">Auto-detected 0 metadata rows.</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="importApplyAutoSkip" disabled>
+                                Use auto-detected value
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div id="importPreviewStatus" class="alert alert-secondary" role="status">
+                    No file selected.
+                </div>
+                <div class="table-responsive d-none" id="importPreviewTableContainer">
+                    <table class="table table-striped table-sm mb-0 text-center" id="importPreviewTable">
+                        <thead>
+                            <tr id="importPreviewTableHead"></tr>
+                        </thead>
+                        <tbody id="importPreviewTableBody"></tbody>
+                    </table>
+                </div>
+                @Html.AntiForgeryToken()
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="importStatementSubmit" disabled>
+                    <span class="default-label">Import Expenses</span>
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
+    <script>
+    window.bankImportProfiles = @Html.Raw(JsonSerializer.Serialize(Model.BankProfilesDetailed, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+    window.familyMembers = @Html.Raw(JsonSerializer.Serialize(Model.FamilyMembers ?? Array.Empty<FamilyMember>(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+    window.expenseCategories = @Html.Raw(JsonSerializer.Serialize(allExpenseCategories, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+    </script>
     <!-- Native month input provides best mobile experience -->
     <script>
         // Toggle icons for collapsible sections
@@ -990,6 +1127,2597 @@
                 });
             });
         });
+    </script>
+    <script>
+        (function () {
+            const bankProfiles = Array.isArray(window.bankImportProfiles) ? window.bankImportProfiles : [];
+            const familyMembers = Array.isArray(window.familyMembers) ? window.familyMembers : [];
+            const rawExpenseCategories = Array.isArray(window.expenseCategories) ? window.expenseCategories : [];
+            const activeFamilyMembers = familyMembers.filter(member => member && (member.isActive ?? true));
+            const expenseCategoryMapById = new Map();
+            const expenseCategoryNameLookup = new Map();
+
+            rawExpenseCategories.forEach(category => {
+                if (!category || category.id == null) {
+                    return;
+                }
+                const numericId = Number(category.id);
+                if (!Number.isFinite(numericId)) {
+                    return;
+                }
+                const name = (category.name ?? '').toString();
+                expenseCategoryMapById.set(numericId, {
+                    id: numericId,
+                    name
+                });
+                const normalized = normalizeText(name);
+                if (normalized.length && !expenseCategoryNameLookup.has(normalized)) {
+                    expenseCategoryNameLookup.set(normalized, numericId);
+                }
+            });
+
+            const availableExpenseCategories = Array.from(expenseCategoryMapById.values())
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+            const fileInputId = 'bankStatementFile';
+            const profileSelectId = 'bankProfileSelect';
+            const profileDescriptionId = 'bankProfileDescription';
+            const statusId = 'importPreviewStatus';
+            const containerId = 'importPreviewTableContainer';
+            const headId = 'importPreviewTableHead';
+            const bodyId = 'importPreviewTableBody';
+            const modalId = 'importStatementModal';
+            const skipInputId = 'importSkipRows';
+            const autoDescId = 'importAutoDetectedDesc';
+            const autoButtonId = 'importApplyAutoSkip';
+            const submitButtonId = 'importStatementSubmit';
+            const selectAllCheckboxId = 'importSelectAllRows';
+
+            const fieldLabels = {
+                transactionDate: 'Transaction Date',
+                bookingDate: 'Booking Date',
+                amount: 'Amount',
+                currency: 'Currency',
+                direction: 'Direction',
+                counterparty: 'Counterparty',
+                counterpartyAccount: 'Counterparty Account',
+                counterpartyAccountName: 'Counterparty Account Name',
+                memo: 'Personal Note',
+                recipientMessage: 'Message to Recipient',
+                bankNote: 'Bank Note',
+                bankCategory: 'Bank Category',
+                transactionType: 'Transaction Type',
+                originalAmount: 'Original Amount',
+                originalCurrency: 'Original Currency',
+                exchangeRate: 'Exchange Rate',
+                merchantLocation: 'Merchant Location',
+                cardName: 'Card Name',
+                cardNumber: 'Card Number',
+                cardHolder: 'Card Holder',
+                reference: 'Reference',
+                vs: 'Variable Symbol',
+                ks: 'Constant Symbol',
+                ss: 'Specific Symbol'
+            };
+
+            const expenseFieldLabels = {
+                name: 'Expense Name',
+                amount: 'Amount',
+                currency: 'Currency',
+                date: 'Date',
+                expenseType: 'Expense Type',
+                memo: 'Memo',
+                categoryId: 'Category',
+                familyMemberId: 'Family Member'
+            };
+
+            const requiredExpenseFields = new Set(['name', 'amount', 'currency', 'date', 'categoryId']);
+            let rowSelectionState = new Map();
+            let rowSelectionControlMap = new Map();
+
+            const EXPENSE_TYPE_FAMILY_VALUE = 'family';
+            const EXPENSE_TYPE_MEMBER_PREFIX = 'member:';
+
+            let currentFileName = null;
+            let pendingFile = null;
+            let parsedRows = [];
+            let autoSkipRows = 0;
+            let currentSkipRows = 0;
+            let requestedSkipRows = 0;
+            let activeProfile = null;
+            let activeProfileColumns = [];
+            let activeProfileMappings = [];
+            let latestHeaderRow = [];
+            let latestDataRows = [];
+            let resolvedTargetMap = new Map();
+            let resolvedHeaderMap = new Map();
+            let previewFields = [];
+            let missingRequiredFields = [];
+            let previewRowData = [];
+            let expenseTypeControlMap = new Map();
+            const expenseTypeSelectionMap = new Map();
+            let previewStatusContext = null;
+
+            const LOG_PREFIX = '[StatementImport]';
+
+            function logEvent(level, message, details) {
+                try {
+                    const logger = console?.[level] ?? console?.log;
+                    if (typeof logger !== 'function') {
+                        return;
+                    }
+                    if (details !== undefined) {
+                        logger(`${LOG_PREFIX} ${message}`, details);
+                    } else {
+                        logger(`${LOG_PREFIX} ${message}`);
+                    }
+                } catch (err) {
+                    // Swallow logging failures to avoid breaking UI
+                }
+            }
+
+            const statusEl = () => document.getElementById(statusId);
+            const containerEl = () => document.getElementById(containerId);
+            const headEl = () => document.getElementById(headId);
+            const bodyEl = () => document.getElementById(bodyId);
+            const skipInputEl = () => document.getElementById(skipInputId);
+            const autoDescEl = () => document.getElementById(autoDescId);
+            const autoButtonEl = () => document.getElementById(autoButtonId);
+            const submitButtonEl = () => document.getElementById(submitButtonId);
+            const fileInputEl = () => document.getElementById(fileInputId);
+            const profileSelectEl = () => document.getElementById(profileSelectId);
+            const profileDescriptionEl = () => document.getElementById(profileDescriptionId);
+            const selectAllCheckboxEl = () => document.getElementById(selectAllCheckboxId);
+
+            const getParserSettings = () => activeProfile?.parser ?? {};
+            const getProfileDisplayName = () => activeProfile?.metadata?.displayName ?? activeProfile?.id ?? 'Profile';
+            const getProfileDescription = () => activeProfile?.metadata?.description ?? '';
+            const getProfileSample = () => activeProfile?.metadata?.sampleFile ?? '';
+
+            function normalizeText(value) {
+                return (value ?? '')
+                    .toString()
+                    .trim()
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\x00-\x1F]/g, '')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/\s+/g, ' ');
+            }
+
+            function normalizeHeader(value) {
+                return normalizeText(value);
+            }
+
+            function getFamilyMemberById(id) {
+                if (id == null) {
+                    return null;
+                }
+                return activeFamilyMembers.find(member => Number(member.id) === Number(id)) ?? null;
+            }
+
+            function getExpenseCategoryById(id) {
+                if (id == null) {
+                    return null;
+                }
+                const numericId = Number(id);
+                if (!Number.isFinite(numericId)) {
+                    return null;
+                }
+                return expenseCategoryMapById.get(numericId) ?? null;
+            }
+
+            function resolveCategoryId(candidate) {
+                if (candidate == null) {
+                    return null;
+                }
+
+                if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+                    return expenseCategoryMapById.has(candidate) ? candidate : null;
+                }
+
+                const text = candidate.toString().trim();
+                if (!text.length) {
+                    return null;
+                }
+
+                const numeric = Number.parseInt(text, 10);
+                if (!Number.isNaN(numeric) && expenseCategoryMapById.has(numeric)) {
+                    return numeric;
+                }
+
+                const normalized = normalizeText(text);
+                if (normalized.length && expenseCategoryNameLookup.has(normalized)) {
+                    return expenseCategoryNameLookup.get(normalized) ?? null;
+                }
+
+                return null;
+            }
+
+            function deriveExpenseTypeSelection(displayValue, rowPayload, valueResult) {
+                if (rowPayload && rowPayload.familyMemberId != null) {
+                    const member = getFamilyMemberById(rowPayload.familyMemberId);
+                    if (member) {
+                        return { expenseType: 'Individual', familyMemberId: member.id };
+                    }
+                }
+
+                if (valueResult && valueResult.rawValue != null) {
+                    const rawNumeric = Number.parseInt(valueResult.rawValue, 10);
+                    if (!Number.isNaN(rawNumeric)) {
+                        const member = getFamilyMemberById(rawNumeric);
+                        if (member) {
+                            return { expenseType: 'Individual', familyMemberId: member.id };
+                        }
+                    }
+                }
+
+                const candidateText = valueResult?.displayValue ?? displayValue;
+                if (typeof candidateText === 'string') {
+                    const normalized = candidateText.trim().toLowerCase();
+                    if (normalized === 'family' || normalized === 'shared') {
+                        return { expenseType: 'Family', familyMemberId: null };
+                    }
+
+                    const matchedMember = activeFamilyMembers.find(member => typeof member.name === 'string' && member.name.trim().toLowerCase() === normalized);
+                    if (matchedMember) {
+                        return { expenseType: 'Individual', familyMemberId: matchedMember.id };
+                    }
+                }
+
+                return { expenseType: 'Family', familyMemberId: null };
+            }
+
+            function encodeExpenseTypeSelection(selection) {
+                if (!selection || selection.expenseType !== 'Individual' || selection.familyMemberId == null) {
+                    return EXPENSE_TYPE_FAMILY_VALUE;
+                }
+
+                return `${EXPENSE_TYPE_MEMBER_PREFIX}${selection.familyMemberId}`;
+            }
+
+            function decodeExpenseTypeSelection(value) {
+                if (typeof value === 'string' && value.startsWith(EXPENSE_TYPE_MEMBER_PREFIX)) {
+                    const numericId = Number(value.slice(EXPENSE_TYPE_MEMBER_PREFIX.length));
+                    if (!Number.isNaN(numericId) && getFamilyMemberById(numericId)) {
+                        return { expenseType: 'Individual', familyMemberId: numericId };
+                    }
+                }
+
+                return { expenseType: 'Family', familyMemberId: null };
+            }
+
+            function ensureExpenseTypeSelection(rowIndex, displayValue, rowPayload, valueResult) {
+                if (!expenseTypeSelectionMap.has(rowIndex)) {
+                    expenseTypeSelectionMap.set(rowIndex, deriveExpenseTypeSelection(displayValue, rowPayload, valueResult));
+                }
+
+                return expenseTypeSelectionMap.get(rowIndex);
+            }
+
+            function buildExpenseTypeSelect(rowIndex, selection) {
+                const select = document.createElement('select');
+                select.className = 'form-select form-select-sm';
+                select.ariaLabel = 'Expense type';
+
+                const familyOption = document.createElement('option');
+                familyOption.value = EXPENSE_TYPE_FAMILY_VALUE;
+                familyOption.textContent = 'Family';
+                select.appendChild(familyOption);
+
+                activeFamilyMembers.forEach(member => {
+                    if (!member || member.id == null) {
+                        return;
+                    }
+                    const option = document.createElement('option');
+                    option.value = `${EXPENSE_TYPE_MEMBER_PREFIX}${member.id}`;
+                    option.textContent = member.name ?? `Member ${member.id}`;
+                    select.appendChild(option);
+                });
+
+                select.value = encodeExpenseTypeSelection(selection);
+
+                select.addEventListener('change', event => {
+                    const newSelection = decodeExpenseTypeSelection(event.target.value);
+                    expenseTypeSelectionMap.set(rowIndex, newSelection);
+                    const rowPayload = previewRowData[rowIndex];
+                    if (rowPayload) {
+                        rowPayload.expenseType = newSelection.expenseType;
+                        rowPayload.familyMemberId = newSelection.expenseType === 'Individual' ? newSelection.familyMemberId : null;
+                    }
+                });
+
+                return select;
+            }
+
+            function getTargetLabel(target) {
+                if (!target) return '';
+                if (fieldLabels[target]) {
+                    return fieldLabels[target];
+                }
+                return target
+                    .replace(/([a-z])([A-Z])/g, '$1 $2')
+                    .replace(/_/g, ' ')
+                    .replace(/^./, c => c.toUpperCase());
+            }
+
+            function setStatus(message, type = 'secondary') {
+                const status = statusEl();
+                if (!status) return;
+                status.className = `alert alert-${type}`;
+                status.setAttribute('tabindex', '-1');
+                status.textContent = message;
+            }
+
+            function updateImportButtonState(canImport, rowCount = 0) {
+                const button = submitButtonEl();
+                if (!button) {
+                    return;
+                }
+
+                const labelEl = button.querySelector('.default-label');
+                const labelTarget = labelEl ?? button;
+                if (canImport && rowCount > 0) {
+                    labelTarget.textContent = `Import ${rowCount} expense${rowCount === 1 ? '' : 's'}`;
+                } else {
+                    labelTarget.textContent = 'Import Expenses';
+                }
+
+                button.disabled = !canImport;
+            }
+
+            function getSelectedRowCount() {
+                let count = 0;
+                rowSelectionState.forEach((isSelected, rowIndex) => {
+                    if (!isSelected) {
+                        return;
+                    }
+                    const payload = previewRowData[rowIndex];
+                    if (payload && payload.isValid) {
+                        count += 1;
+                    }
+                });
+                return count;
+            }
+
+            function updateSelectAllCheckbox() {
+                const selectAll = document.getElementById(selectAllCheckboxId);
+                if (!selectAll) {
+                    return;
+                }
+
+                const validRowIndices = [];
+                rowSelectionState.forEach((_, rowIndex) => {
+                    const payload = previewRowData[rowIndex];
+                    if (payload && payload.isValid) {
+                        validRowIndices.push(rowIndex);
+                    }
+                });
+
+                if (!validRowIndices.length) {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = false;
+                    selectAll.disabled = true;
+                    return;
+                }
+
+                selectAll.disabled = false;
+                let selectedCount = 0;
+                validRowIndices.forEach(index => {
+                    if (rowSelectionState.get(index)) {
+                        selectedCount += 1;
+                    }
+                });
+
+                if (selectedCount === 0) {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = false;
+                } else if (selectedCount === validRowIndices.length) {
+                    selectAll.checked = true;
+                    selectAll.indeterminate = false;
+                } else {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = true;
+                }
+            }
+
+            function refreshSelectionState() {
+                updateSelectAllCheckbox();
+                const selectedCount = getSelectedRowCount();
+                updateImportButtonState(selectedCount > 0, selectedCount);
+                recomputeStatusSummary();
+            }
+
+            function setRowSelection(rowIndex, isSelected, { dueToInvalid = false } = {}) {
+                const payload = previewRowData[rowIndex];
+                if (!payload || !payload.isValid) {
+                    rowSelectionState.set(rowIndex, false);
+                    const control = rowSelectionControlMap.get(rowIndex);
+                    if (control) {
+                        control.checked = false;
+                    }
+                    return;
+                }
+
+                rowSelectionState.set(rowIndex, isSelected);
+                const control = rowSelectionControlMap.get(rowIndex);
+                if (control) {
+                    control.checked = isSelected;
+                }
+
+                if (payload) {
+                    if (isSelected) {
+                        payload.wasDeselectedDueToInvalid = false;
+                    }
+                }
+            }
+
+            function handleSelectAllToggle(shouldSelect) {
+                let anyChanged = false;
+                previewRowData.forEach((payload, rowIndex) => {
+                    if (!payload || !payload.isValid) {
+                        return;
+                    }
+
+                    const existing = rowSelectionState.get(rowIndex) ?? false;
+                    if (existing !== shouldSelect) {
+                        anyChanged = true;
+                    }
+                    setRowSelection(rowIndex, shouldSelect);
+                });
+
+                if (anyChanged) {
+                    refreshSelectionState();
+                } else {
+                    updateSelectAllCheckbox();
+                }
+            }
+
+            function updateRowValidityFromFieldChange(rowIndex) {
+                const payload = previewRowData[rowIndex];
+                if (!payload) {
+                    return;
+                }
+
+                const missingSet = payload.missingRequiredFields ?? new Set();
+                const isValid = missingSet.size === 0;
+                const wasValid = Boolean(payload.isValid);
+                const wasSelectedBefore = rowSelectionState.has(rowIndex)
+                    ? Boolean(rowSelectionState.get(rowIndex))
+                    : true;
+                const wasAutoDeselected = Boolean(payload.wasDeselectedDueToInvalid);
+                const checkbox = rowSelectionControlMap.get(rowIndex);
+
+                payload.isValid = isValid;
+
+                if (!isValid) {
+                    if (checkbox) {
+                        checkbox.checked = false;
+                        checkbox.disabled = true;
+                        checkbox.title = 'Resolve required fields to import this row.';
+                    }
+                    setRowSelection(rowIndex, false, { dueToInvalid: true });
+                    payload.wasDeselectedDueToInvalid = wasSelectedBefore;
+                } else {
+                    if (checkbox) {
+                        checkbox.disabled = false;
+                        checkbox.title = '';
+                    }
+                    if (!wasValid && wasAutoDeselected) {
+                        setRowSelection(rowIndex, true);
+                    }
+                    payload.wasDeselectedDueToInvalid = false;
+                }
+
+                refreshSelectionState();
+            }
+
+            function recomputeStatusSummary() {
+                if (!previewStatusContext) {
+                    return;
+                }
+
+                const context = previewStatusContext;
+                const totalRows = previewRowData.length;
+                let validRowCount = 0;
+                const missingLabels = new Set();
+
+                previewRowData.forEach(payload => {
+                    if (!payload) {
+                        return;
+                    }
+
+                    if (payload.isValid) {
+                        validRowCount += 1;
+                    }
+
+                    if (payload.missingRequiredFields instanceof Set) {
+                        payload.missingRequiredFields.forEach(label => {
+                            if (typeof label === 'string' && label.trim().length) {
+                                missingLabels.add(label.trim());
+                            }
+                        });
+                    }
+                });
+
+                const selectedCount = getSelectedRowCount();
+                const statusParts = [];
+                const profileName = context.profileName ?? getProfileDisplayName();
+                const fileName = context.fileName ?? currentFileName ?? 'Statement';
+                const requested = Number.isFinite(context.requestedSkipRows) ? context.requestedSkipRows : currentSkipRows;
+                const applied = Number.isFinite(context.appliedSkipRows) ? context.appliedSkipRows : currentSkipRows;
+                const displayRows = Number.isFinite(context.totalRows) ? context.totalRows : totalRows;
+
+                statusParts.push(`${profileName} profile`);
+                statusParts.push(`${fileName} loaded.`);
+
+                if (requested !== applied) {
+                    statusParts.push(`Requested ${requested} metadata row${requested === 1 ? '' : 's'}, using ${applied} after trimming.`);
+                } else {
+                    statusParts.push(`Skipped ${applied} metadata row${applied === 1 ? '' : 's'}.`);
+                }
+
+                statusParts.push(`Showing ${displayRows} transaction row${displayRows === 1 ? '' : 's'}.`);
+
+                let statusType = 'success';
+
+                if (missingLabels.size) {
+                    statusParts.push(`Missing required fields: ${Array.from(missingLabels).join(', ')}.`);
+                    statusType = 'warning';
+                }
+
+                if (!validRowCount) {
+                    statusParts.push('No rows are currently ready to import.');
+                    statusType = 'warning';
+                }
+
+                if (validRowCount) {
+                    statusParts.push(`${selectedCount} of ${validRowCount} valid row${validRowCount === 1 ? '' : 's'} selected for import.`);
+                    if (selectedCount === 0) {
+                        statusParts.push('Select at least one row to enable import.');
+                        statusType = 'warning';
+                    }
+                }
+
+                setStatus(statusParts.join(' '), statusType);
+            }
+
+            function disableSkipControls(message) {
+                const skipInput = skipInputEl();
+                const autoButton = autoButtonEl();
+                if (skipInput) {
+                    skipInput.disabled = true;
+                }
+                if (autoButton) {
+                    autoButton.disabled = true;
+                }
+                const desc = autoDescEl();
+                if (desc) {
+                    desc.textContent = message ?? (activeProfile
+                        ? 'Metadata skip controls will unlock once the statement is loaded.'
+                        : 'Select a bank profile to configure metadata skipping.');
+                }
+            }
+
+            function enableSkipControls() {
+                const skipInput = skipInputEl();
+                const autoButton = autoButtonEl();
+                if (skipInput) {
+                    skipInput.disabled = false;
+                }
+                if (autoButton) {
+                    autoButton.disabled = false;
+                }
+                updateSkipDescription();
+            }
+
+            function clearPreviewTable() {
+                const container = containerEl();
+                const head = headEl();
+                const body = bodyEl();
+                if (container) {
+                    container.classList.add('d-none');
+                }
+                if (head) {
+                    head.replaceChildren();
+                }
+                if (body) {
+                    body.replaceChildren();
+                }
+                previewStatusContext = null;
+            }
+
+            function resetPreview(message, { clearFile = true } = {}) {
+                logEvent('debug', `Reset preview (clearFile=${clearFile}) triggered${message ? `: ${message}` : ''}`);
+                currentFileName = null;
+                parsedRows = [];
+                autoSkipRows = 0;
+                previewFields = [];
+                missingRequiredFields = [];
+                latestHeaderRow = [];
+                latestDataRows = [];
+                resolvedTargetMap = new Map();
+                resolvedHeaderMap = new Map();
+                previewRowData = [];
+                expenseTypeControlMap = new Map();
+                expenseTypeSelectionMap.clear();
+                rowSelectionState = new Map();
+                rowSelectionControlMap = new Map();
+                previewStatusContext = null;
+                updateImportButtonState(false);
+
+                const parser = getParserSettings();
+                currentSkipRows = activeProfile ? Number(parser.defaultSkipRows ?? 0) : 0;
+                requestedSkipRows = currentSkipRows;
+
+                const defaultMessage = message
+                    ?? (activeProfile ? 'Select a statement file to preview.' : 'Choose a bank profile to begin.');
+                const statusType = activeProfile ? 'secondary' : 'info';
+                setStatus(defaultMessage, statusType);
+
+                disableSkipControls();
+                clearPreviewTable();
+
+                if (clearFile) {
+                    pendingFile = null;
+                }
+
+                const input = fileInputEl();
+                if (input && clearFile) {
+                    input.value = '';
+                }
+
+                const skipInput = skipInputEl();
+                if (skipInput) {
+                    skipInput.value = String(currentSkipRows);
+                }
+            }
+
+            function showError(message) {
+                logEvent('error', message);
+                setStatus(message, 'danger');
+                clearPreviewTable();
+            }
+
+            function showLoading(filename) {
+                logEvent('info', `Reading file '${filename}' with profile '${getProfileDisplayName()}'`);
+                const status = statusEl();
+                if (status) {
+                    status.className = 'alert alert-info';
+                    status.setAttribute('tabindex', '-1');
+                    status.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Reading ${filename}...`;
+                }
+            }
+
+            function updateProfileDescription() {
+                const description = profileDescriptionEl();
+                if (!description) {
+                    return;
+                }
+
+                if (!activeProfile) {
+                    logEvent('debug', 'No active profile selected. Description reset.');
+                    description.className = 'alert alert-info mb-0 py-2 px-3 small';
+                    description.textContent = 'Select a profile to view details and enable statement uploads.';
+                    return;
+                }
+
+                const parser = getParserSettings();
+                const details = [];
+                const profileDescription = getProfileDescription();
+                if (profileDescription) {
+                    details.push(profileDescription);
+                }
+                details.push(`Default skip rows: ${parser.defaultSkipRows ?? 0}`);
+                details.push(`Delimiter: '${parser.delimiter ?? ';'}'`);
+                if (parser.encoding) {
+                    details.push(`Encoding: ${parser.encoding}`);
+                }
+                const sample = getProfileSample();
+                if (sample) {
+                    details.push(`Sample: ${sample}`);
+                }
+
+                description.className = 'alert alert-success mb-0 py-2 px-3 small';
+                description.textContent = `${getProfileDisplayName()}: ${details.join(' • ')}`;
+            }
+
+            function updateSkipDescription() {
+                const desc = autoDescEl();
+                if (!desc) return;
+
+                if (!activeProfile) {
+                    desc.textContent = 'Select a bank profile to configure metadata skipping.';
+                    return;
+                }
+
+                const parser = getParserSettings();
+                const pieces = [`Profile default skip: ${parser.defaultSkipRows ?? 0}`];
+                if (parsedRows.length) {
+                    pieces.push(`Auto-detected header near row ${autoSkipRows + 1}`);
+                }
+                desc.textContent = `${pieces.join('. ')}.`;
+            }
+
+            function rowHasContent(row) {
+                return row.some(cell => (cell ?? '').trim().length > 0);
+            }
+
+            function isLikelyHeaderRow(row) {
+                const populated = row.filter(cell => (cell ?? '').trim().length > 0);
+                if (populated.length < 3) {
+                    return false;
+                }
+
+                const candidateText = populated.join(' ');
+                const normalized = normalizeText(candidateText);
+                const headerKeywords = ['datum', 'date', 'amount', 'castka', 'transaction', 'typ', 'mena'];
+                const keywordMatch = headerKeywords.some(keyword => normalized.includes(keyword));
+
+                const fieldThreshold = Math.max(5, populated.length);
+                return keywordMatch || row.length >= fieldThreshold;
+            }
+
+            function determineAutoSkip(rows) {
+                for (let i = 0; i < rows.length; i++) {
+                    if (isLikelyHeaderRow(rows[i])) {
+                        logEvent('debug', `Auto-detected potential header at zero-based index ${i}`);
+                        return i;
+                    }
+                }
+                return 0;
+            }
+
+            function getExpenseFieldLabel(field) {
+                if (!field) {
+                    return 'Value';
+                }
+                if (expenseFieldLabels[field]) {
+                    return expenseFieldLabels[field];
+                }
+                return field
+                    .replace(/([a-z])([A-Z])/g, '$1 $2')
+                    .replace(/_/g, ' ')
+                    .replace(/^./, c => c.toUpperCase());
+            }
+
+            function isMappingRequired(mapping) {
+                if (!mapping) {
+                    return false;
+                }
+                if (!requiredExpenseFields.has(mapping.field)) {
+                    return false;
+                }
+                const fallbackValue = typeof mapping.fallback === 'string' ? mapping.fallback.trim() : '';
+                return fallbackValue.length === 0;
+            }
+
+            function buildColumnResolution(headerRow) {
+                const headerMap = new Map();
+                headerRow.forEach((value, idx) => {
+                    const key = normalizeHeader(value);
+                    if (!headerMap.has(key) && key.length) {
+                        headerMap.set(key, { index: idx, raw: value });
+                    }
+                });
+
+                const profileColumns = Array.isArray(activeProfileColumns) ? activeProfileColumns : [];
+                const targetInfoMap = new Map();
+                const headerInfoMap = new Map();
+
+                profileColumns.forEach(column => {
+                    if (!column || !column.target || targetInfoMap.has(column.target)) {
+                        return;
+                    }
+
+                    const normalizedHeader = normalizeHeader(column.header);
+                    let columnIndex = -1;
+                    let originalHeader = '';
+
+                    if (headerMap.has(normalizedHeader)) {
+                        const match = headerMap.get(normalizedHeader);
+                        columnIndex = match.index;
+                        originalHeader = match.raw ?? column.header ?? '';
+                    } else {
+                        const fallbackIndex = headerRow.findIndex(cell => normalizeHeader(cell) === normalizedHeader);
+                        if (fallbackIndex >= 0) {
+                            columnIndex = fallbackIndex;
+                            originalHeader = headerRow[fallbackIndex] ?? column.header ?? '';
+                        }
+                    }
+
+                    const info = {
+                        index: columnIndex,
+                        column,
+                        header: column.header ?? '',
+                        originalHeader
+                    };
+
+                    targetInfoMap.set(column.target, info);
+                    const normalizedProfileHeader = normalizeHeader(column.header ?? '');
+                    if (normalizedProfileHeader.length && !headerInfoMap.has(normalizedProfileHeader)) {
+                        headerInfoMap.set(normalizedProfileHeader, info);
+                    }
+                });
+
+                const mappingTargets = activeProfileMappings
+                    .filter(mapping => mapping?.target)
+                    .map(mapping => mapping.target);
+
+                const requiredTargets = activeProfileMappings
+                    .filter(mapping => mapping?.target && isMappingRequired(mapping))
+                    .map(mapping => mapping.target);
+
+                const matchedTargets = mappingTargets.reduce((count, target) => {
+                    const info = targetInfoMap.get(target);
+                    return info && info.index !== -1 ? count + 1 : count;
+                }, 0);
+
+                const matchedRequired = requiredTargets.reduce((count, target) => {
+                    const info = targetInfoMap.get(target);
+                    return info && info.index !== -1 ? count + 1 : count;
+                }, 0);
+
+                return {
+                    targetInfoMap,
+                    headerInfoMap,
+                    matchedTargets,
+                    matchedRequired
+                };
+            }
+
+            function findBestHeaderIndex(startIndex) {
+                const lookaheadLimit = 5;
+                const mappingsWithTargets = activeProfileMappings.filter(mapping => mapping?.target);
+                const requiredCount = mappingsWithTargets.filter(mapping => isMappingRequired(mapping)).length;
+
+                let best = null;
+
+                for (let offset = 0; offset <= lookaheadLimit; offset++) {
+                    const candidateIndex = startIndex + offset;
+                    if (candidateIndex >= parsedRows.length) {
+                        break;
+                    }
+
+                    const candidateRow = parsedRows[candidateIndex];
+                    if (!rowHasContent(candidateRow)) {
+                        continue;
+                    }
+
+                    const resolution = buildColumnResolution(candidateRow);
+
+                    logEvent('debug', 'Evaluated header candidate', {
+                        candidateIndex,
+                        matchedRequired: resolution.matchedRequired,
+                        matchedTargets: resolution.matchedTargets,
+                        requiredCount
+                    });
+
+                    if (!best
+                        || resolution.matchedRequired > best.resolution.matchedRequired
+                        || (resolution.matchedRequired === best.resolution.matchedRequired && resolution.matchedTargets > best.resolution.matchedTargets)) {
+                        best = {
+                            index: candidateIndex,
+                            resolution
+                        };
+                    }
+
+                    if (requiredCount > 0 && resolution.matchedRequired === requiredCount) {
+                        if (resolution.matchedTargets === mappingsWithTargets.length) {
+                            break;
+                        }
+                    }
+                }
+
+                if (best) {
+                    logEvent('info', `Selected header row at zero-based index ${best.index}`, {
+                        matchedRequired: best.resolution.matchedRequired,
+                        matchedTargets: best.resolution.matchedTargets
+                    });
+                    return best;
+                }
+
+                const fallbackRow = parsedRows[startIndex] ?? [];
+                logEvent('warn', `Falling back to initial header index ${startIndex}; no strong candidate found.`);
+                return {
+                    index: startIndex,
+                    resolution: buildColumnResolution(fallbackRow)
+                };
+            }
+
+            function computePreviewModel() {
+                previewFields = [];
+                missingRequiredFields = [];
+                latestHeaderRow = [];
+                latestDataRows = [];
+                resolvedColumnMap = new Map();
+
+                if (!parsedRows.length) {
+                    return { success: false, reason: 'No data available. Upload a CSV to preview.' };
+                }
+
+                if (!activeProfileMappings.length) {
+                    logEvent('warn', 'Active profile does not define any expense field mappings.');
+                    return { success: false, reason: 'No expense field mappings defined for this profile.' };
+                }
+
+                if (currentSkipRows >= parsedRows.length) {
+                    logEvent('warn', `Current skip rows (${currentSkipRows}) exceeded parsed row count (${parsedRows.length}).`);
+                    return { success: false, reason: 'Skipped all rows. Reduce the metadata rows to skip.' };
+                }
+
+                let headerIndex = currentSkipRows;
+                while (headerIndex < parsedRows.length && !rowHasContent(parsedRows[headerIndex])) {
+                    headerIndex += 1;
+                }
+
+                if (headerIndex >= parsedRows.length) {
+                    return { success: false, reason: 'No header row found. Adjust the metadata rows to skip.' };
+                }
+
+                const headerSearch = findBestHeaderIndex(headerIndex);
+                headerIndex = headerSearch.index;
+                latestHeaderRow = parsedRows[headerIndex];
+                latestDataRows = parsedRows.slice(headerIndex + 1).filter(rowHasContent);
+
+                if (!latestDataRows.length) {
+                    logEvent('warn', 'Header detected but no data rows found after the header index.');
+                    return { success: false, reason: 'Header detected but no transactions found. Adjust metadata rows to skip if needed.' };
+                }
+
+                resolvedTargetMap = headerSearch.resolution.targetInfoMap;
+                resolvedHeaderMap = headerSearch.resolution.headerInfoMap ?? new Map();
+
+                const prioritizedFields = [];
+                const regularFields = [];
+
+                activeProfileMappings.forEach(mapping => {
+                    const label = getExpenseFieldLabel(mapping.field);
+                    const fallbackValue = typeof mapping.fallback === 'string' ? mapping.fallback.trim() : null;
+                    const required = requiredExpenseFields.has(mapping.field);
+
+                    const declaredHeadersRaw = Array.isArray(mapping.sourceHeaders)
+                        ? mapping.sourceHeaders
+                        : (mapping.sourceHeader ? [mapping.sourceHeader] : []);
+
+                    const declaredHeaders = [];
+                    const seenHeaderKeys = new Set();
+
+                    declaredHeadersRaw.forEach(headerName => {
+                        const trimmed = (headerName ?? '').trim();
+                        if (!trimmed) {
+                            return;
+                        }
+                        const normalized = normalizeHeader(trimmed);
+                        if (!normalized.length || seenHeaderKeys.has(normalized)) {
+                            return;
+                        }
+                        seenHeaderKeys.add(normalized);
+                        declaredHeaders.push({ label: trimmed, normalized });
+                    });
+
+                    if (!declaredHeaders.length && mapping.target) {
+                        const column = activeProfileColumns.find(col => col.target === mapping.target);
+                        if (column) {
+                            const normalized = normalizeHeader(column.header ?? mapping.target);
+                            if (!seenHeaderKeys.has(normalized)) {
+                                seenHeaderKeys.add(normalized);
+                                declaredHeaders.push({ label: column.header ?? mapping.target, normalized });
+                            }
+                        }
+                    }
+
+                    const candidates = [];
+                    declaredHeaders.forEach(({ label: declaredLabel, normalized }) => {
+                        const headerInfo = normalized ? resolvedHeaderMap.get(normalized) : undefined;
+                        const columnDefinition = headerInfo?.column
+                            ?? activeProfileColumns.find(col => normalizeHeader(col.header) === normalized)
+                            ?? null;
+                        const targetKey = headerInfo?.column?.target
+                            ?? columnDefinition?.target
+                            ?? mapping.target
+                            ?? null;
+                        const originalHeader = headerInfo?.originalHeader
+                            ?? columnDefinition?.header
+                            ?? declaredLabel;
+                        const index = headerInfo ? headerInfo.index : -1;
+
+                        candidates.push({
+                            declaredHeader: declaredLabel,
+                            normalizedHeader: normalized,
+                            originalHeader,
+                            column: columnDefinition,
+                            target: targetKey,
+                            index
+                        });
+                    });
+
+                    if (!candidates.length && mapping.target) {
+                        const info = resolvedTargetMap.get(mapping.target);
+                        const columnDefinition = info?.column
+                            ?? activeProfileColumns.find(col => col.target === mapping.target)
+                            ?? null;
+                        const normalized = columnDefinition ? normalizeHeader(columnDefinition.header ?? mapping.target) : '';
+                        candidates.push({
+                            declaredHeader: columnDefinition?.header ?? mapping.target,
+                            normalizedHeader: normalized,
+                            originalHeader: info?.originalHeader ?? columnDefinition?.header ?? mapping.target,
+                            column: columnDefinition,
+                            target: mapping.target,
+                            index: info ? info.index : -1
+                        });
+                    }
+
+                    const columnMissing = !candidates.length || candidates.every(candidate => candidate.index === -1);
+                    const structurallyMissing = required && columnMissing && !fallbackValue;
+
+                    if (structurallyMissing) {
+                        missingRequiredFields.push(label);
+                    }
+
+                    const displayHeaders = candidates.map(candidate => candidate.declaredHeader);
+
+                    const fieldConfig = {
+                        field: mapping.field,
+                        label,
+                        displayHeaders,
+                        target: mapping.target ?? null,
+                        fallback: fallbackValue,
+                        required,
+                        candidates,
+                        hasLiteralFallback: Boolean(fallbackValue),
+                        columnMissing,
+                        isExpenseTypeField: mapping.field === 'expenseType'
+                    };
+
+                    if (mapping.field === 'date') {
+                        prioritizedFields.push(fieldConfig);
+                    } else {
+                        regularFields.push(fieldConfig);
+                    }
+                });
+
+                previewFields = prioritizedFields.concat(regularFields);
+
+                const hasCategoryField = previewFields.some(field => field.field === 'categoryId');
+                if (!hasCategoryField) {
+                    const categoryLabel = getExpenseFieldLabel('categoryId');
+                    previewFields.push({
+                        field: 'categoryId',
+                        label: categoryLabel,
+                        displayHeaders: [],
+                        target: null,
+                        fallback: null,
+                        required: true,
+                        candidates: [],
+                        hasLiteralFallback: false,
+                        columnMissing: true,
+                        isExpenseTypeField: false
+                    });
+                    missingRequiredFields.push(categoryLabel);
+                }
+
+                logEvent('info', 'Preview field configuration prepared', {
+                    totalFields: previewFields.length,
+                    missingRequiredFields: missingRequiredFields.length,
+                    headerIndex
+                });
+
+                return { success: true, headerIndex };
+            }
+
+            function parseAmount(rawValue) {
+                if (rawValue == null) return null;
+                const parser = getParserSettings();
+                const decimalSeparator = parser.decimalSeparator || ',';
+                let sanitized = rawValue.toString().trim();
+                if (!sanitized) return null;
+                sanitized = sanitized.replace(/\s+/g, '');
+                const separatorRegex = new RegExp(`\\${decimalSeparator}`, 'g');
+                sanitized = sanitized.replace(separatorRegex, '.');
+                sanitized = sanitized.replace(/[^0-9.+-]/g, '');
+                if (!sanitized.length) return null;
+                const numeric = Number(sanitized);
+                return Number.isNaN(numeric) ? null : numeric;
+            }
+
+            function formatNumber(value) {
+                if (value == null || Number.isNaN(value)) {
+                    return '';
+                }
+                return value.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            function applyTransform(column, rawMap) {
+                const rawValue = rawMap[column.target];
+                if (rawValue == null || rawValue === '') {
+                    return '';
+                }
+
+                if (!column.transform) {
+                    return rawValue;
+                }
+
+                switch (column.transform) {
+                    case 'signedAmount': {
+                        const numeric = parseAmount(rawValue);
+                        return numeric == null ? rawValue : formatNumber(numeric);
+                    }
+                    case 'directionSignedAmount': {
+                        const numeric = parseAmount(rawValue);
+                        if (numeric == null) {
+                            return rawValue;
+                        }
+                        const directionRaw = rawMap.direction ?? rawMap['direction'];
+                        const normalized = normalizeHeader(directionRaw);
+                        let signed = numeric;
+                        if (normalized.includes('prichozi') || normalized.includes('incoming')) {
+                            signed = Math.abs(numeric);
+                        } else if (normalized.includes('odchozi') || normalized.includes('outgoing')) {
+                            signed = -Math.abs(numeric);
+                        }
+                        return formatNumber(signed);
+                    }
+                    default:
+                        return rawValue;
+                }
+            }
+
+            function computeDirectionSignedAmount(rawMap, candidate) {
+                if (!candidate || !candidate.target) {
+                    return null;
+                }
+
+                const amountRaw = rawMap[candidate.target];
+                const numeric = parseAmount(amountRaw);
+                if (numeric == null) {
+                    return null;
+                }
+
+                const directionValue = rawMap.direction ?? rawMap['direction'];
+                if (directionValue == null || directionValue === '') {
+                    return numeric;
+                }
+
+                const normalized = normalizeText(directionValue);
+                if (normalized.includes('prichozi') || normalized.includes('incoming')) {
+                    return Math.abs(numeric);
+                }
+                if (normalized.includes('odchozi') || normalized.includes('outgoing')) {
+                    return -Math.abs(numeric);
+                }
+
+                return numeric;
+            }
+
+            function parseDateWithFormat(rawValue, format) {
+                if (rawValue == null) {
+                    return null;
+                }
+
+                const text = rawValue.toString().trim();
+                if (!text.length) {
+                    return null;
+                }
+
+                const effectiveFormat = typeof format === 'string' && format.length ? format : 'yyyy-MM-dd';
+                const tokenRegex = /(yyyy|yy|MM|M|dd|d)/g;
+                const tokens = [];
+                let match;
+                while ((match = tokenRegex.exec(effectiveFormat)) !== null) {
+                    tokens.push(match[0]);
+                }
+
+                const numberMatches = text.match(/\d+/g);
+                const components = { year: null, month: null, day: null };
+
+                if (numberMatches && tokens.length) {
+                    for (let i = 0; i < numberMatches.length && i < tokens.length; i++) {
+                        const numericValue = Number.parseInt(numberMatches[i], 10);
+                        if (Number.isNaN(numericValue)) {
+                            continue;
+                        }
+
+                        const token = tokens[i];
+                        if (token === 'yyyy') {
+                            components.year = numericValue;
+                        } else if (token === 'yy') {
+                            components.year = numericValue + (numericValue >= 70 ? 1900 : 2000);
+                        } else if (token === 'MM' || token === 'M') {
+                            components.month = numericValue;
+                        } else if (token === 'dd' || token === 'd') {
+                            components.day = numericValue;
+                        }
+                    }
+                }
+
+                if (components.year == null || components.month == null || components.day == null) {
+                    const fallback = new Date(text);
+                    if (Number.isNaN(fallback.getTime())) {
+                        return null;
+                    }
+                    return fallback.toISOString().slice(0, 10);
+                }
+
+                const date = new Date(Date.UTC(components.year, components.month - 1, components.day));
+                if (Number.isNaN(date.getTime())) {
+                    return null;
+                }
+
+                return date.toISOString().slice(0, 10);
+            }
+
+            function computeFieldValueForImport(fieldConfig, rawMap, valueResult) {
+                if (!fieldConfig || !fieldConfig.field || fieldConfig.field === 'expenseType') {
+                    return null;
+                }
+
+                const candidate = valueResult?.usedCandidate ?? null;
+                const fallbackValue = fieldConfig.fallback ?? null;
+                const rawValue = candidate && candidate.target ? rawMap[candidate.target] : (valueResult?.rawValue ?? null);
+
+                switch (fieldConfig.field) {
+                    case 'amount': {
+                        if (candidate?.column?.transform === 'directionSignedAmount') {
+                            const directionAmount = computeDirectionSignedAmount(rawMap, candidate);
+                            if (directionAmount != null) {
+                                return Math.abs(directionAmount);
+                            }
+                        }
+
+                        const parsed = parseAmount(rawValue ?? fallbackValue ?? valueResult?.displayValue);
+                        return parsed != null ? Math.abs(parsed) : null;
+                    }
+                    case 'date': {
+                        const parser = getParserSettings();
+                        return parseDateWithFormat(rawValue ?? fallbackValue ?? valueResult?.displayValue, parser.dateFormat);
+                    }
+                    case 'currency': {
+                        const currencyCandidate = rawValue ?? fallbackValue ?? valueResult?.displayValue;
+                        if (currencyCandidate == null) {
+                            return null;
+                        }
+                        const normalized = currencyCandidate.toString().trim().toUpperCase();
+                        return normalized.length ? normalized : null;
+                    }
+                    default: {
+                        const textCandidate = rawValue ?? fallbackValue ?? valueResult?.displayValue;
+                        if (textCandidate == null) {
+                            return fieldConfig.field === 'name' ? 'Imported transaction' : null;
+                        }
+                        if (typeof textCandidate === 'string') {
+                            const trimmed = textCandidate.trim();
+                            if (!trimmed.length) {
+                                return fieldConfig.field === 'name' ? 'Imported transaction' : null;
+                            }
+                            return trimmed;
+                        }
+                        return textCandidate;
+                    }
+                }
+            }
+
+            function buildRawValueMap(row) {
+                const raw = {};
+                activeProfileColumns.forEach(column => {
+                    const info = resolvedTargetMap.get(column.target);
+                    if (info && info.index !== -1) {
+                        raw[column.target] = (row[info.index] ?? '').trim();
+                    } else {
+                        raw[column.target] = null;
+                    }
+                });
+                return raw;
+            }
+
+            function getDisplayValueForField(fieldConfig, rawMap) {
+                const candidates = Array.isArray(fieldConfig.candidates) ? fieldConfig.candidates : [];
+
+                for (const candidate of candidates) {
+                    if (!candidate || !candidate.target) {
+                        continue;
+                    }
+
+                    const rawValue = rawMap[candidate.target];
+                    const hasRaw = rawValue !== null && rawValue !== undefined && rawValue !== '';
+                    let transformed = '';
+
+                    if (candidate.column) {
+                        transformed = applyTransform(candidate.column, rawMap);
+                    }
+
+                    if (transformed !== '' && transformed !== null && transformed !== undefined) {
+                        return {
+                            rawValue,
+                            displayValue: transformed,
+                            usedCandidate: candidate,
+                            fromFallback: false
+                        };
+                    }
+
+                    if (hasRaw) {
+                        return {
+                            rawValue,
+                            displayValue: rawValue,
+                            usedCandidate: candidate,
+                            fromFallback: false
+                        };
+                    }
+                }
+
+                if (fieldConfig.fallback) {
+                    return {
+                        rawValue: fieldConfig.fallback,
+                        displayValue: fieldConfig.fallback,
+                        usedCandidate: null,
+                        fromFallback: true
+                    };
+                }
+
+                return {
+                    rawValue: null,
+                    displayValue: '',
+                    usedCandidate: null,
+                    fromFallback: false
+                };
+            }
+
+            async function renderPreview({ requested = currentSkipRows } = {}) {
+                const container = containerEl();
+                const head = headEl();
+                const body = bodyEl();
+
+                if (!container || !head || !body) {
+                    return;
+                }
+
+                const result = computePreviewModel();
+                if (!result.success) {
+                    logEvent('warn', `Preview computation failed: ${result.reason}`);
+                    setStatus(result.reason, 'warning');
+                    clearPreviewTable();
+                    updateImportButtonState(false);
+                    return;
+                }
+
+                // Check for duplicate expenses
+                let existingExpenses = [];
+                try {
+                    const dates = latestDataRows
+                        .map((row, index) => {
+                            const rawMap = buildRawValueMap(row);
+                            const dateField = previewFields.find(f => f.field === 'date');
+                            if (!dateField) return null;
+                            const valueResult = getDisplayValueForField(dateField, rawMap);
+                            const importValue = computeFieldValueForImport(dateField, rawMap, valueResult);
+                            return typeof importValue === 'string' && importValue.trim().length ? importValue.trim() : null;
+                        })
+                        .filter(date => date !== null);
+
+                    if (dates.length > 0) {
+                        const minDate = dates.reduce((min, date) => date < min ? date : min);
+                        const maxDate = dates.reduce((max, date) => date > max ? date : max);
+
+                        logEvent('info', `Checking for duplicate expenses between ${minDate} and ${maxDate}`);
+
+                        const response = await fetch(`/api/expenses/irregular?startDate=${encodeURIComponent(minDate)}&endDate=${encodeURIComponent(maxDate)}`);
+                        if (response.ok) {
+                            existingExpenses = await response.json();
+                            // Normalize dates to yyyy-MM-dd format for comparison
+                            existingExpenses = existingExpenses.map(expense => ({
+                                ...expense,
+                                date: normalizeDateString(expense.date) ?? (typeof expense.date === 'string' ? expense.date.trim() : '')
+                            })).filter(expense => expense.date.length > 0);
+                            logEvent('info', `Found ${existingExpenses.length} existing expenses in date range`);
+                        } else {
+                            logEvent('warn', `Failed to fetch existing expenses: ${response.status}`);
+                        }
+                    }
+                } catch (error) {
+                    logEvent('error', 'Error checking for duplicate expenses', error);
+                }
+
+                function normalizeDateString(value) {
+                    if (value == null) {
+                        return null;
+                    }
+
+                    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+                        return value.toISOString().slice(0, 10);
+                    }
+
+                    const text = value.toString().trim();
+                    if (!text.length) {
+                        return null;
+                    }
+
+                    const isoPrefixMatch = text.match(/^(\d{4}-\d{2}-\d{2})/);
+                    if (isoPrefixMatch && isoPrefixMatch[1]) {
+                        return isoPrefixMatch[1];
+                    }
+
+                    const parsed = new Date(text);
+                    if (!Number.isNaN(parsed.getTime())) {
+                        return parsed.toISOString().slice(0, 10);
+                    }
+
+                    return null;
+                }
+
+                // Helper function to check if an expense is a duplicate
+                function isDuplicateExpense(importAmount, importDate, importName, importCurrency) {
+                    if (!existingExpenses.length) {
+                        return { isDuplicate: false };
+                    }
+
+                    // Normalize the import amount to absolute value and 2 decimal places
+                    const normalizedImportAmount = Math.round(Math.abs(importAmount) * 100) / 100;
+                    const normalizedImportDate = normalizeDateString(importDate);
+
+                    if (!normalizedImportDate) {
+                        return { isDuplicate: false };
+                    }
+
+                    for (const existing of existingExpenses) {
+                        // Normalize the existing amount to absolute value and 2 decimal places
+                        const normalizedExistingAmount = Math.round(Math.abs(Number(existing.amount)) * 100) / 100;
+                        const normalizedExistingDate = normalizeDateString(existing.date);
+
+                        if (!normalizedExistingDate || Number.isNaN(normalizedExistingAmount)) {
+                            continue;
+                        }
+
+                        // Check if normalized absolute amounts match (within small tolerance for floating point)
+                        const amountMatch = Math.abs(normalizedExistingAmount - normalizedImportAmount) < 0.01;
+                        // Check if dates match
+                        const dateMatch = normalizedExistingDate === normalizedImportDate;
+
+                        if (amountMatch && dateMatch) {
+                            return {
+                                isDuplicate: true,
+                                matchingExpense: existing
+                            };
+                        }
+                    }
+
+                    return { isDuplicate: false };
+                }
+
+                if (!previewFields.length) {
+                    logEvent('warn', 'No expense field mappings available after computation.');
+                    setStatus('No fields available to preview for this profile.', 'warning');
+                    clearPreviewTable();
+                    updateImportButtonState(false);
+                    return;
+                }
+
+                head.replaceChildren();
+                const headerRow = head;
+                const selectTh = document.createElement('th');
+                selectTh.scope = 'col';
+                selectTh.className = 'text-center';
+                const selectAllWrapper = document.createElement('div');
+                selectAllWrapper.className = 'form-check d-inline-flex justify-content-center m-0';
+                const selectAllInput = document.createElement('input');
+                selectAllInput.type = 'checkbox';
+                selectAllInput.className = 'form-check-input';
+                selectAllInput.id = selectAllCheckboxId;
+                selectAllInput.setAttribute('aria-label', 'Select or deselect all transactions');
+                selectAllInput.addEventListener('change', event => {
+                    const shouldSelect = event.target.checked;
+                    event.target.indeterminate = false;
+                    handleSelectAllToggle(shouldSelect);
+                });
+                selectAllWrapper.appendChild(selectAllInput);
+                selectTh.appendChild(selectAllWrapper);
+                headerRow.appendChild(selectTh);
+
+                const indexTh = document.createElement('th');
+                indexTh.scope = 'col';
+                indexTh.className = 'text-muted';
+                indexTh.textContent = '#';
+                headerRow.appendChild(indexTh);
+
+                previewFields.forEach(fieldConfig => {
+                    const th = document.createElement('th');
+                    th.scope = 'col';
+
+                    const titleDiv = document.createElement('div');
+                    titleDiv.textContent = fieldConfig.label;
+                    th.appendChild(titleDiv);
+
+                    const candidateHeaders = Array.isArray(fieldConfig.candidates) ? fieldConfig.candidates : [];
+                    if (candidateHeaders.length) {
+                        const primaryHeader = candidateHeaders[0]?.originalHeader ?? candidateHeaders[0]?.declaredHeader ?? '';
+                        const fallbackHeaders = candidateHeaders
+                            .slice(1)
+                            .map(candidate => candidate.originalHeader ?? candidate.declaredHeader)
+                            .filter(Boolean);
+                        const headerTextParts = [];
+                        if (primaryHeader) {
+                            headerTextParts.push(primaryHeader);
+                        }
+                        if (fallbackHeaders.length) {
+                            headerTextParts.push(`fallback: ${fallbackHeaders.join(', ')}`);
+                        }
+                        if (headerTextParts.length) {
+                            const sourceDiv = document.createElement('div');
+                            sourceDiv.className = 'small text-muted';
+                            sourceDiv.textContent = headerTextParts.join(' • ');
+                            th.appendChild(sourceDiv);
+                        }
+                    } else if (fieldConfig.hasLiteralFallback) {
+                        const fallbackDiv = document.createElement('div');
+                        fallbackDiv.className = 'small text-muted';
+                        fallbackDiv.textContent = `default: ${fieldConfig.fallback}`;
+                        th.appendChild(fallbackDiv);
+                    }
+
+                    if (fieldConfig.columnMissing && !fieldConfig.hasLiteralFallback) {
+                        th.classList.add(fieldConfig.required ? 'import-missing-header' : 'import-optional-header');
+                        if (!fieldConfig.required) {
+                            const badge = document.createElement('span');
+                            badge.className = 'badge bg-secondary text-light ms-2';
+                            badge.textContent = 'Optional missing';
+                            th.appendChild(badge);
+                        }
+                    }
+
+                    headerRow.appendChild(th);
+                });
+
+                const missingSet = new Set(missingRequiredFields);
+
+                body.replaceChildren();
+                previewRowData = new Array(latestDataRows.length).fill(null);
+                expenseTypeControlMap.clear();
+                rowSelectionControlMap = new Map();
+                const nextSelectionState = new Map();
+                let validRowCount = 0;
+
+                latestDataRows.forEach((row, rowIndex) => {
+                    const rawMap = buildRawValueMap(row);
+                    const tr = document.createElement('tr');
+                    tr.classList.add('align-middle');
+
+                    const selectTd = document.createElement('td');
+                    selectTd.className = 'text-center';
+                    const selectCheckbox = document.createElement('input');
+                    selectCheckbox.type = 'checkbox';
+                    selectCheckbox.className = 'form-check-input';
+                    selectCheckbox.setAttribute('aria-label', `Select transaction row ${rowIndex + 1}`);
+                    selectTd.appendChild(selectCheckbox);
+                    tr.appendChild(selectTd);
+
+                    const rowIndexCell = document.createElement('th');
+                    rowIndexCell.scope = 'row';
+                    rowIndexCell.className = 'text-muted';
+                    rowIndexCell.textContent = String(rowIndex + 1);
+                    tr.appendChild(rowIndexCell);
+
+                    const rowPayload = { sourceRowNumber: rowIndex + 1 };
+                    previewRowData[rowIndex] = rowPayload;
+                    const missingFieldsForRow = new Set();
+                    rowPayload.missingRequiredFields = missingFieldsForRow;
+                    rowPayload.wasDeselectedDueToInvalid = false;
+
+                    previewFields.forEach(fieldConfig => {
+                        const td = document.createElement('td');
+                        const valueResult = getDisplayValueForField(fieldConfig, rawMap);
+
+                        if (fieldConfig.isExpenseTypeField) {
+                            const selection = ensureExpenseTypeSelection(rowIndex, valueResult.displayValue, rowPayload, valueResult);
+                            const select = buildExpenseTypeSelect(rowIndex, selection);
+                            expenseTypeControlMap.set(rowIndex, select);
+                            td.appendChild(select);
+                            rowPayload.expenseType = selection.expenseType;
+                            rowPayload.familyMemberId = selection.familyMemberId;
+                        } else {
+                            const displayValue = valueResult.displayValue;
+                            const importValue = computeFieldValueForImport(fieldConfig, rawMap, valueResult);
+                            const fieldLabel = fieldConfig.label ?? fieldConfig.field ?? `Field ${rowIndex + 1}`;
+                            const importValueMissing = fieldConfig.required && (
+                                importValue === null
+                                || importValue === ''
+                                || (typeof importValue === 'number' && !Number.isFinite(importValue))
+                            );
+
+                            if (fieldConfig.field === 'name') {
+                                const nameInput = document.createElement('input');
+                                nameInput.type = 'text';
+                                nameInput.className = 'form-control form-control-sm';
+                                nameInput.placeholder = 'Expense name';
+                                const initialValue = typeof importValue === 'string'
+                                    ? importValue
+                                    : (typeof displayValue === 'string' ? displayValue : '');
+                                nameInput.value = initialValue ?? '';
+
+                                const nameMissingLabel = fieldConfig.label ?? fieldLabels.name ?? 'Expense Name';
+
+                                const hint = document.createElement('div');
+                                hint.className = 'small import-invalid-hint mt-1';
+                                hint.textContent = 'Name is required';
+
+                                const applyNameValidity = isValid => {
+                                    if (isValid) {
+                                        td.classList.remove('import-invalid-cell');
+                                        if (hint.parentElement === td) {
+                                            hint.remove();
+                                        }
+                                    } else {
+                                        td.classList.add('import-invalid-cell');
+                                        if (hint.parentElement !== td) {
+                                            td.appendChild(hint);
+                                        }
+                                    }
+                                };
+
+                                const updateNameState = value => {
+                                    const trimmed = value.trim();
+                                    const hasValue = trimmed.length > 0;
+                                    rowPayload.name = hasValue ? trimmed : null;
+                                    if (fieldConfig.required) {
+                                        if (hasValue) {
+                                            missingFieldsForRow.delete(nameMissingLabel);
+                                            applyNameValidity(true);
+                                        } else {
+                                            missingFieldsForRow.add(nameMissingLabel);
+                                            applyNameValidity(false);
+                                            missingSet.add(nameMissingLabel);
+                                        }
+                                    } else if (hasValue) {
+                                        rowPayload.name = trimmed;
+                                    }
+                                };
+
+                                updateNameState(nameInput.value);
+
+                                nameInput.addEventListener('input', event => {
+                                    updateNameState(event.target.value);
+                                    const payload = previewRowData[rowIndex];
+                                    if (payload) {
+                                        payload.missingRequiredFields = missingFieldsForRow;
+                                    }
+                                    updateRowValidityFromFieldChange(rowIndex);
+                                });
+
+                                td.appendChild(nameInput);
+                            } else if (fieldConfig.field === 'categoryId') {
+                                const categoryLabel = fieldConfig.label ?? expenseFieldLabels.categoryId ?? 'Category';
+                                const categorySelect = document.createElement('select');
+                                categorySelect.className = 'form-select form-select-sm';
+                                categorySelect.setAttribute('aria-label', `Category for row ${rowIndex + 1}`);
+
+                                const defaultOption = document.createElement('option');
+                                defaultOption.value = '';
+                                defaultOption.textContent = availableExpenseCategories.length ? 'Select category' : 'No categories available';
+                                categorySelect.appendChild(defaultOption);
+
+                                availableExpenseCategories.forEach(category => {
+                                    const option = document.createElement('option');
+                                    option.value = String(category.id);
+                                    option.textContent = category.name;
+                                    categorySelect.appendChild(option);
+                                });
+
+                                const detectionNote = document.createElement('div');
+                                detectionNote.className = 'small import-detection-note mt-1';
+
+                                const applyCategoryValidity = isValid => {
+                                    if (isValid) {
+                                        categorySelect.classList.remove('border', 'border-danger');
+                                        td.classList.remove('import-invalid-cell');
+                                    } else {
+                                        categorySelect.classList.add('border', 'border-danger');
+                                        td.classList.remove('import-invalid-cell');
+                                    }
+                                };
+
+                                const applyDetectionNote = message => {
+                                    if (!message || !message.trim().length) {
+                                        if (detectionNote.parentElement === td) {
+                                            detectionNote.remove();
+                                        }
+                                        return;
+                                    }
+                                    detectionNote.textContent = message;
+                                    if (detectionNote.parentElement !== td) {
+                                        td.appendChild(detectionNote);
+                                    }
+                                };
+
+                                td.appendChild(categorySelect);
+
+                                const setCategorySelection = categoryId => {
+                                    if (categoryId != null && getExpenseCategoryById(categoryId)) {
+                                        rowPayload.categoryId = categoryId;
+                                        missingFieldsForRow.delete(categoryLabel);
+                                        applyCategoryValidity(true);
+                                        if (categorySelect.value !== String(categoryId)) {
+                                            categorySelect.value = String(categoryId);
+                                        }
+                                        applyDetectionNote('');
+                                        return true;
+                                    }
+
+                                    rowPayload.categoryId = null;
+                                    missingFieldsForRow.add(categoryLabel);
+                                    applyCategoryValidity(false);
+                                    if (categorySelect.value !== '') {
+                                        categorySelect.value = '';
+                                    }
+                                    return false;
+                                };
+
+                                let initialCategoryId = null;
+
+                                if (rowPayload.categoryId != null) {
+                                    const numericExisting = Number(rowPayload.categoryId);
+                                    if (Number.isFinite(numericExisting)) {
+                                        initialCategoryId = numericExisting;
+                                    }
+                                }
+
+                                if (initialCategoryId == null && !importValueMissing) {
+                                    initialCategoryId = resolveCategoryId(importValue);
+                                }
+
+                                let detectedText = '';
+
+                                if (typeof displayValue === 'string' && displayValue.trim().length) {
+                                    detectedText = displayValue.trim();
+                                } else if (typeof importValue === 'string' && importValue.trim().length) {
+                                    detectedText = importValue.trim();
+                                }
+
+                                if (initialCategoryId == null && detectedText.length) {
+                                    const resolvedFromDetected = resolveCategoryId(detectedText);
+                                    if (resolvedFromDetected != null) {
+                                        initialCategoryId = resolvedFromDetected;
+                                    }
+                                }
+
+                                const categoryValid = setCategorySelection(initialCategoryId);
+                                if (!categoryValid) {
+                                    missingSet.add(categoryLabel);
+                                    if (detectedText.length) {
+                                        applyDetectionNote(`Detected value: ${detectedText} (no matching category)`);
+                                    }
+                                }
+
+                                categorySelect.addEventListener('change', event => {
+                                    const selectedValue = event.target.value;
+                                    const numericId = Number.parseInt(selectedValue, 10);
+                                    const validSelection = setCategorySelection(Number.isNaN(numericId) ? null : numericId);
+                                    if (validSelection) {
+                                        applyDetectionNote('');
+                                    }
+                                    rowPayload.missingRequiredFields = missingFieldsForRow;
+                                    updateRowValidityFromFieldChange(rowIndex);
+                                });
+
+                                if (!availableExpenseCategories.length) {
+                                    categorySelect.disabled = true;
+                                    categorySelect.classList.remove('border', 'border-danger');
+                                    missingSet.add(categoryLabel);
+                                }
+                            } else {
+                                if (fieldConfig.field && fieldConfig.field !== 'expenseType') {
+                                    rowPayload[fieldConfig.field] = importValueMissing ? null : importValue;
+                                }
+
+                                const valuePresent = displayValue !== null && displayValue !== undefined && displayValue !== '';
+
+                                if (importValueMissing) {
+                                    missingFieldsForRow.add(fieldLabel);
+                                    td.classList.add('import-invalid-cell');
+
+                                    if (valuePresent) {
+                                        const valueSpan = document.createElement('span');
+                                        valueSpan.className = 'text-danger';
+                                        valueSpan.textContent = displayValue;
+                                        td.appendChild(valueSpan);
+                                    } else {
+                                        const placeholder = document.createElement('span');
+                                        placeholder.className = 'text-danger';
+                                        placeholder.textContent = '—';
+                                        td.appendChild(placeholder);
+                                    }
+
+                                    const hint = document.createElement('div');
+                                    hint.className = 'small import-invalid-hint mt-1';
+                                    if (fieldConfig.field === 'amount') {
+                                        hint.textContent = 'Unable to parse amount';
+                                    } else if (fieldConfig.field === 'date') {
+                                        hint.textContent = 'Unable to parse date';
+                                    } else {
+                                        hint.textContent = 'Required value missing';
+                                    }
+                                    td.appendChild(hint);
+
+                                    missingSet.add(fieldLabel);
+                                    logEvent('warn', 'Import value could not be parsed', {
+                                        field: fieldConfig.field,
+                                        rowIndex: rowIndex + 1,
+                                        rawValue: valueResult.rawValue
+                                    });
+                                } else if (!valuePresent) {
+                                    const placeholder = document.createElement('span');
+                                    placeholder.className = fieldConfig.required ? 'text-danger' : 'text-muted';
+                                    placeholder.textContent = '—';
+                                    td.appendChild(placeholder);
+                                    if (fieldConfig.required) {
+                                        td.classList.add('import-invalid-cell');
+                                        missingFieldsForRow.add(fieldLabel);
+                                        missingSet.add(fieldLabel);
+                                    }
+                                } else {
+                                    const valueSpan = document.createElement('span');
+                                    valueSpan.textContent = displayValue;
+                                    td.appendChild(valueSpan);
+                                    td.classList.remove('import-invalid-cell');
+                                }
+                            }
+                        }
+
+                        tr.appendChild(td);
+                    });
+
+                    let selection = expenseTypeSelectionMap.get(rowIndex);
+                    if (rowPayload.familyMemberId != null) {
+                        const member = getFamilyMemberById(rowPayload.familyMemberId);
+                        if (member) {
+                            selection = { expenseType: 'Individual', familyMemberId: member.id };
+                            expenseTypeSelectionMap.set(rowIndex, selection);
+                        }
+                    }
+
+                    if (!selection) {
+                        selection = { expenseType: 'Family', familyMemberId: null };
+                        expenseTypeSelectionMap.set(rowIndex, selection);
+                    }
+
+                    rowPayload.expenseType = selection.expenseType;
+                    rowPayload.familyMemberId = selection.familyMemberId;
+
+                    const control = expenseTypeControlMap.get(rowIndex);
+                    if (control) {
+                        control.value = encodeExpenseTypeSelection(selection);
+                    }
+
+                    const rowIsValid = missingFieldsForRow.size === 0;
+                    rowPayload.isValid = rowIsValid;
+                    if (rowIsValid) {
+                        validRowCount += 1;
+                    }
+
+                    // Check for duplicates
+                    const importAmount = typeof rowPayload.amount === 'number' && Number.isFinite(rowPayload.amount) ? rowPayload.amount : null;
+                    const importDate = typeof rowPayload.date === 'string' && rowPayload.date.trim().length ? rowPayload.date.trim() : null;
+                    const importName = typeof rowPayload.name === 'string' && rowPayload.name.trim().length ? rowPayload.name.trim() : 'Imported transaction';
+                    const importCurrency = typeof rowPayload.currency === 'string' && rowPayload.currency.trim().length ? rowPayload.currency.trim().toUpperCase() : null;
+
+                    const duplicateResult = importAmount !== null && importDate !== null && importCurrency !== null ?
+                                          isDuplicateExpense(importAmount, importDate, importName, importCurrency) :
+                                          { isDuplicate: false };
+                    const isDuplicate = duplicateResult.isDuplicate;
+                    rowPayload.isDuplicate = isDuplicate;
+                    rowPayload.matchingExpense = duplicateResult.matchingExpense;
+
+                    if (isDuplicate) {
+                        tr.classList.add('duplicate-row');
+                        const duplicateBadge = document.createElement('span');
+                        duplicateBadge.className = 'duplicate-badge me-2';
+                        duplicateBadge.textContent = 'Duplicate';
+                        const matching = duplicateResult.matchingExpense;
+                        if (matching) {
+                            const details = [matching.name];
+                            if (matching.date) {
+                                details.push(`on ${matching.date}`);
+                            }
+                            if (matching.amount && matching.currency) {
+                                details.push(`(${matching.amount} ${matching.currency})`);
+                            }
+                            duplicateBadge.title = `Already logged as ${details.join(' ')}`.trim();
+                        } else {
+                            duplicateBadge.title = 'This line already exists in expenses.';
+                        }
+                        rowIndexCell.appendChild(duplicateBadge);
+                    }
+
+                    const previousSelection = rowSelectionState.has(rowIndex)
+                        ? Boolean(rowSelectionState.get(rowIndex))
+                        : undefined;
+                    const isSelected = rowIsValid && !isDuplicate && (previousSelection ?? true);
+
+                    if (!rowIsValid) {
+                        selectCheckbox.checked = false;
+                        selectCheckbox.disabled = true;
+                        selectCheckbox.title = 'Resolve required fields to import this row.';
+                        rowPayload.wasDeselectedDueToInvalid = true;
+                    } else if (isDuplicate) {
+                        selectCheckbox.checked = false;
+                        selectCheckbox.disabled = true;
+                        selectCheckbox.title = 'This appears to be a duplicate expense.';
+                        rowPayload.wasDeselectedDueToDuplicate = true;
+                    } else {
+                        selectCheckbox.checked = isSelected;
+                        selectCheckbox.disabled = false;
+                        selectCheckbox.title = '';
+                        rowPayload.wasDeselectedDueToInvalid = false;
+                        rowPayload.wasDeselectedDueToDuplicate = false;
+                    }
+
+                    rowSelectionControlMap.set(rowIndex, selectCheckbox);
+                    nextSelectionState.set(rowIndex, rowIsValid && !isDuplicate ? Boolean(selectCheckbox.checked) : false);
+
+                    selectCheckbox.addEventListener('change', event => {
+                        const payload = previewRowData[rowIndex];
+                        if (payload) {
+                            payload.wasDeselectedDueToInvalid = false;
+                        }
+                        setRowSelection(rowIndex, event.target.checked);
+                        refreshSelectionState();
+                    });
+
+                    body.appendChild(tr);
+                });
+
+                rowSelectionState = nextSelectionState;
+                refreshSelectionState();
+
+                previewStatusContext = {
+                    profileName: getProfileDisplayName(),
+                    fileName: currentFileName ?? 'Statement',
+                    requestedSkipRows: requested,
+                    appliedSkipRows: currentSkipRows,
+                    totalRows: latestDataRows.length
+                };
+
+                const statusParts = [];
+                statusParts.push(`${getProfileDisplayName()} profile`);
+                statusParts.push(`${currentFileName ?? 'Statement'} loaded.`);
+                if (requested !== currentSkipRows) {
+                    statusParts.push(`Requested ${requested} metadata row${requested === 1 ? '' : 's'}, using ${currentSkipRows} after trimming.`);
+                } else {
+                    statusParts.push(`Skipped ${currentSkipRows} metadata row${currentSkipRows === 1 ? '' : 's'}.`);
+                }
+                statusParts.push(`Showing ${latestDataRows.length} transaction row${latestDataRows.length === 1 ? '' : 's'}.`);
+
+                const uniqueMissing = [...missingSet];
+                let statusType = 'success';
+                if (uniqueMissing.length) {
+                    statusParts.push(`Missing required fields: ${uniqueMissing.join(', ')}.`);
+                    statusType = 'warning';
+                    logEvent('warn', 'Missing required expense fields detected', uniqueMissing);
+                }
+
+                const duplicateCount = latestDataRows.reduce((count, row, index) => {
+                    const payload = previewRowData[index];
+                    return count + (payload && payload.isDuplicate ? 1 : 0);
+                }, 0);
+
+                if (duplicateCount > 0) {
+                    statusParts.push(`${duplicateCount} potential duplicate${duplicateCount === 1 ? '' : 's'} found.`);
+                    if (statusType === 'success') statusType = 'warning';
+                    logEvent('warn', `${duplicateCount} potential duplicate expenses detected`);
+                }
+
+                if (!validRowCount) {
+                    statusParts.push('No rows are currently ready to import.');
+                    statusType = 'warning';
+                }
+
+                const selectedCount = getSelectedRowCount();
+                const importableCount = validRowCount - duplicateCount;
+                if (importableCount > 0) {
+                    statusParts.push(`${selectedCount} of ${importableCount} importable row${importableCount === 1 ? '' : 's'} selected for import.`);
+                }
+                if (importableCount > 0 && selectedCount === 0) {
+                    statusParts.push('Select at least one row to enable import.');
+                }
+
+                setStatus(statusParts.join(' '), statusType);
+                container.classList.remove('d-none');
+
+                logEvent('info', 'Preview rendered', {
+                    rowsRendered: latestDataRows.length,
+                    skipRows: currentSkipRows,
+                    statusType,
+                    validRowCount,
+                    selectedCount
+                });
+            }
+
+            function refreshSelectionState() {
+                const button = submitButtonEl();
+                if (!button) {
+                    return;
+                }
+
+                const selectedCount = getSelectedRowCount();
+                const hasSelection = selectedCount > 0;
+
+                button.disabled = !hasSelection;
+                if (hasSelection) {
+                    button.title = `Import ${selectedCount} expense${selectedCount === 1 ? '' : 's'}`;
+                } else {
+                    button.title = 'Select at least one row to import';
+                }
+
+                const selectAllCheckbox = selectAllCheckboxEl();
+                if (selectAllCheckbox) {
+                    const totalSelectableRows = previewRowData.filter(row => row && row.isValid && !row.isDuplicate).length;
+                    const selectedRows = getSelectedRowCount();
+                    selectAllCheckbox.checked = totalSelectableRows > 0 && selectedRows === totalSelectableRows;
+                    selectAllCheckbox.indeterminate = selectedRows > 0 && selectedRows < totalSelectableRows;
+                }
+            }
+
+            function updateImportButtonState(enabled) {
+                const button = submitButtonEl();
+                if (!button) {
+                    return;
+                }
+
+                button.disabled = !enabled;
+                if (enabled) {
+                    button.title = 'Import selected expenses';
+                } else {
+                    button.title = 'No expenses available to import';
+                }
+            }
+
+            function buildImportPayload() {
+                const rows = [];
+                const totalPreviewRows = previewRowData.length;
+
+                previewRowData.forEach((row, index) => {
+                    if (!row) {
+                        return;
+                    }
+
+                    if (!rowSelectionState.get(index)) {
+                        return;
+                    }
+
+                    if (!row.isValid) {
+                        return;
+                    }
+
+                    const amount = typeof row.amount === 'number' && Number.isFinite(row.amount) ? row.amount : null;
+                    const currency = typeof row.currency === 'string' && row.currency.trim().length ? row.currency.trim().toUpperCase() : null;
+                    const date = typeof row.date === 'string' && row.date.trim().length ? row.date.trim() : null;
+                    const categoryId = typeof row.categoryId === 'number' && Number.isFinite(row.categoryId)
+                        ? Math.trunc(row.categoryId)
+                        : null;
+
+                    if (amount == null || currency == null || date == null || categoryId == null) {
+                        logEvent('warn', 'Skipping row due to missing required import value', {
+                            rowIndex: index + 1,
+                            hasAmount: amount != null,
+                            hasCurrency: !!currency,
+                            hasDate: !!date,
+                            hasCategory: categoryId != null
+                        });
+                        return;
+                    }
+
+                    const roundedAmount = Math.round(amount * 100) / 100;
+                    const nameCandidate = typeof row.name === 'string' && row.name.trim().length ? row.name.trim() : 'Imported transaction';
+                    const expenseType = row.expenseType === 'Individual' ? 'Individual' : 'Family';
+                    const familyMemberId = expenseType === 'Individual' && row.familyMemberId != null
+                        ? Number(row.familyMemberId)
+                        : null;
+
+                    if (expenseType === 'Individual' && (familyMemberId == null || Number.isNaN(familyMemberId))) {
+                        logEvent('warn', 'Skipping individual expense without valid family member', {
+                            rowIndex: index + 1
+                        });
+                        return;
+                    }
+
+                    const sanitized = {
+                        sourceRowNumber: row.sourceRowNumber ?? index + 1,
+                        name: nameCandidate,
+                        amount: roundedAmount,
+                        currency,
+                        date,
+                        categoryId,
+                        expenseType,
+                        familyMemberId
+                    };
+
+                    if (row.memo && typeof row.memo === 'string') {
+                        const memoText = row.memo.trim();
+                        if (memoText.length) {
+                            sanitized.memo = memoText;
+                        }
+                    }
+
+                    rows.push(sanitized);
+                });
+
+                return {
+                    profileId: activeProfile?.id ?? null,
+                    profileVersion: activeProfile?.version ?? null,
+                    skipRows: currentSkipRows,
+                    originalRowCount: totalPreviewRows,
+                    rows
+                };
+            }
+
+            function setImportButtonLoading(isLoading) {
+                const button = submitButtonEl();
+                if (!button) {
+                    return;
+                }
+
+                const labelSpan = button.querySelector('.default-label');
+                let spinner = button.querySelector('.spinner-border');
+
+                if (isLoading) {
+                    if (labelSpan && !button.dataset.originalLabel) {
+                        button.dataset.originalLabel = labelSpan.textContent ?? 'Import Expenses';
+                    }
+
+                    if (!spinner) {
+                        spinner = document.createElement('span');
+                        spinner.className = 'spinner-border spinner-border-sm me-2';
+                        spinner.setAttribute('role', 'status');
+                        spinner.setAttribute('aria-hidden', 'true');
+                        button.insertBefore(spinner, button.firstChild);
+                    }
+
+                    if (labelSpan) {
+                        labelSpan.textContent = 'Importing...';
+                    }
+
+                    button.disabled = true;
+                } else {
+                    if (spinner) {
+                        spinner.remove();
+                    }
+
+                    delete button.dataset.originalLabel;
+                    refreshSelectionState();
+                }
+            }
+
+            async function performImport() {
+                const button = submitButtonEl();
+                if (!button || button.disabled) {
+                    return;
+                }
+
+                if (!activeProfile) {
+                    Toast.warning('Select a bank profile before importing.');
+                    return;
+                }
+
+                const selectedCount = getSelectedRowCount();
+                if (selectedCount === 0) {
+                    Toast.warning('Select at least one transaction to import.');
+                    return;
+                }
+
+                const payload = buildImportPayload();
+                if (!payload.rows.length) {
+                    Toast.warning('No valid expenses are ready to import. Check the preview for highlighted issues.');
+                    return;
+                }
+
+                const antiforgeryToken = getAntiForgeryToken();
+                if (!antiforgeryToken) {
+                    Toast.error('Missing security token. Reload the page and try again.');
+                    return;
+                }
+
+                const modalElement = document.getElementById(modalId);
+                setImportButtonLoading(true);
+
+                try {
+                    logEvent('info', 'Submitting expense import request', {
+                        profileId: payload.profileId,
+                        rows: payload.rows.length
+                    });
+
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('handler', 'ImportExpenses');
+
+                    const response = await fetch(`${url.pathname}${url.search}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'RequestVerificationToken': antiforgeryToken
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    let responseBody = null;
+                    try {
+                        responseBody = await response.json();
+                    } catch (parseError) {
+                        logEvent('error', 'Failed to parse expense import response as JSON', parseError);
+                    }
+
+                    if (!response.ok) {
+                        const message = responseBody?.message ?? `Import failed with status ${response.status}.`;
+                        Toast.error(message);
+                        logEvent('error', 'Expense import request failed', {
+                            status: response.status,
+                            response: responseBody
+                        });
+                        return;
+                    }
+
+                    if (!responseBody) {
+                        Toast.error('Import failed: empty server response.');
+                        logEvent('error', 'Expense import response was empty despite successful status.');
+                        return;
+                    }
+
+                    const importedCount = Number(responseBody.importedCount ?? 0);
+                    const failedRows = Array.isArray(responseBody.failedRows) ? responseBody.failedRows : [];
+                    const errors = Array.isArray(responseBody.errors) ? responseBody.errors : [];
+                    const success = Boolean(responseBody.success);
+                    const message = responseBody.message
+                        ?? (success ? 'Expenses imported successfully.' : 'Import completed with warnings.');
+
+                    const primaryError = errors.length ? errors[0] : null;
+                    const messageWithDetail = primaryError != null && !success
+                        ? `${message} ${primaryError}`
+                        : message;
+
+                    if (success) {
+                        Toast.success(messageWithDetail);
+                    } else if (importedCount > 0) {
+                        Toast.warning(messageWithDetail);
+                    } else {
+                        Toast.error(messageWithDetail);
+                    }
+
+                    if (errors.length) {
+                        logEvent('warn', 'Expense import completed with errors', errors);
+                    }
+
+                    if (failedRows.length) {
+                        logEvent('warn', 'Expense import skipped specific rows', failedRows);
+                    }
+
+                    if (success || importedCount > 0) {
+                        if (modalElement) {
+                            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                            if (modalInstance) {
+                                modalInstance.hide();
+                            }
+                        }
+
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 800);
+                    }
+                } catch (error) {
+                    logEvent('error', 'Unexpected error during expense import', error);
+                    Toast.error('Import failed due to an unexpected error.');
+                } finally {
+                    setImportButtonLoading(false);
+                }
+            }
+
+            async function setSkipRows(value, { fromAuto = false } = {}) {
+                if (!Number.isFinite(value)) {
+                    value = 0;
+                }
+                value = Math.max(0, Math.min(value, Math.max(parsedRows.length - 1, 0)));
+                requestedSkipRows = value;
+                currentSkipRows = value;
+
+                const skipInput = skipInputEl();
+                if (skipInput && Number(skipInput.value) !== value) {
+                    skipInput.value = String(value);
+                }
+
+                if (fromAuto) {
+                    logEvent('info', `Applied auto-detected skip rows: ${value}`);
+                    updateSkipDescription();
+                }
+
+                if (parsedRows.length) {
+                    logEvent('debug', `Re-rendering preview with skip rows set to ${value}`);
+                    await renderPreview({ requested: requestedSkipRows });
+                }
+            }
+
+            async function handleParsedRows(rows) {
+                logEvent('info', `Parsed ${rows.length} raw rows from CSV.`);
+                let effectiveRows = rows.slice();
+                const parser = getParserSettings();
+                if (parser.trimEmptyPreamble) {
+                    while (effectiveRows.length && !rowHasContent(effectiveRows[0])) {
+                        effectiveRows.shift();
+                    }
+                }
+
+                parsedRows = effectiveRows;
+                autoSkipRows = determineAutoSkip(parsedRows);
+                const defaultSkip = activeProfile ? Number(parser.defaultSkipRows ?? autoSkipRows) : autoSkipRows;
+                currentSkipRows = Math.max(0, Math.min(defaultSkip, Math.max(parsedRows.length - 1, 0)));
+                requestedSkipRows = currentSkipRows;
+
+                enableSkipControls();
+
+                const skipInput = skipInputEl();
+                if (skipInput) {
+                    skipInput.value = String(currentSkipRows);
+                }
+
+                await renderPreview({ requested: requestedSkipRows });
+            }
+
+            function parseCsv(text) {
+                logEvent('debug', `Beginning CSV parse (length ${text.length}).`);
+                const rows = [];
+                const parser = getParserSettings();
+                const delimiterChar = ((parser.delimiter ?? ';') || ';').charAt(0);
+                const quoteChar = ((parser.quote ?? '"') || '"').charAt(0);
+                let currentRow = [];
+                let currentField = '';
+                let inQuotes = false;
+
+                function commitField() {
+                    currentRow.push(currentField.trim());
+                    currentField = '';
+                }
+
+                function commitRow() {
+                    if (currentRow.length > 0) {
+                        rows.push(currentRow);
+                    }
+                    currentRow = [];
+                }
+
+                for (let i = 0; i < text.length; i++) {
+                    const char = text[i];
+
+                    if (char === quoteChar) {
+                        if (inQuotes && text[i + 1] === quoteChar) {
+                            currentField += quoteChar;
+                            i += 1;
+                        } else {
+                            inQuotes = !inQuotes;
+                        }
+                        continue;
+                    }
+
+                    if (char === delimiterChar && !inQuotes) {
+                        commitField();
+                        continue;
+                    }
+
+                    if ((char === '\n' || char === '\r') && !inQuotes) {
+                        commitField();
+                        commitRow();
+                        if (char === '\r' && text[i + 1] === '\n') {
+                            i += 1;
+                        }
+                        continue;
+                    }
+
+                    if (char === '\r' && inQuotes) {
+                        continue;
+                    }
+
+                    currentField += char;
+                }
+
+                if (currentField.length || inQuotes) {
+                    commitField();
+                }
+                if (currentRow.length) {
+                    commitRow();
+                }
+
+                const filtered = rows.filter(row => rowHasContent(row));
+                logEvent('debug', `CSV parse complete. Produced ${filtered.length} non-empty rows.`);
+                return filtered;
+            }
+
+            function handleFile(file, { bypassProfileCheck = false } = {}) {
+                logEvent('info', file ? `File input change detected: '${file.name}'` : 'File cleared.');
+                if (!file) {
+                    pendingFile = null;
+                    resetPreview();
+                    return;
+                }
+
+                if (!activeProfile && !bypassProfileCheck) {
+                    const warningMessage = 'Select a bank profile before uploading a statement.';
+                    pendingFile = file;
+                    logEvent('warn', `File '${file.name}' selected without choosing a profile.`);
+                    resetPreview(warningMessage, { clearFile: false });
+                    setStatus(warningMessage, 'warning');
+                    const profileSelect = profileSelectEl();
+                    if (profileSelect) {
+                        profileSelect.focus();
+                    }
+                    return;
+                }
+
+                pendingFile = null;
+                currentFileName = file.name;
+                showLoading(currentFileName);
+
+                const reader = new FileReader();
+
+                reader.onerror = () => {
+                    showError('Failed to read the selected file. Please try again.');
+                    logEvent('error', `FileReader encountered an error for '${file.name}'.`);
+                };
+
+                reader.onload = async event => {
+                    try {
+                        const text = event.target?.result ?? '';
+                        if (!text) {
+                            showError('The file appears to be empty.');
+                            logEvent('warn', `File '${file.name}' contained no text.`);
+                            return;
+                        }
+
+                        const rows = parseCsv(text);
+                        if (!rows.length) {
+                            showError('No rows detected in the file.');
+                            logEvent('warn', `File '${file.name}' produced zero usable rows after parsing.`);
+                            return;
+                        }
+
+                        await handleParsedRows(rows);
+                        logEvent('info', `File '${file.name}' parsed successfully.`, {
+                            totalRows: rows.length,
+                            profile: getProfileDisplayName()
+                        });
+                    } catch (error) {
+                        console.error('Error parsing CSV', error);
+                        showError('Unable to parse the file. Make sure it is a valid CSV.');
+                        logEvent('error', `Unhandled exception while parsing '${file.name}'.`, error);
+                    }
+                };
+
+                const parser = getParserSettings();
+                const encoding = parser.encoding || 'utf-8';
+                try {
+                    reader.readAsText(file, encoding);
+                } catch (e) {
+                    reader.readAsText(file);
+                }
+            }
+
+            async function handleProfileChange(profileId) {
+                activeProfile = bankProfiles.find(p => p.id === profileId) ?? null;
+                activeProfileColumns = Array.isArray(activeProfile?.columns) ? activeProfile.columns : [];
+                activeProfileMappings = Array.isArray(activeProfile?.expenseFieldMappings) ? activeProfile.expenseFieldMappings : [];
+
+                const fileInput = fileInputEl();
+                if (fileInput && !activeProfile) {
+                    fileInput.value = '';
+                }
+
+                updateProfileDescription();
+                if (!activeProfile) {
+                    activeProfileMappings = [];
+                    logEvent('info', 'Profile cleared. Preview reset.');
+                    resetPreview();
+                    return;
+                }
+
+                if (!parsedRows.length) {
+                    const parser = getParserSettings();
+                    currentSkipRows = requestedSkipRows = Number(parser.defaultSkipRows ?? 0);
+                    const skipInput = skipInputEl();
+                    if (skipInput) {
+                        skipInput.value = String(currentSkipRows);
+                    }
+
+                    const fileInput = fileInputEl();
+                    const candidateFile = pendingFile ?? fileInput?.files?.[0] ?? null;
+                    if (candidateFile) {
+                        logEvent('info', `Reprocessing pending file '${candidateFile.name}' after profile change to '${getProfileDisplayName()}'.`);
+                        handleFile(candidateFile, { bypassProfileCheck: true });
+                    } else {
+                        disableSkipControls();
+                        updateSkipDescription();
+                        setStatus('Select a statement file to preview.', 'info');
+                        logEvent('debug', `Profile '${getProfileDisplayName()}' ready. Awaiting file selection.`);
+                    }
+                    return;
+                }
+
+                const parser = getParserSettings();
+                const profileSkip = Number(parser.defaultSkipRows ?? autoSkipRows);
+                await setSkipRows(profileSkip);
+                updateSkipDescription();
+                logEvent('info', `Profile changed to '${getProfileDisplayName()}'. Applied skip rows ${profileSkip}.`);
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                logEvent('info', 'Statement import module initializing.', {
+                    profileCount: bankProfiles.length
+                });
+                const fileInput = fileInputEl();
+                const modalElement = document.getElementById(modalId);
+                const skipInput = skipInputEl();
+                const autoButton = autoButtonEl();
+                const profileSelect = profileSelectEl();
+
+                if (profileSelect) {
+                    if (!bankProfiles.length) {
+                        profileSelect.disabled = true;
+                        disableSkipControls('No bank profiles configured.');
+                        const fileInput = fileInputEl();
+                        if (fileInput) {
+                            fileInput.disabled = true;
+                            fileInput.value = '';
+                        }
+                        resetPreview('No bank profiles are available. Add YAML profiles under ImportProfiles/.');
+                        logEvent('warn', 'No bank profiles available. File input disabled.');
+                        return;
+                    }
+
+                    profileSelect.addEventListener('change', async event => {
+                        await handleProfileChange(event.target?.value ?? '');
+                    });
+                } else {
+                    setStatus('Bank profile selector not found.', 'warning');
+                }
+
+                if (fileInput) {
+                    fileInput.addEventListener('change', event => {
+                        const selectedFile = event.target?.files?.[0];
+                        handleFile(selectedFile ?? null);
+                    });
+                }
+
+                if (skipInput) {
+                    skipInput.addEventListener('input', async event => {
+                        const value = Number(event.target?.value ?? 0);
+                        await setSkipRows(Number.isFinite(value) ? value : 0);
+                    });
+                }
+
+                if (autoButton) {
+                    autoButton.addEventListener('click', async () => {
+                        await setSkipRows(autoSkipRows, { fromAuto: true });
+                    });
+                }
+
+                const submitButton = submitButtonEl();
+                if (submitButton) {
+                    submitButton.addEventListener('click', event => {
+                        event.preventDefault();
+                        performImport();
+                    });
+                }
+
+                if (modalElement) {
+                    modalElement.addEventListener('hidden.bs.modal', () => {
+                        logEvent('debug', 'Import modal hidden. Resetting preview state.');
+                        resetPreview();
+                    });
+                    modalElement.addEventListener('shown.bs.modal', () => {
+                        const status = statusEl();
+                        if (status) {
+                            status.focus({ preventScroll: true });
+                        }
+                        logEvent('debug', 'Import modal shown.');
+                    });
+                }
+
+                disableSkipControls();
+                updateProfileDescription();
+                resetPreview();
+                logEvent('info', 'Statement import module ready.');
+            });
+        })();
     </script>
     <script>
         // Create expense data objects

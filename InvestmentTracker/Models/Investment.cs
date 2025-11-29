@@ -23,6 +23,11 @@ public class Investment
     [Required]
     public Currency Currency { get; set; }
 
+    public int? FamilyMemberId { get; set; }
+    public FamilyMember? FamilyMember { get; set; }
+
+    public DateTime? MaturityDate { get; set; }
+
     public decimal ChargeAmount { get; set; } = 0m;
 
     public ICollection<InvestmentValue> Values { get; set; } = new List<InvestmentValue>();

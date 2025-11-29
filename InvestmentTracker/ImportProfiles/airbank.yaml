@@ -1,0 +1,90 @@
+id: airbank
+version: 1
+metadata:
+  displayName: "Air Bank"
+  description: "CSV export from Air Bank internet banking"
+  sampleFile: "tests/airbank_1690631014_2025-11-13_10-22.csv"
+parser:
+  encoding: "windows-1250"
+  delimiter: ";"
+  quote: "\""
+  decimalSeparator: ","
+  dateFormat: "dd/MM/yyyy"
+  defaultSkipRows: 0
+  trimEmptyPreamble: true
+columns:
+  - header: "Datum provedení"
+    target: transactionDate
+    required: true
+  - header: "Datum zaúčtování"
+    target: bookingDate
+  - header: "Směr úhrady"
+    target: direction
+  - header: "Typ úhrady"
+    target: transactionType
+  - header: "Kategorie plateb"
+    target: bankCategory
+  - header: "Částka v měně účtu"
+    target: amount
+    transform: directionSignedAmount
+    required: true
+  - header: "Měna účtu"
+    target: currency
+    required: true
+  - header: "Původní měna úhrady"
+    target: originalCurrency
+  - header: "Původní částka úhrady"
+    target: originalAmount
+  - header: "Název protistrany"
+    target: counterparty
+  - header: "Číslo účtu protistrany"
+    target: counterpartyAccount
+  - header: "Název účtu protistrany"
+    target: counterpartyAccountName
+  - header: "Poznámka pro mne"
+    target: memo
+  - header: "Zpráva pro příjemce"
+    target: recipientMessage
+  - header: "Poznámka k úhradě"
+    target: bankNote
+  - header: "Název karty"
+    target: cardName
+  - header: "Číslo karty"
+    target: cardNumber
+  - header: "Držitel karty"
+    target: cardHolder
+  - header: "Obchodní místo"
+    target: merchantLocation
+  - header: "Směnný kurz"
+    target: exchangeRate
+rules:
+  dropRows: []
+notes:
+  - "Signed amount depends on 'Směr úhrady' (Příchozí = positive, Odchozí = negative)."
+  - "Multi-line memo fields are quoted; parser must support line breaks inside quotes."
+expenseFieldMappings:
+  - field: name
+    sourceHeaders:
+      - "Název protistrany"
+    target: counterparty
+    fallback: "Imported transaction"
+    notes: "Falls back to a generic label if the counterparty name is blank."
+  - field: amount
+    sourceHeaders:
+      - "Částka v měně účtu"
+    target: amount
+  - field: currency
+    sourceHeaders:
+      - "Měna účtu"
+    target: currency
+  - field: date
+    sourceHeaders:
+      - "Datum provedení"
+    target: transactionDate
+  - field: expenseType
+    fallback: "Family"
+    notes: "Imports default to household expenses; adjust after import if needed."
+  - field: memo
+    sourceHeaders:
+      - "Poznámka pro mne"
+    target: memo

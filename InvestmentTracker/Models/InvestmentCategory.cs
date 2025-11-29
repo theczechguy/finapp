@@ -5,5 +5,6 @@ public enum InvestmentCategory
     Stocks,
     RealEstate,
     Crypto,
-    Bonds
+    Bonds,
+    Savings
 }

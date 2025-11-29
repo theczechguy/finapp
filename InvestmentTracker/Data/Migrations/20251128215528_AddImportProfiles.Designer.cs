@@ -4,6 +4,7 @@ using InvestmentTracker.Data;
 using InvestmentTracker.Models.ImportProfiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace InvestmentTracker.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251128215528_AddImportProfiles")]
+    partial class AddImportProfiles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -236,11 +239,9 @@ namespace InvestmentTracker.Data.Migrations
 
             modelBuilder.Entity("InvestmentTracker.Models.ImportProfile", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
@@ -310,12 +311,6 @@ namespace InvestmentTracker.Data.Migrations
                     b.Property<int>("Currency")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("FamilyMemberId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("MaturityDate")
-                        .HasColumnType("timestamp without time zone");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -329,8 +324,6 @@ namespace InvestmentTracker.Data.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("FamilyMemberId");
 
                     b.ToTable("Investments");
                 });
@@ -578,15 +571,6 @@ namespace InvestmentTracker.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("RegularExpense");
-                });
-
-            modelBuilder.Entity("InvestmentTracker.Models.Investment", b =>
-                {
-                    b.HasOne("InvestmentTracker.Models.FamilyMember", "FamilyMember")
-                        .WithMany()
-                        .HasForeignKey("FamilyMemberId");
-
-                    b.Navigation("FamilyMember");
                 });
 
             modelBuilder.Entity("InvestmentTracker.Models.InvestmentValue", b =>

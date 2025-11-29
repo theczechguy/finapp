@@ -33,6 +33,21 @@
     </div>
 
     <div class="mb-3">
+        <label asp-for="Investment.FamilyMemberId" class="form-label">Owner</label>
+        <select asp-for="Investment.FamilyMemberId" class="form-select" asp-items="Model.FamilyMembers">
+            <option value="">Family / Joint</option>
+        </select>
+        <div class="form-text">Select a family member if this investment belongs to a specific person, or leave as "Family / Joint".</div>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Investment.MaturityDate" class="form-label">Maturity Date</label>
+        <input asp-for="Investment.MaturityDate" type="date" class="form-control" />
+        <div class="form-text">Optional. The date when this investment matures or ends.</div>
+        <span asp-validation-for="Investment.MaturityDate" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
         <label asp-for="Investment.ChargeAmount" class="form-label">One-time Charge</label>
         <input name="Investment.ChargeAmount" type="text" inputmode="decimal" class="form-control" placeholder="Leave empty if no charge" autocomplete="off" />
         <div class="form-text">A single charge deducted from invested total. Leave empty if none.</div>

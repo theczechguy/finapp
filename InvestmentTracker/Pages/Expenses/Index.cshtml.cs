@@ -1,20 +1,30 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using InvestmentTracker.Services;
 using InvestmentTracker.ViewModels;
 using InvestmentTracker.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using InvestmentTracker.Services.ImportProfiles;
+using InvestmentTracker.Models.ImportProfiles;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace InvestmentTracker.Pages.Expenses
 {
     public class IndexModel : PageModel
     {
         private readonly IExpenseService _expenseService;
+        private readonly IBankImportProfileProvider _bankImportProfileProvider;
 
-        public IndexModel(IExpenseService expenseService)
+        public IndexModel(IExpenseService expenseService, IBankImportProfileProvider bankImportProfileProvider)
         {
             _expenseService = expenseService;
+            _bankImportProfileProvider = bankImportProfileProvider;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -22,6 +32,39 @@ namespace InvestmentTracker.Pages.Expenses
 
         public MonthlyExpenseViewModel ViewModel { get; set; } = new();
         public string PrefilledOverrideDate { get; private set; } = "";
+        public IReadOnlyList<BankImportProfileSummary> BankProfiles { get; private set; } = Array.Empty<BankImportProfileSummary>();
+        public IReadOnlyList<BankImportProfile> BankProfilesDetailed { get; private set; } = Array.Empty<BankImportProfile>();
+        public IReadOnlyList<FamilyMember> FamilyMembers { get; private set; } = Array.Empty<FamilyMember>();
+
+        public class ImportExpensesRequest
+        {
+            public string? ProfileId { get; set; }
+            public int SkipRows { get; set; }
+            public int OriginalRowCount { get; set; }
+            public List<ImportExpenseRow> Rows { get; set; } = new();
+        }
+
+        public class ImportExpenseRow
+        {
+            public int? SourceRowNumber { get; set; }
+            public string? Name { get; set; }
+            public decimal? Amount { get; set; }
+            public string? Currency { get; set; }
+            public string? Date { get; set; }
+            public string? ExpenseType { get; set; }
+            public int? FamilyMemberId { get; set; }
+            public int? CategoryId { get; set; }
+            public string? Memo { get; set; }
+        }
+
+        public class ImportExpensesResponse
+        {
+            public bool Success { get; set; }
+            public string Message { get; set; } = string.Empty;
+            public int ImportedCount { get; set; }
+            public List<int> FailedRows { get; set; } = new();
+            public List<string> Errors { get; set; } = new();
+        }
 
         public async Task OnGetAsync()
         {
@@ -47,6 +90,19 @@ namespace InvestmentTracker.Pages.Expenses
             
             // Set the prefilled override date for the modal
             PrefilledOverrideDate = (await GetPrefilledOverrideDateAsync(selectedDate)).ToString("yyyy-MM-dd");
+
+            var allProfiles = await _bankImportProfileProvider.GetAllProfilesAsync();
+            BankProfilesDetailed = allProfiles;
+            BankProfiles = allProfiles
+                .Select(p => p.ToSummary())
+                .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var familyMembers = await _expenseService.GetFamilyMembersAsync();
+            FamilyMembers = familyMembers
+                .Where(member => member.IsActive)
+                .OrderBy(member => member.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
 
@@ -116,6 +172,188 @@ namespace InvestmentTracker.Pages.Expenses
             await _expenseService.DeleteIrregularExpenseAsync(expenseId);
             TempData["ToastSuccess"] = "Irregular expense deleted.";
             return RedirectToPage(new { SelectedDate });
+        }
+
+        public async Task<IActionResult> OnPostImportExpensesAsync([FromBody] ImportExpensesRequest? request)
+        {
+            var antiforgery = HttpContext.RequestServices.GetRequiredService<IAntiforgery>();
+            await antiforgery.ValidateRequestAsync(HttpContext);
+
+            if (request == null)
+            {
+                var failure = new ImportExpensesResponse
+                {
+                    Success = false,
+                    Message = "Import payload is missing."
+                };
+
+                return new JsonResult(failure)
+                {
+                    StatusCode = StatusCodes.Status400BadRequest
+                };
+            }
+
+            if (request.Rows == null || request.Rows.Count == 0)
+            {
+                var failure = new ImportExpensesResponse
+                {
+                    Success = false,
+                    Message = "No expenses were provided for import."
+                };
+
+                return new JsonResult(failure)
+                {
+                    StatusCode = StatusCodes.Status400BadRequest
+                };
+            }
+
+            var errors = new List<string>();
+            var failedRows = new List<int>();
+            var imported = 0;
+
+            var activeMembers = (await _expenseService.GetFamilyMembersAsync())
+                .ToDictionary(member => member.Id, member => member);
+
+            var categoriesById = (await _expenseService.GetExpenseCategoriesAsync())
+                .ToDictionary(category => category.Id, category => category);
+
+            foreach (var (row, index) in request.Rows.Select((row, index) => (row, index)))
+            {
+                if (row == null)
+                {
+                    continue;
+                }
+
+                var rowNumber = row.SourceRowNumber ?? index + 1;
+
+                if (!row.Amount.HasValue)
+                {
+                    errors.Add($"Row {rowNumber}: Amount is required.");
+                    failedRows.Add(rowNumber);
+                    continue;
+                }
+
+                var roundedAmount = decimal.Round(Math.Abs(row.Amount.Value), 2, MidpointRounding.AwayFromZero);
+
+                var currencyCode = (row.Currency ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(currencyCode) || !Enum.TryParse(currencyCode, true, out Currency currency))
+                {
+                    errors.Add($"Row {rowNumber}: Unknown currency '{row.Currency ?? "(empty)"}'.");
+                    failedRows.Add(rowNumber);
+                    continue;
+                }
+
+                var dateText = (row.Date ?? string.Empty).Trim();
+                if (!DateTime.TryParseExact(dateText, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
+                {
+                    errors.Add($"Row {rowNumber}: Date '{row.Date ?? "(empty)"}' is invalid.");
+                    failedRows.Add(rowNumber);
+                    continue;
+                }
+
+                parsedDate = parsedDate.Date;
+
+                var name = string.IsNullOrWhiteSpace(row.Name) ? "Imported transaction" : row.Name.Trim();
+
+                var expenseType = ExpenseType.Family;
+                if (!string.IsNullOrWhiteSpace(row.ExpenseType) && Enum.TryParse(row.ExpenseType, true, out ExpenseType parsedExpenseType))
+                {
+                    expenseType = parsedExpenseType;
+                }
+
+                int? familyMemberId = null;
+                if (expenseType == ExpenseType.Individual)
+                {
+                    if (!row.FamilyMemberId.HasValue)
+                    {
+                        errors.Add($"Row {rowNumber}: Individual expenses require a family member.");
+                        failedRows.Add(rowNumber);
+                        continue;
+                    }
+
+                    if (!activeMembers.TryGetValue(row.FamilyMemberId.Value, out var member))
+                    {
+                        errors.Add($"Row {rowNumber}: Family member {row.FamilyMemberId} is not active.");
+                        failedRows.Add(rowNumber);
+                        continue;
+                    }
+
+                    familyMemberId = member.Id;
+                }
+
+                if (!row.CategoryId.HasValue)
+                {
+                    errors.Add($"Row {rowNumber}: Category is required.");
+                    failedRows.Add(rowNumber);
+                    continue;
+                }
+
+                if (!categoriesById.TryGetValue(row.CategoryId.Value, out var category))
+                {
+                    errors.Add($"Row {rowNumber}: Category {row.CategoryId.Value} does not exist.");
+                    failedRows.Add(rowNumber);
+                    continue;
+                }
+
+                var expense = new IrregularExpense
+                {
+                    Name = name,
+                    Amount = roundedAmount,
+                    Currency = currency,
+                    Date = parsedDate,
+                    ExpenseCategoryId = category.Id,
+                    ExpenseType = expenseType,
+                    FamilyMemberId = familyMemberId
+                };
+
+                try
+                {
+                    await _expenseService.AddIrregularExpenseAsync(expense);
+                    imported++;
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"Row {rowNumber}: Failed to save expense. {ex.Message}");
+                    failedRows.Add(rowNumber);
+                }
+            }
+
+            if (imported == 0)
+            {
+                var failure = new ImportExpensesResponse
+                {
+                    Success = false,
+                    Message = "Import failed. No expenses were saved.",
+                    ImportedCount = 0,
+                    FailedRows = failedRows,
+                    Errors = errors
+                };
+
+                return new JsonResult(failure)
+                {
+                    StatusCode = StatusCodes.Status400BadRequest
+                };
+            }
+
+            var message = imported == 1
+                ? "Imported 1 expense."
+                : $"Imported {imported} expenses.";
+
+            if (failedRows.Count > 0)
+            {
+                message += $" Skipped {failedRows.Count} row{(failedRows.Count == 1 ? string.Empty : "s")} due to validation errors.";
+            }
+
+            var response = new ImportExpensesResponse
+            {
+                Success = failedRows.Count == 0,
+                Message = message,
+                ImportedCount = imported,
+                FailedRows = failedRows,
+                Errors = errors
+            };
+
+            return new JsonResult(response);
         }
 
         public async Task<IEnumerable<ExpenseCategory>> GetExpenseCategoriesAsync()

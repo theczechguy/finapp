@@ -9,6 +9,7 @@ public class InvestmentWithLatestValue
     public Currency Currency { get; set; }
     public string? Provider { get; set; }
     public decimal ChargeAmount { get; set; }
+    public string? FamilyMemberName { get; set; }
     public InvestmentValue? LatestValue { get; set; }
     public decimal CurrentValue => LatestValue?.Value ?? 0;
 }

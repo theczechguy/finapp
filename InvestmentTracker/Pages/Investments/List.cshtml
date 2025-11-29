@@ -19,9 +19,11 @@
         <tr>
             <th>Name</th>
             <th>Provider</th>
+            <th class="d-none d-md-table-cell">Owner</th>
             <th>Type</th>
             <th>Category</th>
             <th>Currency</th>
+            <th class="d-none d-lg-table-cell">Maturity</th>
             <th>One-time Charge</th>
             <th>Latest Value</th>
             <th></th>
@@ -34,9 +36,11 @@
     <tr>
         <td>@i.Name</td>
         <td>@(string.IsNullOrWhiteSpace(i.Provider) ? "-" : i.Provider)</td>
+        <td class="d-none d-md-table-cell">@(string.IsNullOrWhiteSpace(i.FamilyMemberName) ? "Family" : i.FamilyMemberName)</td>
         <td>@i.Type</td>
         <td>@i.Category</td>
         <td>@i.Currency</td>
+        <td class="d-none d-lg-table-cell">@(i.MaturityDate.HasValue ? i.MaturityDate.Value.ToShortDateString() : "-")</td>
         <td>@(i.ChargeAmount == 0 ? "-" : i.ChargeAmount.ToString("C", culture))</td>
         <td>
             @{

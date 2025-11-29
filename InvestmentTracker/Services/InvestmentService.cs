@@ -20,6 +20,7 @@ public class InvestmentService : IInvestmentService
     {
         _logger.LogInformation("Fetching all investments");
         return await _db.Investments
+            .Include(i => i.FamilyMember)
             .Select(i => new InvestmentSummary
             {
                 Id = i.Id,
@@ -28,7 +29,9 @@ public class InvestmentService : IInvestmentService
                 Type = i.Type,
                 Currency = i.Currency,
                 Provider = i.Provider,
-                ChargeAmount = i.ChargeAmount
+                ChargeAmount = i.ChargeAmount,
+                FamilyMemberName = i.FamilyMember != null ? i.FamilyMember.Name : null,
+                MaturityDate = i.MaturityDate
             })
             .ToListAsync();
     }
@@ -40,6 +43,7 @@ public class InvestmentService : IInvestmentService
             .Include(i => i.Values)
             .Include(i => i.Schedules)
             .Include(i => i.OneTimeContributions)
+            .Include(i => i.FamilyMember)
             .FirstOrDefaultAsync(i => i.Id == id);
 
         if (investment == null)
@@ -109,6 +113,8 @@ public class InvestmentService : IInvestmentService
         existing.Category = update.Category;
         existing.Currency = update.Currency;
         existing.ChargeAmount = update.ChargeAmount;
+        existing.FamilyMemberId = update.FamilyMemberId;
+        existing.MaturityDate = update.MaturityDate;
         
         await _db.SaveChangesAsync();
         _logger.LogInformation("Successfully updated investment with ID: {InvestmentId}", id);

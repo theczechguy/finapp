@@ -1,0 +1,84 @@
+id: kb
+version: 1
+metadata:
+  displayName: "Komerční banka"
+  description: "Standard CSV export from KB internet banking"
+  sampleFile: "tests/Vypis_1234840660237_20251001_20251112.csv"
+parser:
+  encoding: "windows-1250"
+  delimiter: ";"
+  quote: "\""
+  decimalSeparator: ","
+  dateFormat: "dd.MM.yyyy"
+  defaultSkipRows: 14
+  trimEmptyPreamble: true
+columns:
+  - header: "Datum zauctovani"
+    target: bookingDate
+    required: true
+  - header: "Datum provedeni"
+    target: transactionDate
+  - header: "Castka"
+    target: amount
+    transform: signedAmount
+    required: true
+  - header: "Mena"
+    target: currency
+    required: true
+  - header: "Protistrana"
+    target: counterparty
+  - header: "Identifikace transakce"
+    target: reference
+  - header: "Typ transakce"
+    target: transactionType
+  - header: "Zprava pro prijemce"
+    target: recipientMessage
+  - header: "VS"
+    target: vs
+  - header: "KS"
+    target: ks
+  - header: "SS"
+    target: ss
+  - header: "Nazev protiuctu"
+    target: counterpartyAccount
+  - header: "Popis pro me"
+    target: memo
+  - header: "Zprava pro prijemce"
+    target: recipientMessage
+  - header: "Typ transakce"
+    target: transactionType
+rules:
+  dropRows:
+    - startsWith: "Pocatecni zustatek"
+    - startsWith: "Konecny zustatek"
+    - startsWith: "Mena;"
+notes:
+  - "Amounts are negative for outflows, positive for inflows."
+  - "SignedAmount transform should interpret sign from value column."
+  - "We rely on booking date for expense posting; transaction date is available separately if needed."
+expenseFieldMappings:
+  - field: name
+    sourceHeaders:
+      - "Nazev protiuctu"
+      - "Protistrana"
+    target: counterpartyAccount
+    fallback: "Imported transaction"
+  - field: amount
+    sourceHeaders:
+      - "Castka"
+    target: amount
+  - field: currency
+    sourceHeaders:
+      - "Mena"
+    target: currency
+  - field: date
+    sourceHeaders:
+      - "Datum zauctovani"
+    target: bookingDate
+  - field: expenseType
+    fallback: "Family"
+  - field: memo
+    sourceHeaders:
+      - "Popis pro me"
+      - "Zprava pro prijemce"
+    target: memo
