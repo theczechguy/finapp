@@ -2,19 +2,22 @@ using InvestmentTracker.Models;
 using InvestmentTracker.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace InvestmentTracker.Pages.Investments;
 
-public class EditModel(IInvestmentService investmentService) : PageModel
+public class EditModel(IInvestmentService investmentService, InvestmentTracker.Data.AppDbContext db) : PageModel
 {
     [BindProperty]
     public Investment Investment { get; set; } = new();
 
     public List<ContributionSchedule> Schedules { get; set; } = new();
     public List<OneTimeContribution> Contributions { get; set; } = new();
+    public SelectList? FamilyMembers { get; set; }
 
     public ScheduleInput NewSchedule { get; set; } = new();
 
@@ -36,6 +39,10 @@ public class EditModel(IInvestmentService investmentService) : PageModel
         Investment = entity;
         Schedules = entity.Schedules.OrderBy(s => s.StartDate).ToList();
         Contributions = entity.OneTimeContributions.OrderByDescending(c => c.Date).ToList();
+        
+        var members = await db.FamilyMember.Where(m => m.IsActive).OrderBy(m => m.Name).ToListAsync();
+        FamilyMembers = new SelectList(members, "Id", "Name");
+        
         return Page();
     }
 
@@ -56,7 +63,7 @@ public class EditModel(IInvestmentService investmentService) : PageModel
         if (await TryUpdateModelAsync<Investment>(
                 investmentToUpdate,
                 "Investment",
-                i => i.Name, i => i.Provider, i => i.Type, i => i.Category, i => i.Currency, i => i.ChargeAmount))
+                i => i.Name, i => i.Provider, i => i.Type, i => i.Category, i => i.Currency, i => i.ChargeAmount, i => i.FamilyMemberId, i => i.MaturityDate))
         {
             await investmentService.UpdateInvestmentAsync(id, investmentToUpdate);
             TempData["ToastSuccess"] = "Investment updated.";
@@ -66,6 +73,10 @@ public class EditModel(IInvestmentService investmentService) : PageModel
         // If TryUpdateModelAsync fails, we need to reload the ancillary data
         Schedules = investmentToUpdate.Schedules.OrderBy(s => s.StartDate).ToList();
         Contributions = investmentToUpdate.OneTimeContributions.OrderByDescending(c => c.Date).ToList();
+        
+        var members = await db.FamilyMember.Where(m => m.IsActive).OrderBy(m => m.Name).ToListAsync();
+        FamilyMembers = new SelectList(members, "Id", "Name");
+        
         return Page();
     }
 
@@ -80,6 +91,7 @@ public class EditModel(IInvestmentService investmentService) : PageModel
         ModelState.Remove("Investment.Type");
         ModelState.Remove("Investment.Currency");
         ModelState.Remove("Investment.Provider");
+        ModelState.Remove("Investment.FamilyMemberId");
 
         await TryUpdateModelAsync<ScheduleInput>(NewSchedule, "NewSchedule");
 
@@ -120,6 +132,10 @@ public class EditModel(IInvestmentService investmentService) : PageModel
         Investment = inv;
         Schedules = inv.Schedules.OrderBy(s => s.StartDate).ToList();
         Contributions = inv.OneTimeContributions.OrderByDescending(c => c.Date).ToList();
+        
+        var members = await db.FamilyMember.Where(m => m.IsActive).OrderBy(m => m.Name).ToListAsync();
+        FamilyMembers = new SelectList(members, "Id", "Name");
+        
         return Page();
     }
 
@@ -138,6 +154,7 @@ public class EditModel(IInvestmentService investmentService) : PageModel
         ModelState.Remove("Investment.Type");
         ModelState.Remove("Investment.Currency");
         ModelState.Remove("Investment.Provider");
+        ModelState.Remove("Investment.FamilyMemberId");
 
         await TryUpdateModelAsync<OneTimeContribution>(NewContribution, "NewContribution");
 

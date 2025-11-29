@@ -90,6 +90,7 @@ namespace InvestmentTracker.Pages.Portfolio
                     Currency = investment.Currency,
                     Provider = investment.Provider,
                     ChargeAmount = investment.ChargeAmount,
+                    FamilyMemberName = investment.FamilyMemberName,
                     LatestValue = latestValue
                 };
 

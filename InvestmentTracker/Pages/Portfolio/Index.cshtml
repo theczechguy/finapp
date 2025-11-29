@@ -89,20 +89,22 @@
                 <tr>
                     <th>Account Name</th>
                     <th>Provider</th>
+                    <th>Owner</th>
                     <th>Latest Balance</th>
                     <th>As Of Date</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var savings in Model.InvestmentsWithLatestValue.Where(i => i.Category == InvestmentCategory.Savings).OrderBy(i => i.Name))
+                @foreach (var investment in Model.InvestmentsWithLatestValue.Where(i => i.Category == InvestmentCategory.Savings).OrderBy(i => i.Name))
                 {
                     <tr>
-                        <td>@savings.Name</td>
-                        <td>@(string.IsNullOrWhiteSpace(savings.Provider) ? "-" : savings.Provider)</td>
-                        @if (savings.LatestValue != null)
+                        <td>@investment.Name</td>
+                        <td>@(string.IsNullOrWhiteSpace(investment.Provider) ? "-" : investment.Provider)</td>
+                        <td>@(string.IsNullOrWhiteSpace(investment.FamilyMemberName) ? "Family" : investment.FamilyMemberName)</td>
+                        @if (investment.LatestValue != null)
                         {
-                            <td>@savings.LatestValue.Value.ToString("C", CultureInfo.CreateSpecificCulture(savings.Currency.ToCultureCode()))</td>
-                            <td>@savings.LatestValue.AsOf.ToShortDateString()</td>
+                            <td>@investment.LatestValue.Value.ToString("C", CultureInfo.CreateSpecificCulture(investment.Currency.ToCultureCode()))</td>
+                            <td>@investment.LatestValue.AsOf.ToShortDateString()</td>
                         }
                         else
                         {
@@ -123,6 +125,7 @@
         <tr>
             <th>Investment</th>
             <th>Provider</th>
+            <th>Owner</th>
             <th>Category</th>
             <th>Latest Value</th>
             <th>As Of Date</th>
@@ -135,6 +138,7 @@
         <tr>
             <td>@investment.Name</td>
             <td>@(string.IsNullOrWhiteSpace(investment.Provider) ? "-" : investment.Provider)</td>
+            <td>@(string.IsNullOrWhiteSpace(investment.FamilyMemberName) ? "Family" : investment.FamilyMemberName)</td>
             <td>@investment.Category</td>
             @if (investment.LatestValue != null)
             {
