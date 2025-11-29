@@ -15,17 +15,37 @@
         <div class="col-md-6 mb-4">
             <div class="row">
                 <div class="col-md-6">
-                    <div class="card">
+                    <div class="card mb-3">
                         <div class="card-body text-center">
-                            <h5 class="card-title">Total Value (@total.Key)</h5>
+                            <h5 class="card-title">Investments Total (@total.Key)</h5>
                             <p class="card-text fs-4">@total.Value.ToString("C", CultureInfo.CreateSpecificCulture(total.Key.ToCultureCode()))</p>
                         </div>
                     </div>
+                    
+                    @if (Model.SavingsTotalsByCurrency.ContainsKey(total.Key) && Model.SavingsTotalsByCurrency[total.Key] > 0)
+                    {
+                        <div class="card mb-3 border-info">
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-info">Savings Total (@total.Key)</h5>
+                                <p class="card-text fs-4">@Model.SavingsTotalsByCurrency[total.Key].ToString("C", CultureInfo.CreateSpecificCulture(total.Key.ToCultureCode()))</p>
+                            </div>
+                        </div>
+                    }
+
+                    @if (Model.GrandTotalsByCurrency.ContainsKey(total.Key) && Model.GrandTotalsByCurrency[total.Key] > 0)
+                    {
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-success">Total Net Worth (@total.Key)</h5>
+                                <p class="card-text fs-3 fw-bold">@Model.GrandTotalsByCurrency[total.Key].ToString("C", CultureInfo.CreateSpecificCulture(total.Key.ToCultureCode()))</p>
+                            </div>
+                        </div>
+                    }
                 </div>
                 <div class="col-md-6">
-                    <div class="card">
+                    <div class="card h-100">
                         <div class="card-header">
-                            Value by Category (@total.Key)
+                            Investments by Category (@total.Key)
                         </div>
                         <div class="card-body">
                             <canvas id="chart-@total.Key" width="400" height="300"></canvas>
@@ -37,7 +57,7 @@
     }
 </div>
 
-<h3 class="mt-4">Value by Category</h3>
+<h3 class="mt-4">Investments by Category</h3>
 <div class="row mb-4">
     @foreach (var categoryTotal in Model.TotalsByCategory.OrderBy(kv => kv.Key.ToString()))
     {
@@ -60,6 +80,42 @@
     }
 </div>
 
+@if (Model.InvestmentsWithLatestValue.Any(i => i.Category == InvestmentCategory.Savings))
+{
+    <h3 class="mt-4">Savings Accounts</h3>
+    <div class="table-responsive mb-4">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Account Name</th>
+                    <th>Provider</th>
+                    <th>Latest Balance</th>
+                    <th>As Of Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var savings in Model.InvestmentsWithLatestValue.Where(i => i.Category == InvestmentCategory.Savings).OrderBy(i => i.Name))
+                {
+                    <tr>
+                        <td>@savings.Name</td>
+                        <td>@(string.IsNullOrWhiteSpace(savings.Provider) ? "-" : savings.Provider)</td>
+                        @if (savings.LatestValue != null)
+                        {
+                            <td>@savings.LatestValue.Value.ToString("C", CultureInfo.CreateSpecificCulture(savings.Currency.ToCultureCode()))</td>
+                            <td>@savings.LatestValue.AsOf.ToShortDateString()</td>
+                        }
+                        else
+                        {
+                            <td class="text-muted">No value recorded</td>
+                            <td class="text-muted">-</td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
 <h3 class="mt-4">Latest Investment Values</h3>
 <div class="table-responsive">
     <table class="table table-striped">
@@ -74,7 +130,7 @@
         </tr>
     </thead>
     <tbody>
-    @foreach (var investment in Model.InvestmentsWithLatestValue.OrderBy(i => i.Name))
+    @foreach (var investment in Model.InvestmentsWithLatestValue.Where(i => i.Category != InvestmentCategory.Savings).OrderBy(i => i.Name))
     {
         <tr>
             <td>@investment.Name</td>
@@ -157,13 +213,31 @@
         const timeSeriesChart = new Chart(timeSeriesCtx, {
             type: 'line',
             data: {
-                labels: Object.keys(timeSeriesData),
-                datasets: [{
-                    label: 'Total Portfolio Value',
-                    data: Object.values(timeSeriesData),
-                    borderColor: 'rgb(75, 192, 192)',
-                    tension: 0.1
-                }]
+                labels: timeSeriesData.labels,
+                datasets: [
+                    {
+                        label: 'Total Net Worth',
+                        data: timeSeriesData.total,
+                        borderColor: 'rgb(75, 192, 192)', // Teal
+                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                        tension: 0.1,
+                        fill: true
+                    },
+                    {
+                        label: 'Investments',
+                        data: timeSeriesData.investments,
+                        borderColor: 'rgb(54, 162, 235)', // Blue
+                        tension: 0.1,
+                        hidden: false
+                    },
+                    {
+                        label: 'Savings',
+                        data: timeSeriesData.savings,
+                        borderColor: 'rgb(255, 205, 86)', // Yellow
+                        tension: 0.1,
+                        hidden: false
+                    }
+                ]
             },
             options: {
                 responsive: true,
@@ -187,7 +261,7 @@
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                return `Total Value: ${context.parsed.y.toLocaleString()}`;
+                                return `${context.dataset.label}: ${context.parsed.y.toLocaleString()}`;
                             }
                         }
                     }
@@ -202,16 +276,18 @@
                 // Update active button
                 document.querySelectorAll('.time-range-btn').forEach(btn => {
                     btn.classList.remove('btn-primary');
-                    btn.classList.add('btn-primary');
+                    btn.classList.add('btn-secondary');
                 });
-                this.classList.remove('btn-primary');
+                this.classList.remove('btn-secondary');
                 this.classList.add('btn-primary');
 
                 fetch(`?handler=ChartData&timeRange=${range}`)
                     .then(response => response.json())
                     .then(data => {
-                        timeSeriesChart.data.labels = Object.keys(data);
-                        timeSeriesChart.data.datasets[0].data = Object.values(data);
+                        timeSeriesChart.data.labels = data.labels;
+                        timeSeriesChart.data.datasets[0].data = data.total;
+                        timeSeriesChart.data.datasets[1].data = data.investments;
+                        timeSeriesChart.data.datasets[2].data = data.savings;
                         timeSeriesChart.update();
                     });
             });

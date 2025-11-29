@@ -21,6 +21,8 @@ namespace InvestmentTracker.Pages.Portfolio
 
         public List<InvestmentWithLatestValue> InvestmentsWithLatestValue { get; set; } = new();
         public Dictionary<Currency, decimal> TotalsByCurrency { get; set; } = new();
+        public Dictionary<Currency, decimal> SavingsTotalsByCurrency { get; set; } = new();
+        public Dictionary<Currency, decimal> GrandTotalsByCurrency { get; set; } = new();
         public Dictionary<InvestmentCategory, Dictionary<Currency, decimal>> TotalsByCategory { get; set; } = new();
         public Dictionary<DateTime, decimal> TotalsByDate { get; set; } = new();
         public string ChartDataJson { get; set; } = "{}";
@@ -49,9 +51,18 @@ namespace InvestmentTracker.Pages.Portfolio
             }
 
             // Prepare time series data with forward-filling for missing values
-            var valuesForChart = await _investmentService.GetInvestmentValuesFromDateAsync(fromDate);
-            TotalsByDate = CalculatePortfolioValuesWithForwardFill(valuesForChart, fromDate);
-            ChartTimeSeriesJson = JsonSerializer.Serialize(TotalsByDate.ToDictionary(kv => kv.Key.ToString("yyyy-MM-dd"), kv => kv.Value));
+            var allValuesForChart = await _investmentService.GetInvestmentValuesFromDateAsync(fromDate);
+            var savingsIds = investments.Where(i => i.Category == InvestmentCategory.Savings).Select(i => i.Id).ToHashSet();
+            
+            var (investmentsSeries, savingsSeries, totalSeries) = CalculatePortfolioSeries(allValuesForChart, fromDate, savingsIds);
+            
+            var chartDataObj = new {
+                labels = totalSeries.Keys.ToList(),
+                investments = totalSeries.Keys.Select(k => investmentsSeries[k]).ToList(),
+                savings = totalSeries.Keys.Select(k => savingsSeries[k]).ToList(),
+                total = totalSeries.Keys.Select(k => totalSeries[k]).ToList()
+            };
+            ChartTimeSeriesJson = JsonSerializer.Serialize(chartDataObj);
 
             var investmentsWithValues = new List<InvestmentWithLatestValue>();
 
@@ -86,21 +97,35 @@ namespace InvestmentTracker.Pages.Portfolio
 
                 if (latestValue != null)
                 {
-                    TotalsByCurrency.TryGetValue(investment.Currency, out var currentTotal);
-                    TotalsByCurrency[investment.Currency] = currentTotal + latestValue.Value;
-                    
-                    if (!TotalsByCategory.ContainsKey(investment.Category))
+                    // Calculate Grand Total (Investments + Savings)
+                    GrandTotalsByCurrency.TryGetValue(investment.Currency, out var currentGrandTotal);
+                    GrandTotalsByCurrency[investment.Currency] = currentGrandTotal + latestValue.Value;
+
+                    if (investment.Category == InvestmentCategory.Savings)
                     {
-                        TotalsByCategory[investment.Category] = new Dictionary<Currency, decimal>();
+                        // Calculate Savings Total
+                        SavingsTotalsByCurrency.TryGetValue(investment.Currency, out var currentSavingsTotal);
+                        SavingsTotalsByCurrency[investment.Currency] = currentSavingsTotal + latestValue.Value;
                     }
-                    TotalsByCategory[investment.Category].TryGetValue(investment.Currency, out var currentCategoryTotal);
-                    TotalsByCategory[investment.Category][investment.Currency] = currentCategoryTotal + latestValue.Value;
+                    else
+                    {
+                        // Calculate Investment Total (excluding Savings)
+                        TotalsByCurrency.TryGetValue(investment.Currency, out var currentTotal);
+                        TotalsByCurrency[investment.Currency] = currentTotal + latestValue.Value;
+                        
+                        if (!TotalsByCategory.ContainsKey(investment.Category))
+                        {
+                            TotalsByCategory[investment.Category] = new Dictionary<Currency, decimal>();
+                        }
+                        TotalsByCategory[investment.Category].TryGetValue(investment.Currency, out var currentCategoryTotal);
+                        TotalsByCategory[investment.Category][investment.Currency] = currentCategoryTotal + latestValue.Value;
+                    }
                 }
             }
 
             InvestmentsWithLatestValue = investmentsWithValues;
 
-            // Prepare chart data
+            // Prepare chart data (Investments Only)
             var chartData = new Dictionary<string, object>();
             foreach (var currency in TotalsByCurrency.Where(kv => kv.Value > 0m).Select(kv => kv.Key))
             {
@@ -137,15 +162,23 @@ namespace InvestmentTracker.Pages.Portfolio
                     break;
             }
 
-            var valuesForChart = await _investmentService.GetInvestmentValuesFromDateAsync(fromDate);
-            var totalsByDate = CalculatePortfolioValuesWithForwardFill(valuesForChart, fromDate);
-    
-            var chartTimeSeriesJson = totalsByDate.ToDictionary(kv => kv.Key.ToString("yyyy-MM-dd"), kv => kv.Value);
+            var investments = await _investmentService.GetAllInvestmentsAsync();
+            var savingsIds = investments.Where(i => i.Category == InvestmentCategory.Savings).Select(i => i.Id).ToHashSet();
 
-            return new JsonResult(chartTimeSeriesJson);
+            var allValuesForChart = await _investmentService.GetInvestmentValuesFromDateAsync(fromDate);
+            var (investmentsSeries, savingsSeries, totalSeries) = CalculatePortfolioSeries(allValuesForChart, fromDate, savingsIds);
+            
+            var chartDataObj = new {
+                labels = totalSeries.Keys.ToList(),
+                investments = totalSeries.Keys.Select(k => investmentsSeries[k]).ToList(),
+                savings = totalSeries.Keys.Select(k => savingsSeries[k]).ToList(),
+                total = totalSeries.Keys.Select(k => totalSeries[k]).ToList()
+            };
+
+            return new JsonResult(chartDataObj);
         }
 
-        private Dictionary<DateTime, decimal> CalculatePortfolioValuesWithForwardFill(List<InvestmentValue> allValues, DateTime fromDate)
+        private (Dictionary<string, decimal> Investments, Dictionary<string, decimal> Savings, Dictionary<string, decimal> Total) CalculatePortfolioSeries(List<InvestmentValue> allValues, DateTime fromDate, HashSet<int> savingsIds)
         {
             // Group values by investment ID and sort by date
             var valuesByInvestment = allValues
@@ -169,11 +202,15 @@ namespace InvestmentTracker.Pages.Portfolio
             }
 
             var sortedDates = allDates.OrderBy(d => d).ToList();
-            var result = new Dictionary<DateTime, decimal>();
+            
+            var investmentsSeries = new Dictionary<string, decimal>();
+            var savingsSeries = new Dictionary<string, decimal>();
+            var totalSeries = new Dictionary<string, decimal>();
 
             foreach (var date in sortedDates)
             {
-                decimal totalValue = 0;
+                decimal investmentsTotal = 0;
+                decimal savingsTotal = 0;
 
                 foreach (var investmentId in valuesByInvestment.Keys)
                 {
@@ -187,17 +224,24 @@ namespace InvestmentTracker.Pages.Portfolio
 
                     if (mostRecentValue != null)
                     {
-                        totalValue += mostRecentValue.Value;
+                        if (savingsIds.Contains(investmentId))
+                        {
+                            savingsTotal += mostRecentValue.Value;
+                        }
+                        else
+                        {
+                            investmentsTotal += mostRecentValue.Value;
+                        }
                     }
                 }
 
-                if (totalValue > 0) // Only include dates where we have at least some data
-                {
-                    result[date] = totalValue;
-                }
+                string dateKey = date.ToString("yyyy-MM-dd");
+                investmentsSeries[dateKey] = investmentsTotal;
+                savingsSeries[dateKey] = savingsTotal;
+                totalSeries[dateKey] = investmentsTotal + savingsTotal;
             }
 
-            return result;
+            return (investmentsSeries, savingsSeries, totalSeries);
         }
     }
 }
