@@ -1,31 +1,168 @@
 @page
 @model InvestmentTracker.Pages.IndexModel
+@using System.Globalization
+@using InvestmentTracker.Models
 @{
-    ViewData["Title"] = "Fin App Dashboard";
+    ViewData["Title"] = "Dashboard";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome to Fin App</h1>
-    <p>Your personal finance dashboard.</p>
+<div class="mb-4">
+    <h1 class="display-5 mb-4">Dashboard</h1>
+
+    <!-- Stat Cards -->
+    <div class="row g-4 mb-4">
+        <!-- Net Worth Cards -->
+        @foreach (var netWorth in Model.TotalNetWorthByCurrency)
+        {
+            <div class="col-md-4 col-lg-3">
+                <div class="card h-100 border-primary bg-opacity-10" style="background-color: rgba(55, 90, 127, 0.1); backdrop-filter: blur(5px);">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Net Worth (@netWorth.Key)</h6>
+                        <h2 class="card-title text-primary">@netWorth.Value.ToString("C0", CultureInfo.CreateSpecificCulture(netWorth.Key.ToCultureCode()))</h2>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Monthly Expenses Card -->
+        <div class="col-md-4 col-lg-3">
+            <div class="card h-100 border-danger bg-opacity-10" style="background-color: rgba(231, 76, 60, 0.1); backdrop-filter: blur(5px);">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Expenses (@DateTime.Now.ToString("MMMM"))</h6>
+                    <h2 class="card-title text-danger">@Model.CurrentMonthExpenses.ToString("C0", CultureInfo.CreateSpecificCulture(Currency.CZK.ToCultureCode()))</h2> <!-- Assuming CZK as base for expenses for now, or I should check currency -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Main Chart -->
+        <div class="col-lg-8">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h5 class="card-title mb-0">Net Worth Trend (Last 6 Months)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="dashboardChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-transparent border-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Recent Activity</h5>
+                    <a asp-page="/Expenses/Index" class="btn btn-sm btn-outline-secondary">View All</a>
+                </div>
+                <div class="list-group list-group-flush">
+                    @if (Model.RecentTransactions.Any())
+                    {
+                        @foreach (var transaction in Model.RecentTransactions)
+                        {
+                            <div class="list-group-item bg-transparent px-3 py-3">
+                                <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                                    <h6 class="mb-0 text-truncate" style="max-width: 150px;" title="@transaction.Name">@transaction.Name</h6>
+                                    <span class="@(transaction.Type == "Income" ? "text-success" : "text-danger") fw-bold">
+                                        @(transaction.Type == "Income" ? "+" : "-")@transaction.Amount.ToString("N0", CultureInfo.CreateSpecificCulture(transaction.Currency.ToCultureCode()))
+                                    </span>
+                                </div>
+                                <div class="d-flex w-100 justify-content-between">
+                                    <small class="text-muted">@transaction.Category</small>
+                                    <small class="text-muted">@transaction.Date.ToString("MMM dd")</small>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="list-group-item bg-transparent text-center text-muted py-4">
+                            No recent transactions found.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div class="row mt-5">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Investment Portfolio</h5>
-                <p class="card-text">View and manage your investments.</p>
-                <a asp-page="/Investments/List" class="btn btn-primary">Go to Investments</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Expense Tracking</h5>
-                <p class="card-text">Track your monthly incomes and expenses.</p>
-                <a asp-page="/Expenses/Index" class="btn btn-primary">Go to Expenses</a>
-            </div>
-        </div>
-    </div>
-</div>
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('dashboardChart').getContext('2d');
+            const chartData = @Html.Raw(Model.NetWorthHistoryJson);
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: 'Total Net Worth',
+                        data: chartData.data,
+                        borderColor: '#375a7f', // Primary color
+                        backgroundColor: 'rgba(55, 90, 127, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: 'CZK', maximumSignificantDigits: 3 }).format(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false,
+                                drawBorder: false
+                            },
+                            ticks: {
+                                maxTicksLimit: 6
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    return new Intl.NumberFormat('en-US', { notation: "compact", compactDisplay: "short" }).format(value);
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        });
+    </script>
+}
+

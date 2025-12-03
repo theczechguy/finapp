@@ -1,58 +1,47 @@
-@{
-    var path = ViewContext.HttpContext.Request.Path;
-    var isExpensesSection = path.StartsWithSegments("/Expenses");
-    var isInvestmentsSection = path.StartsWithSegments("/Investments") ||
-                              path.StartsWithSegments("/Values") ||
-                              path.StartsWithSegments("/Portfolio");
-}
+<ul class="navbar-nav me-auto">
+    <li class="nav-item">
+        <a class="nav-link" asp-area="" asp-page="/Index">Dashboard</a>
+    </li>
+    
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="wealthDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Wealth
+        </a>
+        <ul class="dropdown-menu" aria-labelledby="wealthDropdown">
+            <li><a class="dropdown-item" asp-area="" asp-page="/Portfolio/Index">Portfolio Overview</a></li>
+            <li><a class="dropdown-item" asp-area="" asp-page="/Investments/List">Investments List</a></li>
+            <li><a class="dropdown-item" asp-area="" asp-page="/Values/Index">Value History</a></li>
+        </ul>
+    </li>
 
-<ul class="navbar-nav flex-grow-1">
-    @if (isExpensesSection)
-    {
-        <li class="nav-item">
-            <a class="nav-link" asp-area="" asp-page="/Expenses/Index">Expense Dashboard</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" asp-area="" asp-page="/Expenses/Analysis">Expense Analysis</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" asp-area="" asp-page="/Expenses/Regular">Recurring Expenses</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" asp-area="" asp-page="/Expenses/FamilyMembers">Family Members</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" asp-area="" asp-page="/Expenses/ExpenseCategories">Expense Categories</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" asp-area="" asp-page="/Expenses/IncomeSources">Income Sources</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" asp-area="" asp-page="/Expenses/Budgets">Budget Management</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" asp-area="" asp-page="/Expenses/FinancialScheduleConfig">Schedule Settings</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" asp-area="" asp-page="/Expenses/ImportProfiles/Index">Import Profiles</a>
-        </li>
-    }
-    else if (isInvestmentsSection)
-    {
-        <li class="nav-item">
-            <a class="nav-link" asp-area="" asp-page="/Portfolio/Index">Portfolio</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" asp-area="" asp-page="/Investments/List">Investments</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" asp-area="" asp-page="/Values/Index">Values</a>
-        </li>
-    }
-    else
-    {
-        <li class="nav-item">
-            <a class="nav-link" asp-area="" asp-page="/Index">Home</a>
-        </li>
-    }
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="spendingDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Spending
+        </a>
+        <ul class="dropdown-menu" aria-labelledby="spendingDropdown">
+            <li><a class="dropdown-item" asp-area="" asp-page="/Expenses/Index">Expense Dashboard</a></li>
+            <li><a class="dropdown-item" asp-area="" asp-page="/Expenses/Analysis">Analysis & Trends</a></li>
+            <li><a class="dropdown-item" asp-area="" asp-page="/Expenses/Regular">Recurring Expenses</a></li>
+            <li><a class="dropdown-item" asp-area="" asp-page="/Expenses/Budgets">Budgets</a></li>
+        </ul>
+    </li>
+</ul>
+
+<ul class="navbar-nav ms-auto">
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="settingsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-gear-fill"></i> Settings
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="settingsDropdown">
+            <li><h6 class="dropdown-header">General</h6></li>
+            <li><a class="dropdown-item" asp-area="" asp-page="/Expenses/FamilyMembers">Family Members</a></li>
+            <li><a class="dropdown-item" asp-area="" asp-page="/Expenses/ImportProfiles/Index">Import Profiles</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><h6 class="dropdown-header">Configuration</h6></li>
+            <li><a class="dropdown-item" asp-area="" asp-page="/Expenses/ExpenseCategories">Expense Categories</a></li>
+            <li><a class="dropdown-item" asp-area="" asp-page="/Expenses/UserAccounts">My Accounts</a></li>
+            <li><a class="dropdown-item" asp-area="" asp-page="/Expenses/IncomeSources">Income Sources</a></li>
+            <li><a class="dropdown-item" asp-area="" asp-page="/Expenses/FinancialScheduleConfig">Schedule Settings</a></li>
+        </ul>
+    </li>
 </ul>

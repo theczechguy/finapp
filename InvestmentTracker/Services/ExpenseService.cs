@@ -109,14 +109,33 @@ namespace InvestmentTracker.Services
                 // Calculate totals
                 var calculationStopwatch = Stopwatch.StartNew();
                 var totalIncome = incomeViewModels.Sum(i => i.ActualAmount) + oneTimeIncomes.Sum(oti => oti.Amount);
-                var totalRegularExpenses = expenseAmounts.Values.Sum();
-                var totalIrregularExpenses = irregularExpenses.Sum(e => e.Amount);
+                
+                // Calculate transfers separately
+                var regularTransfers = applicableRegularExpenses
+                    .Where(e => e.Category?.IsInternalTransfer == true)
+                    .Sum(e => expenseAmounts.ContainsKey(e.Id) ? expenseAmounts[e.Id] : 0);
+                    
+                var irregularTransfers = irregularExpenses
+                    .Where(e => e.Category?.IsInternalTransfer == true)
+                    .Sum(e => e.Amount);
+                    
+                var totalTransfers = regularTransfers + irregularTransfers;
+
+                // Calculate expenses excluding transfers
+                var totalRegularExpenses = applicableRegularExpenses
+                    .Where(e => e.Category?.IsInternalTransfer != true)
+                    .Sum(e => expenseAmounts.ContainsKey(e.Id) ? expenseAmounts[e.Id] : 0);
+
+                var totalIrregularExpenses = irregularExpenses
+                    .Where(e => e.Category?.IsInternalTransfer != true)
+                    .Sum(e => e.Amount);
+
                 var totalExpenses = totalRegularExpenses + totalIrregularExpenses;
                 
-                _logger.LogDebug("Calculated totals - Income: {TotalIncome}, Regular Expenses: {TotalRegular}, Irregular Expenses: {TotalIrregular}, Total Expenses: {TotalExpenses}", 
-                    totalIncome, totalRegularExpenses, totalIrregularExpenses, totalExpenses);
+                _logger.LogDebug("Calculated totals - Income: {TotalIncome}, Regular Expenses: {TotalRegular}, Irregular Expenses: {TotalIrregular}, Total Expenses: {TotalExpenses}, Transfers: {TotalTransfers}", 
+                    totalIncome, totalRegularExpenses, totalIrregularExpenses, totalExpenses, totalTransfers);
 
-                // Build category breakdown efficiently
+                // Build category breakdown efficiently (excluding transfers)
                 var expensesByCategory = BuildCategoryBreakdown(applicableRegularExpenses, expenseAmounts, irregularExpenses);
                 _logger.LogDebug("Built category breakdown for {CategoryCount} categories", expensesByCategory.Count);
 
@@ -132,6 +151,7 @@ namespace InvestmentTracker.Services
                     SelectedDate = new DateTime(year, month, 1),
                     TotalIncome = totalIncome,
                     TotalExpenses = totalExpenses,
+                    TotalTransfers = totalTransfers,
                     Incomes = incomeViewModels.ToList(),
                     OneTimeIncomes = oneTimeIncomes.ToList(),
                     RegularExpenses = applicableRegularExpenses,
@@ -432,7 +452,7 @@ namespace InvestmentTracker.Services
         {
             var expensesByCategory = new Dictionary<string, decimal>();
             
-            foreach (var expense in applicableRegularExpenses.Where(e => e.Category != null))
+            foreach (var expense in applicableRegularExpenses.Where(e => e.Category != null && !e.Category.IsInternalTransfer))
             {
                 if (expenseAmounts.TryGetValue(expense.Id, out var amount))
                 {
@@ -441,7 +461,7 @@ namespace InvestmentTracker.Services
                 }
             }
             
-            foreach (var expense in irregularExpenses.Where(e => e.Category != null))
+            foreach (var expense in irregularExpenses.Where(e => e.Category != null && !e.Category.IsInternalTransfer))
             {
                 expensesByCategory.TryGetValue(expense.Category!.Name, out var currentTotal);
                 expensesByCategory[expense.Category.Name] = currentTotal + expense.Amount;
@@ -1631,7 +1651,7 @@ namespace InvestmentTracker.Services
                     
                 var analysis = await _context.IrregularExpenses
                     .AsNoTracking()
-                    .Where(e => e.Date >= startDate && e.Date <= endDate)
+                    .Where(e => e.Date >= startDate && e.Date <= endDate && (e.Category == null || !e.Category.IsInternalTransfer))
                     .GroupBy(e => e.Category)
                     .Select(g => new IrregularExpenseCategoryAnalysis
                     {
@@ -1663,6 +1683,7 @@ namespace InvestmentTracker.Services
                     .AsNoTracking()
                     .Include(e => e.Category)
                     .Include(e => e.Schedules)
+                    .Where(e => e.Category == null || !e.Category.IsInternalTransfer)
                     .ToListAsync();
 
                 var categoryTotals = new Dictionary<string, decimal>();
@@ -1744,10 +1765,10 @@ namespace InvestmentTracker.Services
                         periodLabel = $"{periodStart:MMM yyyy}";
                     }
 
-                    // Get irregular expenses for this period
+                    // Get irregular expenses for this period (excluding internal transfers)
                     var irregularExpenses = await _context.IrregularExpenses
                         .AsNoTracking()
-                        .Where(e => e.Date >= periodStart && e.Date <= periodEnd)
+                        .Where(e => e.Date >= periodStart && e.Date <= periodEnd && (e.Category == null || !e.Category.IsInternalTransfer))
                         .SumAsync(e => (decimal?)e.Amount) ?? 0;
 
                     // Calculate regular expenses for this period
@@ -1780,6 +1801,8 @@ namespace InvestmentTracker.Services
             var allRegularExpenses = await _context.RegularExpenses
                 .AsNoTracking()
                 .Include(e => e.Schedules)
+                .Include(e => e.Category)
+                .Where(e => e.Category == null || !e.Category.IsInternalTransfer)
                 .ToListAsync();
 
             decimal total = 0;
@@ -1945,6 +1968,22 @@ namespace InvestmentTracker.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to calculate financial month dates for {Year}/{Month}", year, month);
+                throw;
+            }
+        }
+
+        public async Task<List<UserAccount>> GetUserAccountsAsync()
+        {
+            try
+            {
+                _logger.LogDebug("Retrieving all user accounts");
+                var accounts = await _context.UserAccounts.AsNoTracking().ToListAsync();
+                _logger.LogDebug("Retrieved {Count} user accounts", accounts.Count);
+                return accounts;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve user accounts");
                 throw;
             }
         }

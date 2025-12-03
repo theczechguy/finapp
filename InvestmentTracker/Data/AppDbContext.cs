@@ -23,6 +23,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<FinancialMonthOverride> FinancialMonthOverrides => Set<FinancialMonthOverride>();
     public DbSet<InvestmentProvider> InvestmentProviders => Set<InvestmentProvider>();
     public DbSet<ImportProfile> ImportProfiles => Set<ImportProfile>();
+    public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -148,6 +149,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<FinancialMonthOverride>()
             .HasIndex(fmo => new { fmo.TargetMonth, fmo.UserId })
+            .IsUnique();
+
+        modelBuilder.Entity<UserAccount>()
+            .HasIndex(u => u.AccountNumber)
             .IsUnique();
 
         base.OnModelCreating(modelBuilder);

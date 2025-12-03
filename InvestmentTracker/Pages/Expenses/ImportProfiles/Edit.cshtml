@@ -12,59 +12,228 @@
         </a>
     </div>
 
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <div class="card">
-                <div class="card-body">
-                    <form method="post">
-                        <input type="hidden" asp-for="Entity.Id" />
-                        
+    <form method="post">
+        @if (!ModelState.IsValid)
+        {
+            <div class="alert alert-danger mb-4" role="alert">
+                <h4 class="alert-heading">Please correct the following errors:</h4>
+                <div asp-validation-summary="All" class="mb-0"></div>
+            </div>
+        }
+        <input type="hidden" asp-for="Profile.Id" />
+
+        <div class="row">
+            <!-- Left Column: General & Parser -->
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-header bg-light fw-bold">General Settings</div>
+                    <div class="card-body">
                         <div class="mb-3">
-                            <label asp-for="Entity.Name" class="form-label">Profile Name</label>
-                            <input asp-for="Entity.Name" class="form-control" placeholder="e.g. AirBank" />
-                            <span asp-validation-for="Entity.Name" class="text-danger"></span>
+                            <label asp-for="Profile.Name" class="form-label"></label>
+                            <input asp-for="Profile.Name" class="form-control" placeholder="e.g. AirBank" />
+                            <span asp-validation-for="Profile.Name" class="text-danger"></span>
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="Entity.Description" class="form-label">Description</label>
-                            <textarea asp-for="Entity.Description" class="form-control" rows="2" placeholder="Optional description"></textarea>
-                            <span asp-validation-for="Entity.Description" class="text-danger"></span>
+                            <label asp-for="Profile.Description" class="form-label"></label>
+                            <textarea asp-for="Profile.Description" class="form-control" rows="2"></textarea>
+                            <span asp-validation-for="Profile.Description" class="text-danger"></span>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="mb-3">
-                            <label asp-for="ProfileJson" class="form-label">Configuration (JSON)</label>
-                            <div class="form-text mb-2">
-                                Define the parser settings, columns, and field mappings.
+                <div class="card mb-4">
+                    <div class="card-header bg-light fw-bold">CSV Parser Configuration</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label asp-for="Profile.Delimiter" class="form-label"></label>
+                                <select asp-for="Profile.Delimiter" asp-items="Model.DelimiterOptions" class="form-select"></select>
+                                <span asp-validation-for="Profile.Delimiter" class="text-danger"></span>
                             </div>
-                            <textarea asp-for="ProfileJson" class="form-control font-monospace" rows="20" spellcheck="false"></textarea>
-                            <span asp-validation-for="ProfileJson" class="text-danger"></span>
+                            <div class="col-md-6">
+                                <label asp-for="Profile.DecimalSeparator" class="form-label"></label>
+                                <select asp-for="Profile.DecimalSeparator" asp-items="Model.DecimalSeparatorOptions" class="form-select"></select>
+                                <span asp-validation-for="Profile.DecimalSeparator" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Profile.DateFormat" class="form-label"></label>
+                                <input asp-for="Profile.DateFormat" class="form-control" placeholder="dd.MM.yyyy" />
+                                <span asp-validation-for="Profile.DateFormat" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Profile.Encoding" class="form-label"></label>
+                                <select asp-for="Profile.Encoding" asp-items="Model.EncodingOptions" class="form-select"></select>
+                                <span asp-validation-for="Profile.Encoding" class="text-danger"></span>
+                            </div>
+                            <div class="col-12">
+                                <label asp-for="Profile.SkipRows" class="form-label"></label>
+                                <input asp-for="Profile.SkipRows" class="form-control" type="number" min="0" />
+                                <span asp-validation-for="Profile.SkipRows" class="text-danger"></span>
+                                <div class="form-text">Number of rows to skip before the header row.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Mappings -->
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header bg-light fw-bold">Field Mappings</div>
+                    <div class="card-body">
+                        <div class="alert alert-info py-2 mb-4">
+                            <i class="bi bi-info-circle me-2"></i>
+                            For fields with multiple possible column names (e.g. different bank export versions), enter them as a <strong>comma-separated list</strong>. The importer will use the first one found in the CSV.
                         </div>
 
-                        <div class="d-flex justify-content-between pt-3 border-top">
-                            @if (!Model.IsNew)
-                            {
-                                <button type="submit" asp-page-handler="Delete" asp-route-id="@Model.Entity.Id" 
-                                        class="btn btn-outline-danger" 
-                                        onclick="return confirm('Are you sure you want to delete this profile?');">
-                                    <i class="bi bi-trash"></i> Delete Profile
-                                </button>
-                            }
-                            else
-                            {
-                                <div></div>
-                            }
+                        <div class="row g-3">
+                            <!-- Date -->
+                            <div class="col-12">
+                                <div class="p-3 border rounded bg-opacity-10 bg-secondary">
+                                    <label asp-for="Profile.DateHeaders" class="form-label fw-bold">Transaction Date</label>
+                                    <div class="form-text mb-2">Column containing the date of transaction.</div>
+                                    <input asp-for="Profile.DateHeaders" class="form-control" placeholder="Datum, Date, Transaction Date" />
+                                    <span asp-validation-for="Profile.DateHeaders" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <!-- Amount -->
+                            <div class="col-12">
+                                <div class="p-3 border rounded bg-opacity-10 bg-secondary">
+                                    <label asp-for="Profile.AmountHeaders" class="form-label fw-bold">Amount</label>
+                                    <div class="form-text mb-2">Column containing the transaction amount.</div>
+                                    <input asp-for="Profile.AmountHeaders" class="form-control" placeholder="Částka, Amount" />
+                                    
+                                    <div class="mt-3 pt-3 border-top">
+                                        <label asp-for="Profile.AmountTransform" class="form-label small text-muted text-uppercase fw-bold">Advanced Options</label>
+                                        <div class="row g-2">
+                                            <div class="col-md-6">
+                                                <label asp-for="Profile.AmountTransform" class="form-label small">Transformation</label>
+                                                <select asp-for="Profile.AmountTransform" asp-items="Model.AmountTransformOptions" class="form-select form-select-sm" id="amountTransformSelect"></select>
+                                            </div>
+                                            <div class="col-md-6 collapse" id="directionHeaderGroup">
+                                                <label asp-for="Profile.DirectionHeader" class="form-label small">Direction Column Header</label>
+                                                <input asp-for="Profile.DirectionHeader" class="form-control form-control-sm" placeholder="e.g. Směr úhrady" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Currency -->
+                            <div class="col-12">
+                                <div class="p-3 border rounded bg-opacity-10 bg-secondary">
+                                    <label class="form-label fw-bold">Currency</label>
+                                    <div class="form-text mb-2">Column containing the currency code (e.g. CZK, EUR).</div>
+                                    <input asp-for="Profile.CurrencyHeaders" class="form-control" placeholder="Měna, Currency" />
+                                    
+                                    <div class="mt-3 pt-3 border-top">
+                                        <label class="form-label small text-muted text-uppercase fw-bold">Advanced Options</label>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <label asp-for="Profile.CurrencyDefault" class="form-label small">Default Value (Fallback)</label>
+                                                <input asp-for="Profile.CurrencyDefault" class="form-control form-control-sm" placeholder="e.g. CZK" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Name / Counterparty -->
+                            <div class="col-12">
+                                <div class="p-3 border rounded bg-opacity-10 bg-secondary">
+                                    <label class="form-label fw-bold">Counterparty / Name</label>
+                                    <div class="form-text mb-2">Column containing the name of the counterparty or transaction description.</div>
+                                    <input asp-for="Profile.NameHeaders" class="form-control" placeholder="Název, Name, Counterparty" />
+                                    
+                                    <div class="mt-3 pt-3 border-top">
+                                        <label class="form-label small text-muted text-uppercase fw-bold">Advanced Options</label>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <label asp-for="Profile.NameFallback" class="form-label small">Fallback Name</label>
+                                                <input asp-for="Profile.NameFallback" class="form-control form-control-sm" placeholder="Imported Transaction" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Memo -->
+                            <div class="col-12">
+                                <div class="p-3 border rounded bg-opacity-10 bg-secondary">
+                                    <label asp-for="Profile.MemoHeaders" class="form-label fw-bold">Memo / Note</label>
+                                    <div class="form-text mb-2">Column containing additional notes or user memo.</div>
+                                    <input asp-for="Profile.MemoHeaders" class="form-control" placeholder="Poznámka, Memo, Note" />
+                                </div>
+                            </div>
                             
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save"></i> Save Profile
-                            </button>
+                            <!-- Counterparty Account -->
+                            <div class="col-12">
+                                <div class="p-3 border rounded bg-opacity-10 bg-secondary">
+                                    <label asp-for="Profile.CounterpartyAccountHeaders" class="form-label fw-bold">Counterparty Account</label>
+                                    <div class="form-text mb-2">Column containing the counterparty account number.</div>
+                                    <input asp-for="Profile.CounterpartyAccountHeaders" class="form-control" placeholder="Číslo účtu, Account Number" />
+                                </div>
+                            </div>
+
+                            <!-- Expense Type -->
+                            <div class="col-12">
+                                <div class="p-3 border rounded bg-opacity-10 bg-secondary">
+                                    <label asp-for="Profile.ExpenseTypeDefault" class="form-label fw-bold">Default Expense Type</label>
+                                    <div class="form-text mb-2">Default classification for imported expenses.</div>
+                                    <select asp-for="Profile.ExpenseTypeDefault" class="form-select">
+                                        <option value="Family">Family</option>
+                                        <option value="Individual">Individual</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+
+        <div class="d-flex justify-content-between pt-3 border-top mb-5">
+            @if (!Model.IsNew)
+            {
+                <button type="submit" asp-page-handler="Delete" asp-route-id="@Model.Profile.Id" 
+                        class="btn btn-outline-danger" 
+                        onclick="return confirm('Are you sure you want to delete this profile?');">
+                    <i class="bi bi-trash"></i> Delete Profile
+                </button>
+            }
+            else
+            {
+                <div></div>
+            }
+            
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-save"></i> Save Profile
+            </button>
+        </div>
+    </form>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const transformSelect = document.getElementById('amountTransformSelect');
+            const directionGroup = document.getElementById('directionHeaderGroup');
+            
+            if (transformSelect && directionGroup) {
+                function toggleDirection() {
+                    if (transformSelect.value === 'directionSignedAmount') {
+                        directionGroup.classList.add('show');
+                    } else {
+                        directionGroup.classList.remove('show');
+                    }
+                }
+
+                transformSelect.addEventListener('change', toggleDirection);
+                toggleDirection(); // Initial state
+            }
+        });
+    </script>
 }

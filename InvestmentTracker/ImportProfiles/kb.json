@@ -1,0 +1,64 @@
+{
+  "Id": "kb",
+  "Version": 2,
+  "Metadata": {
+    "DisplayName": "Komerční banka",
+    "Description": "Standard CSV export from KB internet banking",
+    "SampleFile": "tests/Vypis_1234840660237_20251001_20251112.csv"
+  },
+  "Parser": {
+    "Encoding": "windows-1250",
+    "Delimiter": ";",
+    "Quote": "\"",
+    "DecimalSeparator": ",",
+    "DateFormat": "dd.MM.yyyy",
+    "DefaultSkipRows": 14,
+    "TrimEmptyPreamble": true
+  },
+  "ExpenseFieldMappings": [
+    {
+      "Field": "name",
+      "SourceHeaders": [
+        "Nazev protiuctu",
+        "Protistrana"
+      ],
+      "Fallback": "Imported transaction"
+    },
+    {
+      "Field": "amount",
+      "SourceHeaders": [
+        "Castka"
+      ],
+      "Transform": "signedAmount"
+    },
+    {
+      "Field": "currency",
+      "SourceHeaders": [
+        "Mena"
+      ]
+    },
+    {
+      "Field": "date",
+      "SourceHeaders": [
+        "Datum zauctovani"
+      ]
+    },
+    {
+      "Field": "expenseType",
+      "Fallback": "Family"
+    },
+    {
+      "Field": "memo",
+      "SourceHeaders": [
+        "Popis pro me",
+        "Zprava pro prijemce"
+      ]
+    },
+    {
+      "Field": "counterpartyAccount",
+      "SourceHeaders": [
+        "Protistrana"
+      ]
+    }
+  ]
+}

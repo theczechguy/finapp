@@ -31,10 +31,26 @@ namespace InvestmentTracker.Pages.Expenses
         public DateTime? SelectedDate { get; set; }
 
         public MonthlyExpenseViewModel ViewModel { get; set; } = new();
+        public List<UnifiedExpenseViewModel> UnifiedExpenses { get; set; } = new();
         public string PrefilledOverrideDate { get; private set; } = "";
         public IReadOnlyList<BankImportProfileSummary> BankProfiles { get; private set; } = Array.Empty<BankImportProfileSummary>();
         public IReadOnlyList<BankImportProfile> BankProfilesDetailed { get; private set; } = Array.Empty<BankImportProfile>();
         public IReadOnlyList<FamilyMember> FamilyMembers { get; private set; } = Array.Empty<FamilyMember>();
+        public IReadOnlyList<UserAccount> UserAccounts { get; private set; } = Array.Empty<UserAccount>();
+
+        public class UnifiedExpenseViewModel
+        {
+            public int Id { get; set; }
+            public string Name { get; set; } = string.Empty;
+            public string CategoryName { get; set; } = string.Empty;
+            public decimal Amount { get; set; }
+            public Currency Currency { get; set; }
+            public DateTime Date { get; set; }
+            public string Type { get; set; } = "One-Time"; // "Regular" or "One-Time"
+            public bool IsFamily { get; set; }
+            public string? FamilyMemberName { get; set; }
+            public string Frequency { get; set; } = ""; // For regular expenses
+        }
 
         public class ImportExpensesRequest
         {
@@ -87,6 +103,44 @@ namespace InvestmentTracker.Pages.Expenses
             await _expenseService.SeedDefaultCategoriesAsync();
 
             ViewModel = await _expenseService.GetMonthlyDataAsync(selectedYear, selectedMonth);
+
+            // Populate UnifiedExpenses
+            UnifiedExpenses = new List<UnifiedExpenseViewModel>();
+
+            foreach (var expense in ViewModel.RegularExpenses)
+            {
+                UnifiedExpenses.Add(new UnifiedExpenseViewModel
+                {
+                    Id = expense.Id,
+                    Name = expense.Name,
+                    CategoryName = expense.Category?.Name ?? "Uncategorized",
+                    Amount = expense.DisplayAmount ?? expense.Amount,
+                    Currency = expense.Currency,
+                    Date = ViewModel.FinancialMonthStartDate, // Default to start of period for regular expenses
+                    Type = "Regular",
+                    IsFamily = expense.ExpenseType == ExpenseType.Family,
+                    FamilyMemberName = expense.FamilyMember?.Name,
+                    Frequency = expense.FrequencyDisplay
+                });
+            }
+
+            foreach (var expense in ViewModel.IrregularExpenses)
+            {
+                UnifiedExpenses.Add(new UnifiedExpenseViewModel
+                {
+                    Id = expense.Id,
+                    Name = expense.Name,
+                    CategoryName = expense.Category?.Name ?? "Uncategorized",
+                    Amount = expense.Amount,
+                    Currency = expense.Currency,
+                    Date = expense.Date,
+                    Type = "One-Time",
+                    IsFamily = expense.ExpenseType == ExpenseType.Family,
+                    FamilyMemberName = expense.FamilyMember?.Name
+                });
+            }
+
+            UnifiedExpenses = UnifiedExpenses.OrderByDescending(e => e.Date).ThenBy(e => e.Name).ToList();
             
             // Set the prefilled override date for the modal
             PrefilledOverrideDate = (await GetPrefilledOverrideDateAsync(selectedDate)).ToString("yyyy-MM-dd");
@@ -103,6 +157,8 @@ namespace InvestmentTracker.Pages.Expenses
                 .Where(member => member.IsActive)
                 .OrderBy(member => member.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
+
+            UserAccounts = await _expenseService.GetUserAccountsAsync();
         }
 
 

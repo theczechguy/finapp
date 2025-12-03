@@ -1,0 +1,65 @@
+{
+  "Id": "airbank",
+  "Version": 2,
+  "Metadata": {
+    "DisplayName": "Air Bank",
+    "Description": "CSV export from Air Bank internet banking",
+    "SampleFile": "tests/airbank_1690631014_2025-11-13_10-22.csv"
+  },
+  "Parser": {
+    "Encoding": "windows-1250",
+    "Delimiter": ";",
+    "Quote": "\"",
+    "DecimalSeparator": ",",
+    "DateFormat": "dd/MM/yyyy",
+    "DefaultSkipRows": 0,
+    "TrimEmptyPreamble": true
+  },
+  "ExpenseFieldMappings": [
+    {
+      "Field": "name",
+      "SourceHeaders": [
+        "Název protistrany"
+      ],
+      "Fallback": "Imported transaction"
+    },
+    {
+      "Field": "amount",
+      "SourceHeaders": [
+        "Částka v měně účtu"
+      ],
+      "Transform": "directionSignedAmount",
+      "TransformSettings": {
+        "directionHeader": "Směr úhrady"
+      }
+    },
+    {
+      "Field": "currency",
+      "SourceHeaders": [
+        "Měna účtu"
+      ]
+    },
+    {
+      "Field": "date",
+      "SourceHeaders": [
+        "Datum provedení"
+      ]
+    },
+    {
+      "Field": "expenseType",
+      "Fallback": "Family"
+    },
+    {
+      "Field": "memo",
+      "SourceHeaders": [
+        "Poznámka pro mne"
+      ]
+    },
+    {
+      "Field": "counterpartyAccount",
+      "SourceHeaders": [
+        "Číslo účtu protistrany"
+      ]
+    }
+  ]
+}

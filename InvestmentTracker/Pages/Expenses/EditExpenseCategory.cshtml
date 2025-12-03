@@ -19,6 +19,11 @@
                         <input asp-for="Category.Name" class="form-control" />
                         <span asp-validation-for="Category.Name" class="text-danger"></span>
                     </div>
+                    <div class="mb-3 form-check">
+                        <input asp-for="Category.IsInternalTransfer" class="form-check-input" />
+                        <label asp-for="Category.IsInternalTransfer" class="form-check-label">Is Internal Transfer</label>
+                        <div class="form-text">Expenses in this category will be excluded from spending totals.</div>
+                    </div>
                     <button type="submit" class="btn btn-primary" title="Update Category" aria-label="Update Category">
                         <i class="bi bi-save"></i>
                         <span class="d-none d-sm-inline ms-1">Update Category</span>

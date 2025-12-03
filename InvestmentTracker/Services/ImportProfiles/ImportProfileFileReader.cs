@@ -73,18 +73,10 @@ namespace InvestmentTracker.Services.ImportProfiles
         {
             profile.Metadata ??= new BankImportProfileMetadata();
             profile.Parser ??= new BankImportProfileParser();
-            profile.Columns ??= new List<BankImportProfileColumn>();
             profile.ExpenseFieldMappings ??= new List<ExpenseFieldMapping>();
 
             profile.Metadata.DisplayName = profile.Metadata.DisplayName?.Trim() ?? profile.Id;
             profile.Metadata.Description = profile.Metadata.Description?.Trim() ?? string.Empty;
-
-            foreach (var column in profile.Columns)
-            {
-                column.Header = column.Header?.Trim() ?? string.Empty;
-                column.Target = column.Target?.Trim() ?? string.Empty;
-                column.Transform = column.Transform?.Trim();
-            }
 
             foreach (var mapping in profile.ExpenseFieldMappings)
             {

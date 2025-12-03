@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace InvestmentTracker.Models.ImportProfiles
 {
@@ -8,7 +9,6 @@ namespace InvestmentTracker.Models.ImportProfiles
         public int Version { get; set; }
         public BankImportProfileMetadata Metadata { get; set; } = new();
         public BankImportProfileParser Parser { get; set; } = new();
-        public List<BankImportProfileColumn> Columns { get; set; } = new();
         public List<ExpenseFieldMapping> ExpenseFieldMappings { get; set; } = new();
 
         public BankImportProfileSummary ToSummary()
@@ -63,13 +63,6 @@ namespace InvestmentTracker.Models.ImportProfiles
         public bool TrimEmptyPreamble { get; set; } = true;
     }
 
-    public class BankImportProfileColumn
-    {
-        public string Header { get; set; } = string.Empty;
-        public string Target { get; set; } = string.Empty;
-        public string? Transform { get; set; }
-    }
-
     public class ExpenseFieldMapping
     {
         public string Field { get; set; } = string.Empty;
@@ -77,5 +70,7 @@ namespace InvestmentTracker.Models.ImportProfiles
         public List<string> SourceHeaders { get; set; } = new();
         public string? Target { get; set; }
         public string? Fallback { get; set; }
+        public string? Transform { get; set; }
+        public Dictionary<string, string> TransformSettings { get; set; } = new();
     }
 }

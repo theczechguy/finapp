@@ -140,7 +140,7 @@
 </div>
 
 <div class="row mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card text-center">
             <div class="card-body">
                 <h5 class="card-title text-success">@Model.ViewModel.TotalIncome.ToString("C", new System.Globalization.CultureInfo("cs-CZ"))</h5>
@@ -148,7 +148,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card text-center">
             <div class="card-body">
                 <h5 class="card-title text-danger">@Model.ViewModel.TotalExpenses.ToString("C", new System.Globalization.CultureInfo("cs-CZ"))</h5>
@@ -156,13 +156,94 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-info">@Model.ViewModel.TotalTransfers.ToString("C", new System.Globalization.CultureInfo("cs-CZ"))</h5>
+                <p class="card-text">Internal Transfers</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
         <div class="card text-center">
             <div class="card-body">
                 <h5 class="card-title @(Model.ViewModel.NetBalance >= 0 ? "text-primary" : "text-warning")">@Model.ViewModel.NetBalance.ToString("C", new System.Globalization.CultureInfo("cs-CZ"))</h5>
                 <p class="card-text">Net Balance</p>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Budgets Card -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#budgetsCollapse" aria-expanded="false" aria-controls="budgetsCollapse" id="budgetsToggleBtn" aria-label="Toggle Budgets" title="Collapse/Expand">
+            <i class="bi bi-caret-down-fill me-1" id="budgetsChevron"></i>
+            <span class="fw-semibold">Budgets</span>
+        </button>
+        <a href="./Budgets?year=@Model.ViewModel.SelectedDate.Year&month=@Model.ViewModel.SelectedDate.Month" class="btn btn-sm btn-primary">
+            <i class="bi bi-gear"></i>
+            <span class="d-none d-sm-inline ms-2">Manage Budgets</span>
+        </a>
+    </div>
+    <div class="card-body collapse" id="budgetsCollapse">
+        @if (Model.ViewModel.Budgets.Any(b => b.BudgetAmount.HasValue))
+        {
+            <div class="table-responsive">
+                <table class="table table-striped align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Category</th>
+                            <th class="text-end">Budget</th>
+                            <th class="text-end">Spent</th>
+                            <th style="width:40%">Progress</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var b in Model.ViewModel.Budgets.Where(b => b.BudgetAmount.HasValue).OrderByDescending(x => x.BudgetAmount.HasValue).ThenBy(x => x.CategoryName))
+                    {
+                        var percent = b.BudgetAmount.HasValue && b.BudgetAmount > 0 ? Math.Min(100, Math.Round(b.Percent)) : 0;
+                        var barClass = b.Status == "Over" ? "bg-danger" : b.Status == "Near" ? "bg-warning" : "bg-primary";
+                        <tr>
+                            <td>@b.CategoryName</td>
+                            <td class="text-end">@(b.BudgetAmount!.Value.ToString("N0", new System.Globalization.CultureInfo("cs-CZ")))</td>
+                            <td class="text-end">@b.SpentAmount.ToString("N0", new System.Globalization.CultureInfo("cs-CZ"))</td>
+                            <td>
+                                <div class="progress" role="progressbar" aria-label=$"Spent {b.SpentAmount} of {b.BudgetAmount} ({percent}%)">
+                                    <div class="progress-bar @barClass" style="width:@percent%">
+                                        <span class="ms-2">@percent%</span>
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    @if (b.Percent >= 100)
+                                    {
+                                        <text>Over by @((b.SpentAmount - (b.BudgetAmount ?? 0)).ToString("N0", new System.Globalization.CultureInfo("cs-CZ")))</text>
+                                    }
+                                    else
+                                    {
+                                        <text>Remaining @(((b.BudgetAmount ?? 0) - b.SpentAmount).ToString("N0", new System.Globalization.CultureInfo("cs-CZ")))</text>
+                                    }
+                                </small>
+                            </td>
+                            <td>
+                                <span class="badge @(b.Status == "Over" ? "bg-danger" : b.Status == "Near" ? "bg-warning text-dark" : "bg-primary")">@b.Status</span>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center text-muted">
+                No budgets set for this month.
+            </div>
+        }
+    </div>
+    <div class="card-footer text-muted small">
+        Near threshold at 80%. Over at 100%. Leftover does not carry over.
     </div>
 </div>
 
@@ -286,256 +367,120 @@
     </div>
 </div>
 
-<!-- Budgets Card -->
-<div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#budgetsCollapse" aria-expanded="false" aria-controls="budgetsCollapse" id="budgetsToggleBtn" aria-label="Toggle Budgets" title="Collapse/Expand">
-            <i class="bi bi-caret-down-fill me-1" id="budgetsChevron"></i>
-            <span class="fw-semibold">Budgets</span>
-        </button>
-        <a href="./Budgets?year=@Model.ViewModel.SelectedDate.Year&month=@Model.ViewModel.SelectedDate.Month" class="btn btn-sm btn-primary">
-            <i class="bi bi-gear"></i>
-            <span class="d-none d-sm-inline ms-2">Manage Budgets</span>
-        </a>
-    </div>
-    <div class="card-body collapse" id="budgetsCollapse">
-        @if (Model.ViewModel.Budgets.Any(b => b.BudgetAmount.HasValue))
-        {
-            <div class="table-responsive">
-                <table class="table table-striped align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Category</th>
-                            <th class="text-end">Budget</th>
-                            <th class="text-end">Spent</th>
-                            <th style="width:40%">Progress</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var b in Model.ViewModel.Budgets.Where(b => b.BudgetAmount.HasValue).OrderByDescending(x => x.BudgetAmount.HasValue).ThenBy(x => x.CategoryName))
-                    {
-                        var percent = b.BudgetAmount.HasValue && b.BudgetAmount > 0 ? Math.Min(100, Math.Round(b.Percent)) : 0;
-                        var barClass = b.Status == "Over" ? "bg-danger" : b.Status == "Near" ? "bg-warning" : "bg-primary";
-                        <tr>
-                            <td>@b.CategoryName</td>
-                            <td class="text-end">@(b.BudgetAmount!.Value.ToString("N0", new System.Globalization.CultureInfo("cs-CZ")))</td>
-                            <td class="text-end">@b.SpentAmount.ToString("N0", new System.Globalization.CultureInfo("cs-CZ"))</td>
-                            <td>
-                                <div class="progress" role="progressbar" aria-label=$"Spent {b.SpentAmount} of {b.BudgetAmount} ({percent}%)">
-                                    <div class="progress-bar @barClass" style="width:@percent%">
-                                        <span class="ms-2">@percent%</span>
-                                    </div>
-                                </div>
-                                <small class="text-muted">
-                                    @if (b.Percent >= 100)
-                                    {
-                                        <text>Over by @((b.SpentAmount - (b.BudgetAmount ?? 0)).ToString("N0", new System.Globalization.CultureInfo("cs-CZ")))</text>
-                                    }
-                                    else
-                                    {
-                                        <text>Remaining @(((b.BudgetAmount ?? 0) - b.SpentAmount).ToString("N0", new System.Globalization.CultureInfo("cs-CZ")))</text>
-                                    }
-                                </small>
-                            </td>
-                            <td>
-                                <span class="badge @(b.Status == "Over" ? "bg-danger" : b.Status == "Near" ? "bg-warning text-dark" : "bg-primary")">@b.Status</span>
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-        }
-        else
-        {
-            <div class="text-center text-muted">
-                No budgets set for this month.
-            </div>
-        }
-    </div>
-    <div class="card-footer text-muted small">
-        Near threshold at 80%. Over at 100%. Leftover does not carry over.
-    </div>
-</div>
-
 <div class="row mt-4">
-    <div class="col-12 mb-3">
+    <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#regularExpensesCollapse" aria-expanded="false" aria-controls="regularExpensesCollapse" id="regularToggleBtn" aria-label="Toggle Regular Expenses" title="Collapse/Expand">
-                        <i class="bi bi-caret-down-fill me-1" id="regularChevron"></i>
-                        <span class="fw-semibold">Regular Expenses</span>
-                    </button>
-                    <small class="text-muted ms-1">
-                        @("Total: " + Model.ViewModel.RegularExpenses.Sum(e => e.Amount).ToString("C", new System.Globalization.CultureInfo("cs-CZ")))
-                    </small>
+                    <h5 class="mb-0">Transactions</h5>
+                    <div class="btn-group btn-group-sm ms-3" role="group" aria-label="Filter transactions">
+                        <button type="button" class="btn btn-primary" onclick="filterTransactions('all', this)">All</button>
+                        <button type="button" class="btn btn-secondary" onclick="filterTransactions('regular', this)">Regular</button>
+                        <button type="button" class="btn btn-secondary" onclick="filterTransactions('onetime', this)">One-Time</button>
+                    </div>
                 </div>
-                <div>
-                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addRegularExpenseModal" title="Add Expense" aria-label="Add Expense">
-                        <i class="bi bi-plus-lg"></i>
-                        <span class="d-none d-sm-inline ms-2">Add Expense <kbd>A</kbd></span>
+                <div class="d-flex gap-2">
+                     <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addRegularExpenseModal" title="Add Regular Expense">
+                        <i class="bi bi-calendar-plus"></i> Regular
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal" title="Add One-Time Expense">
+                        <i class="bi bi-plus-lg"></i> One-Time
                     </button>
                 </div>
             </div>
-            <div class="card-body collapse" id="regularExpensesCollapse">
-                <div id="regularExpensesContainer">
-                    <div class="table-responsive">
-                    <table class="table table-striped mb-0" id="regularExpensesTable">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0" id="transactionsTable">
                         <thead>
                             <tr>
-                                <th data-sort="text">Name</th>
-                                <th data-sort="text">Category</th>
-                                <th data-sort="number">Amount</th>
-                                <th data-sort="text">Schedule</th>
-                                <th data-sort="text">Type</th>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th class="text-end">Amount</th>
+                                <th class="text-center">Type</th>
                                 <th></th>
                             </tr>
                         </thead>
                         <tbody>
-                            @if (Model.ViewModel.RegularExpenses.Any())
+                            @if (Model.UnifiedExpenses.Any())
                             {
-                                @foreach (var expense in Model.ViewModel.RegularExpenses)
+                                @foreach (var expense in Model.UnifiedExpenses)
                                 {
-                                    <tr class="fade-in">
+                                    <tr class="transaction-row" data-type="@(expense.Type == "Regular" ? "regular" : "onetime")">
                                         <td>
-                                            @if (expense.IsAlternativeSchedule)
+                                            @if (expense.Type == "Regular")
                                             {
-                                                <i class="bi bi-calendar-event text-info me-1" title="@expense.FrequencyDisplay schedule - shows only in specific months" data-bs-toggle="tooltip"></i>
-                                            }
-                                            @expense.Name
-                                        </td>
-                                        <td>@(expense.Category?.Name ?? "Uncategorized")</td>
-                                        <td>@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
-                                        <td>
-                                            @if (expense.FrequencyDisplay == "Monthly")
-                                            {
-                                                <span class="badge bg-primary">Monthly</span>
+                                                <span class="text-muted" title="Regular expense (usually 1st of month)">@expense.Date.ToString("MMM")</span>
                                             }
                                             else
                                             {
-                                                <span class="badge bg-warning text-dark">@expense.FrequencyDisplay</span>
+                                                @expense.Date.ToString("dd MMM")
                                             }
                                         </td>
                                         <td>
-                                            <span class="badge bg-@(expense.ExpenseType == ExpenseType.Family ? "primary" : "secondary")">
-                                                @if (expense.ExpenseType == ExpenseType.Family)
+                                            @expense.Name
+                                            @if (expense.Type == "Regular" && !string.IsNullOrEmpty(expense.Frequency) && expense.Frequency != "Monthly")
+                                            {
+                                                 <i class="bi bi-calendar-event text-info ms-1" title="@expense.Frequency schedule" data-bs-toggle="tooltip"></i>
+                                            }
+                                        </td>
+                                        <td>@expense.CategoryName</td>
+                                        <td class="text-end">@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
+                                        <td class="text-center">
+                                            @if (expense.Type == "Regular")
+                                            {
+                                                <span class="badge bg-info text-dark" title="Regular Expense"><i class="bi bi-arrow-repeat"></i></span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary" title="One-Time Expense"><i class="bi bi-receipt"></i></span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="d-flex gap-2 justify-content-end">
+                                                @if (expense.Type == "Regular")
                                                 {
-                                                    <text>Family</text>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="editRegularExpense(@expense.Id)" title="Edit">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <form method="post" asp-page-handler="DeleteRegularExpense" asp-route-expenseId="@expense.Id" class="d-inline" data-confirm="Delete this regular expense?" data-loading="Deleting...">
+                                                        <input type="hidden" name="SelectedDate" value="@Model.ViewModel.SelectedDate.ToString("yyyy-MM-dd")" />
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
                                                 }
                                                 else
                                                 {
-                                                    @($"Individual: {expense.FamilyMember?.Name ?? "Unknown"}")
-                                                }
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex flex-wrap align-items-center gap-2">
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="editRegularExpense(@expense.Id)" title="Edit" aria-label="Edit">
-                                                    <i class="bi bi-pencil"></i>
-                                                </button>
-                                                <form method="post" asp-page-handler="DeleteRegularExpense" asp-route-expenseId="@expense.Id" class="d-inline" data-confirm="Delete this regular expense? This action cannot be undone." data-loading="Deleting expense...">
-                                                    <input type="hidden" name="SelectedDate" value="@Model.ViewModel.SelectedDate.ToString("yyyy-MM-dd")" />
-                                                    <button type="submit" class="btn btn-sm btn-danger align-middle" title="Delete" aria-label="Delete">
-                                                        <i class="bi bi-trash"></i>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="editIrregularExpense(@expense.Id)" title="Edit">
+                                                        <i class="bi bi-pencil"></i>
                                                     </button>
-                                                </form>
+                                                    <form method="post" asp-page-handler="DeleteIrregularExpense" asp-route-expenseId="@expense.Id" class="d-inline" data-confirm="Delete this one-time expense?" data-loading="Deleting...">
+                                                        <input type="hidden" name="SelectedDate" value="@Model.ViewModel.SelectedDate.ToString("yyyy-MM-dd")" />
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                }
                                             </div>
                                         </td>
                                     </tr>
                                 }
                             }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        No expenses found for this period.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
                     </table>
-                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-12">
-         <div class="card">
-             <div class="card-header d-flex justify-content-between align-items-center">
-                 <div class="d-flex align-items-center gap-2">
-                     <button class="btn btn-sm btn-link p-0 text-decoration-none text-body d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#irregularExpensesCollapse" aria-expanded="true" aria-controls="#irregularExpensesCollapse" id="irregularToggleBtn" aria-label="Toggle One-Time Expenses" title="Collapse/Expand">
-                         <i class="bi bi-caret-down-fill me-1" id="irregularChevron"></i>
-                         <span class="fw-semibold">One-Time Expenses</span>
-                     </button>
-                     <small class="text-muted ms-1">
-                         @("Total: " + Model.ViewModel.IrregularExpenses.Sum(e => e.Amount).ToString("C", new System.Globalization.CultureInfo("cs-CZ")))
-                     </small>
-                 </div>
-                 <div>
-                     <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal" title="Add One-Time Expense" aria-label="Add One-Time Expense">
-                         <i class="bi bi-plus-lg"></i>
-                         <span class="d-none d-sm-inline ms-2">Add One-Time Expense <kbd>Q</kbd></span>
-                     </button>
-                 </div>
-             </div>
-             <div class="card-body collapse show" id="irregularExpensesCollapse">
-                 <div id="irregularExpensesContainer">
-                     <div class="table-responsive">
-                     <table class="table table-striped mb-0" id="irregularExpensesTable">
-                         <thead>
-                             <tr>
-                                 <th data-sort="date">Date</th>
-                                 <th data-sort="text">Name</th>
-                                 <th data-sort="text">Category</th>
-                                 <th data-sort="number">Amount</th>
-                                 <th data-sort="text">Type</th>
-                                 <th></th>
-                             </tr>
-                         </thead>
-                         <tbody>
-                             @if (Model.ViewModel.IrregularExpenses.Any())
-                             {
-                                 @foreach (var expense in Model.ViewModel.IrregularExpenses)
-                                 {
-                                     <tr class="fade-in">
-                                         <td data-sort-value="@expense.Date.ToString("yyyy-MM-dd")">@expense.Date.ToString("dd/MM/yyyy")</td>
-                                         <td>@expense.Name</td>
-                                         <td>@(expense.Category?.Name ?? "Uncategorized")</td>
-                                         <td data-sort-value="@expense.Amount">@expense.Amount.ToString("C", new System.Globalization.CultureInfo(expense.Currency.ToCultureCode()))</td>
-                                         <td>
-                                             <span class="badge bg-@(expense.ExpenseType == ExpenseType.Family ? "primary" : "secondary")">
-                                                 @if (expense.ExpenseType == ExpenseType.Family)
-                                                 {
-                                                     <text>Family</text>
-                                                 }
-                                                 else
-                                                 {
-                                                     @($"Individual: {expense.FamilyMember?.Name ?? "Unknown"}")
-                                                 }
-                                             </span>
-                                         </td>
-                                         <td>
-                                             <div class="d-flex flex-wrap align-items-center gap-2">
-                                                 <button type="button" class="btn btn-sm btn-secondary" onclick="editIrregularExpense(@expense.Id)" title="Edit" aria-label="Edit">
-                                                     <i class="bi bi-pencil"></i>
-                                                 </button>
-                                                 <form method="post" asp-page-handler="DeleteIrregularExpense" asp-route-expenseId="@expense.Id" class="d-inline" data-confirm="Delete this one-time expense? This action cannot be undone." data-loading="Deleting expense...">
-                                                     <input type="hidden" name="SelectedDate" value="@Model.ViewModel.SelectedDate.ToString("yyyy-MM-dd")" />
-                                                     <button type="submit" class="btn btn-sm btn-danger align-middle" title="Delete" aria-label="Delete">
-                                                         <i class="bi bi-trash"></i>
-                                                     </button>
-                                                 </form>
-                                             </div>
-                                         </td>
-                                     </tr>
-                                 }
-                             }
-                             else
-                             {
-                                 <tr>
-                                     <td colspan="6" class="text-center text-muted">No one-time expenses found. <a href="#" data-bs-toggle="modal" data-bs-target="#addIrregularExpenseModal">Add your first expense</a></td>
-                                 </tr>
-                             }
-                         </tbody>
-                     </table>
-                     </div>
-                 </div>
-             </div>
-         </div>
-     </div>
 </div>
 
 <!-- Add Regular Expense Modal -->
@@ -1098,9 +1043,33 @@
 
 @section Scripts {
     <script>
+        function filterTransactions(type, btn) {
+            // Update button styles if button reference is provided
+            if (btn) {
+                const group = btn.parentElement;
+                group.querySelectorAll('.btn').forEach(b => {
+                    b.classList.remove('btn-primary');
+                    b.classList.add('btn-secondary');
+                });
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-primary');
+            }
+
+            const rows = document.querySelectorAll('.transaction-row');
+            rows.forEach(row => {
+                if (type === 'all') {
+                    row.style.display = '';
+                } else {
+                    row.style.display = row.dataset.type === type ? '' : 'none';
+                }
+            });
+        }
+    </script>
+    <script>
     window.bankImportProfiles = @Html.Raw(JsonSerializer.Serialize(Model.BankProfilesDetailed, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
     window.familyMembers = @Html.Raw(JsonSerializer.Serialize(Model.FamilyMembers ?? Array.Empty<FamilyMember>(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
     window.expenseCategories = @Html.Raw(JsonSerializer.Serialize(allExpenseCategories, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+    window.userAccounts = @Html.Raw(JsonSerializer.Serialize(Model.UserAccounts ?? Array.Empty<UserAccount>(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
     </script>
     <!-- Native month input provides best mobile experience -->
     <script>
@@ -1133,9 +1102,15 @@
             const bankProfiles = Array.isArray(window.bankImportProfiles) ? window.bankImportProfiles : [];
             const familyMembers = Array.isArray(window.familyMembers) ? window.familyMembers : [];
             const rawExpenseCategories = Array.isArray(window.expenseCategories) ? window.expenseCategories : [];
+            const userAccounts = Array.isArray(window.userAccounts) ? window.userAccounts : [];
             const activeFamilyMembers = familyMembers.filter(member => member && (member.isActive ?? true));
             const expenseCategoryMapById = new Map();
             const expenseCategoryNameLookup = new Map();
+
+            // Prioritize category named "Internal Transfer" or "Transfer", otherwise take the first one marked as internal
+            const internalTransferCategory = rawExpenseCategories.find(c => c.isInternalTransfer && (c.name === 'Internal Transfer' || c.name === 'Transfer')) 
+                                          || rawExpenseCategories.find(c => c.isInternalTransfer);
+            const internalTransferCategoryId = internalTransferCategory ? Number(internalTransferCategory.id) : null;
 
             rawExpenseCategories.forEach(category => {
                 if (!category || category.id == null) {
@@ -1224,8 +1199,8 @@
             let currentSkipRows = 0;
             let requestedSkipRows = 0;
             let activeProfile = null;
-            let activeProfileColumns = [];
             let activeProfileMappings = [];
+
             let latestHeaderRow = [];
             let latestDataRows = [];
             let resolvedTargetMap = new Map();
@@ -1304,6 +1279,30 @@
                     return null;
                 }
                 return expenseCategoryMapById.get(numericId) ?? null;
+            }
+
+            function isInternalTransfer(rawMap) {
+                if (!userAccounts.length) return false;
+                
+                const counterpartyAccount = rawMap.counterpartyAccount;
+                if (!counterpartyAccount) return false;
+                
+                // Normalize by removing spaces and converting to lowercase
+                const normalizedCounterparty = normalizeText(counterpartyAccount).replace(/\s+/g, '');
+                
+                return userAccounts.some(account => {
+                    if (account.accountNumber) {
+                        const accountNum = normalizeText(account.accountNumber).replace(/\s+/g, '');
+                        if (accountNum && normalizedCounterparty.includes(accountNum)) return true;
+                    }
+                    
+                    if (account.iban) {
+                        const iban = normalizeText(account.iban).replace(/\s+/g, '');
+                        if (iban && normalizedCounterparty.includes(iban)) return true;
+                    }
+                    
+                    return false;
+                });
             }
 
             function resolveCategoryId(candidate) {
@@ -1900,61 +1899,60 @@
                     }
                 });
 
-                const profileColumns = Array.isArray(activeProfileColumns) ? activeProfileColumns : [];
-                const targetInfoMap = new Map();
-                const headerInfoMap = new Map();
+                const targetInfoMap = new Map(); // Field -> { index, originalHeader }
+                const headerInfoMap = new Map(); // HelperKey (e.g. directionHeader value) -> { index, originalHeader }
 
-                profileColumns.forEach(column => {
-                    if (!column || !column.target || targetInfoMap.has(column.target)) {
-                        return;
-                    }
+                activeProfileMappings.forEach(mapping => {
+                    // 1. Resolve Main Field
+                    const declaredHeadersRaw = Array.isArray(mapping.sourceHeaders)
+                        ? mapping.sourceHeaders
+                        : (mapping.sourceHeader ? [mapping.sourceHeader] : []);
+                    
+                    let resolvedIndex = -1;
+                    let resolvedHeader = '';
 
-                    const normalizedHeader = normalizeHeader(column.header);
-                    let columnIndex = -1;
-                    let originalHeader = '';
-
-                    if (headerMap.has(normalizedHeader)) {
-                        const match = headerMap.get(normalizedHeader);
-                        columnIndex = match.index;
-                        originalHeader = match.raw ?? column.header ?? '';
-                    } else {
-                        const fallbackIndex = headerRow.findIndex(cell => normalizeHeader(cell) === normalizedHeader);
-                        if (fallbackIndex >= 0) {
-                            columnIndex = fallbackIndex;
-                            originalHeader = headerRow[fallbackIndex] ?? column.header ?? '';
+                    for (const header of declaredHeadersRaw) {
+                        const normalized = normalizeHeader(header);
+                        if (headerMap.has(normalized)) {
+                            const match = headerMap.get(normalized);
+                            resolvedIndex = match.index;
+                            resolvedHeader = match.raw;
+                            break;
                         }
                     }
 
-                    const info = {
-                        index: columnIndex,
-                        column,
-                        header: column.header ?? '',
-                        originalHeader
-                    };
+                    // Fallback: check if header exists in row by exact match if normalization failed
+                    if (resolvedIndex === -1) {
+                         for (const header of declaredHeadersRaw) {
+                            const idx = headerRow.findIndex(cell => normalizeHeader(cell) === normalizeHeader(header));
+                            if (idx >= 0) {
+                                resolvedIndex = idx;
+                                resolvedHeader = headerRow[idx];
+                                break;
+                            }
+                         }
+                    }
 
-                    targetInfoMap.set(column.target, info);
-                    const normalizedProfileHeader = normalizeHeader(column.header ?? '');
-                    if (normalizedProfileHeader.length && !headerInfoMap.has(normalizedProfileHeader)) {
-                        headerInfoMap.set(normalizedProfileHeader, info);
+                    if (resolvedIndex !== -1) {
+                        targetInfoMap.set(mapping.field, { index: resolvedIndex, originalHeader: resolvedHeader });
+                    }
+
+                    // 2. Resolve Helper Headers (TransformSettings)
+                    if (mapping.transformSettings) {
+                        Object.values(mapping.transformSettings).forEach(helperHeader => {
+                            const normalizedHelper = normalizeHeader(helperHeader);
+                            if (headerMap.has(normalizedHelper)) {
+                                const match = headerMap.get(normalizedHelper);
+                                headerInfoMap.set(normalizedHelper, { index: match.index, originalHeader: match.raw });
+                            }
+                        });
                     }
                 });
 
-                const mappingTargets = activeProfileMappings
-                    .filter(mapping => mapping?.target)
-                    .map(mapping => mapping.target);
-
-                const requiredTargets = activeProfileMappings
-                    .filter(mapping => mapping?.target && isMappingRequired(mapping))
-                    .map(mapping => mapping.target);
-
-                const matchedTargets = mappingTargets.reduce((count, target) => {
-                    const info = targetInfoMap.get(target);
-                    return info && info.index !== -1 ? count + 1 : count;
-                }, 0);
-
-                const matchedRequired = requiredTargets.reduce((count, target) => {
-                    const info = targetInfoMap.get(target);
-                    return info && info.index !== -1 ? count + 1 : count;
+                const matchedTargets = targetInfoMap.size;
+                const requiredMappings = activeProfileMappings.filter(m => isMappingRequired(m));
+                const matchedRequired = requiredMappings.reduce((count, m) => {
+                    return targetInfoMap.has(m.field) ? count + 1 : count;
                 }, 0);
 
                 return {
@@ -1967,7 +1965,7 @@
 
             function findBestHeaderIndex(startIndex) {
                 const lookaheadLimit = 5;
-                const mappingsWithTargets = activeProfileMappings.filter(mapping => mapping?.target);
+                const mappingsWithTargets = activeProfileMappings.filter(mapping => mapping?.sourceHeaders?.length > 0 || mapping?.sourceHeader);
                 const requiredCount = mappingsWithTargets.filter(mapping => isMappingRequired(mapping)).length;
 
                 let best = null;
@@ -2075,95 +2073,23 @@
                     const fallbackValue = typeof mapping.fallback === 'string' ? mapping.fallback.trim() : null;
                     const required = requiredExpenseFields.has(mapping.field);
 
-                    const declaredHeadersRaw = Array.isArray(mapping.sourceHeaders)
-                        ? mapping.sourceHeaders
-                        : (mapping.sourceHeader ? [mapping.sourceHeader] : []);
-
-                    const declaredHeaders = [];
-                    const seenHeaderKeys = new Set();
-
-                    declaredHeadersRaw.forEach(headerName => {
-                        const trimmed = (headerName ?? '').trim();
-                        if (!trimmed) {
-                            return;
-                        }
-                        const normalized = normalizeHeader(trimmed);
-                        if (!normalized.length || seenHeaderKeys.has(normalized)) {
-                            return;
-                        }
-                        seenHeaderKeys.add(normalized);
-                        declaredHeaders.push({ label: trimmed, normalized });
-                    });
-
-                    if (!declaredHeaders.length && mapping.target) {
-                        const column = activeProfileColumns.find(col => col.target === mapping.target);
-                        if (column) {
-                            const normalized = normalizeHeader(column.header ?? mapping.target);
-                            if (!seenHeaderKeys.has(normalized)) {
-                                seenHeaderKeys.add(normalized);
-                                declaredHeaders.push({ label: column.header ?? mapping.target, normalized });
-                            }
-                        }
-                    }
-
-                    const candidates = [];
-                    declaredHeaders.forEach(({ label: declaredLabel, normalized }) => {
-                        const headerInfo = normalized ? resolvedHeaderMap.get(normalized) : undefined;
-                        const columnDefinition = headerInfo?.column
-                            ?? activeProfileColumns.find(col => normalizeHeader(col.header) === normalized)
-                            ?? null;
-                        const targetKey = headerInfo?.column?.target
-                            ?? columnDefinition?.target
-                            ?? mapping.target
-                            ?? null;
-                        const originalHeader = headerInfo?.originalHeader
-                            ?? columnDefinition?.header
-                            ?? declaredLabel;
-                        const index = headerInfo ? headerInfo.index : -1;
-
-                        candidates.push({
-                            declaredHeader: declaredLabel,
-                            normalizedHeader: normalized,
-                            originalHeader,
-                            column: columnDefinition,
-                            target: targetKey,
-                            index
-                        });
-                    });
-
-                    if (!candidates.length && mapping.target) {
-                        const info = resolvedTargetMap.get(mapping.target);
-                        const columnDefinition = info?.column
-                            ?? activeProfileColumns.find(col => col.target === mapping.target)
-                            ?? null;
-                        const normalized = columnDefinition ? normalizeHeader(columnDefinition.header ?? mapping.target) : '';
-                        candidates.push({
-                            declaredHeader: columnDefinition?.header ?? mapping.target,
-                            normalizedHeader: normalized,
-                            originalHeader: info?.originalHeader ?? columnDefinition?.header ?? mapping.target,
-                            column: columnDefinition,
-                            target: mapping.target,
-                            index: info ? info.index : -1
-                        });
-                    }
-
-                    const columnMissing = !candidates.length || candidates.every(candidate => candidate.index === -1);
+                    const info = resolvedTargetMap.get(mapping.field);
+                    const columnMissing = !info;
                     const structurallyMissing = required && columnMissing && !fallbackValue;
 
                     if (structurallyMissing) {
                         missingRequiredFields.push(label);
                     }
 
-                    const displayHeaders = candidates.map(candidate => candidate.declaredHeader);
-
                     const fieldConfig = {
                         field: mapping.field,
                         label,
-                        displayHeaders,
-                        target: mapping.target ?? null,
+                        displayHeaders: info ? [info.originalHeader] : [],
                         fallback: fallbackValue,
                         required,
-                        candidates,
+                        resolvedIndex: info ? info.index : -1,
+                        transform: mapping.transform,
+                        transformSettings: mapping.transformSettings,
                         hasLiteralFallback: Boolean(fallbackValue),
                         columnMissing,
                         isExpenseTypeField: mapping.field === 'expenseType'
@@ -2227,17 +2153,17 @@
                 return value.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
 
-            function applyTransform(column, rawMap) {
-                const rawValue = rawMap[column.target];
+            function applyTransform(fieldConfig, rawMap) {
+                const rawValue = rawMap[fieldConfig.field];
                 if (rawValue == null || rawValue === '') {
                     return '';
                 }
 
-                if (!column.transform) {
+                if (!fieldConfig.transform) {
                     return rawValue;
                 }
 
-                switch (column.transform) {
+                switch (fieldConfig.transform) {
                     case 'signedAmount': {
                         const numeric = parseAmount(rawValue);
                         return numeric == null ? rawValue : formatNumber(numeric);
@@ -2247,12 +2173,20 @@
                         if (numeric == null) {
                             return rawValue;
                         }
-                        const directionRaw = rawMap.direction ?? rawMap['direction'];
-                        const normalized = normalizeHeader(directionRaw);
+                        
+                        const directionHeader = fieldConfig.transformSettings?.directionHeader;
+                        if (!directionHeader) return formatNumber(numeric);
+
+                        const normalizedHelper = normalizeHeader(directionHeader);
+                        const directionValue = rawMap[`HELPER_${normalizedHelper}`];
+                        
+                        if (!directionValue) return formatNumber(numeric);
+
+                        const normalizedDir = normalizeText(directionValue);
                         let signed = numeric;
-                        if (normalized.includes('prichozi') || normalized.includes('incoming')) {
+                        if (normalizedDir.includes('prichozi') || normalizedDir.includes('incoming')) {
                             signed = Math.abs(numeric);
-                        } else if (normalized.includes('odchozi') || normalized.includes('outgoing')) {
+                        } else if (normalizedDir.includes('odchozi') || normalizedDir.includes('outgoing')) {
                             signed = -Math.abs(numeric);
                         }
                         return formatNumber(signed);
@@ -2262,27 +2196,26 @@
                 }
             }
 
-            function computeDirectionSignedAmount(rawMap, candidate) {
-                if (!candidate || !candidate.target) {
-                    return null;
-                }
-
-                const amountRaw = rawMap[candidate.target];
-                const numeric = parseAmount(amountRaw);
+            function computeDirectionSignedAmount(rawMap, fieldConfig) {
+                const rawValue = rawMap[fieldConfig.field];
+                const numeric = parseAmount(rawValue);
                 if (numeric == null) {
                     return null;
                 }
 
-                const directionValue = rawMap.direction ?? rawMap['direction'];
-                if (directionValue == null || directionValue === '') {
-                    return numeric;
-                }
+                const directionHeader = fieldConfig.transformSettings?.directionHeader;
+                if (!directionHeader) return numeric;
 
-                const normalized = normalizeText(directionValue);
-                if (normalized.includes('prichozi') || normalized.includes('incoming')) {
+                const normalizedHelper = normalizeHeader(directionHeader);
+                const directionValue = rawMap[`HELPER_${normalizedHelper}`];
+
+                if (!directionValue) return numeric;
+
+                const normalizedDir = normalizeText(directionValue);
+                if (normalizedDir.includes('prichozi') || normalizedDir.includes('incoming')) {
                     return Math.abs(numeric);
                 }
-                if (normalized.includes('odchozi') || normalized.includes('outgoing')) {
+                if (normalizedDir.includes('odchozi') || normalizedDir.includes('outgoing')) {
                     return -Math.abs(numeric);
                 }
 
@@ -2351,14 +2284,13 @@
                     return null;
                 }
 
-                const candidate = valueResult?.usedCandidate ?? null;
+                const rawValue = valueResult?.rawValue;
                 const fallbackValue = fieldConfig.fallback ?? null;
-                const rawValue = candidate && candidate.target ? rawMap[candidate.target] : (valueResult?.rawValue ?? null);
 
                 switch (fieldConfig.field) {
                     case 'amount': {
-                        if (candidate?.column?.transform === 'directionSignedAmount') {
-                            const directionAmount = computeDirectionSignedAmount(rawMap, candidate);
+                        if (fieldConfig.transform === 'directionSignedAmount') {
+                            const directionAmount = computeDirectionSignedAmount(rawMap, fieldConfig);
                             if (directionAmount != null) {
                                 return Math.abs(directionAmount);
                             }
@@ -2398,57 +2330,42 @@
 
             function buildRawValueMap(row) {
                 const raw = {};
-                activeProfileColumns.forEach(column => {
-                    const info = resolvedTargetMap.get(column.target);
-                    if (info && info.index !== -1) {
-                        raw[column.target] = (row[info.index] ?? '').trim();
-                    } else {
-                        raw[column.target] = null;
+                previewFields.forEach(field => {
+                    if (field.resolvedIndex !== -1) {
+                        raw[field.field] = (row[field.resolvedIndex] ?? '').trim();
                     }
                 });
+                
+                if (typeof resolvedHeaderMap !== 'undefined') {
+                    resolvedHeaderMap.forEach((info, normalizedHeader) => {
+                         if (info.index !== -1) {
+                             raw[`HELPER_${normalizedHeader}`] = (row[info.index] ?? '').trim();
+                         }
+                    });
+                }
                 return raw;
             }
 
             function getDisplayValueForField(fieldConfig, rawMap) {
-                const candidates = Array.isArray(fieldConfig.candidates) ? fieldConfig.candidates : [];
-
-                for (const candidate of candidates) {
-                    if (!candidate || !candidate.target) {
-                        continue;
+                const rawValue = rawMap[fieldConfig.field];
+                const hasRaw = rawValue !== undefined && rawValue !== null && rawValue !== '';
+                
+                if (hasRaw) {
+                    let displayValue = rawValue;
+                    if (fieldConfig.transform) {
+                        displayValue = applyTransform(fieldConfig, rawMap);
                     }
-
-                    const rawValue = rawMap[candidate.target];
-                    const hasRaw = rawValue !== null && rawValue !== undefined && rawValue !== '';
-                    let transformed = '';
-
-                    if (candidate.column) {
-                        transformed = applyTransform(candidate.column, rawMap);
-                    }
-
-                    if (transformed !== '' && transformed !== null && transformed !== undefined) {
-                        return {
-                            rawValue,
-                            displayValue: transformed,
-                            usedCandidate: candidate,
-                            fromFallback: false
-                        };
-                    }
-
-                    if (hasRaw) {
-                        return {
-                            rawValue,
-                            displayValue: rawValue,
-                            usedCandidate: candidate,
-                            fromFallback: false
-                        };
-                    }
+                    return {
+                        rawValue,
+                        displayValue,
+                        fromFallback: false
+                    };
                 }
 
                 if (fieldConfig.fallback) {
                     return {
                         rawValue: fieldConfig.fallback,
                         displayValue: fieldConfig.fallback,
-                        usedCandidate: null,
                         fromFallback: true
                     };
                 }
@@ -2456,7 +2373,6 @@
                 return {
                     rawValue: null,
                     displayValue: '',
-                    usedCandidate: null,
                     fromFallback: false
                 };
             }
@@ -2812,14 +2728,24 @@
                                     }
                                 };
 
-                                const applyDetectionNote = message => {
+                                const applyDetectionNote = (message, type) => {
                                     if (!message || !message.trim().length) {
                                         if (detectionNote.parentElement === td) {
                                             detectionNote.remove();
                                         }
                                         return;
                                     }
-                                    detectionNote.textContent = message;
+                                    
+                                    detectionNote.className = 'small import-detection-note mt-1';
+                                    
+                                    if (type === 'internal-transfer') {
+                                        detectionNote.classList.add('text-info', 'fw-bold');
+                                        detectionNote.innerHTML = `<i class="bi bi-arrow-left-right me-1"></i> ${message}`;
+                                    } else {
+                                        detectionNote.textContent = message;
+                                        detectionNote.classList.add('text-muted');
+                                    }
+
                                     if (detectionNote.parentElement !== td) {
                                         td.appendChild(detectionNote);
                                     }
@@ -2876,8 +2802,17 @@
                                     }
                                 }
 
+                                // Internal Transfer Detection
+                                let isInternal = false;
+                                if (initialCategoryId == null && internalTransferCategoryId != null && isInternalTransfer(rawMap)) {
+                                    initialCategoryId = internalTransferCategoryId;
+                                    isInternal = true;
+                                }
+
                                 const categoryValid = setCategorySelection(initialCategoryId);
-                                if (!categoryValid) {
+                                if (categoryValid && isInternal) {
+                                    applyDetectionNote('Internal Transfer', 'internal-transfer');
+                                } else if (!categoryValid) {
                                     missingSet.add(categoryLabel);
                                     if (detectedText.length) {
                                         applyDetectionNote(`Detected value: ${detectedText} (no matching category)`);
@@ -3594,8 +3529,8 @@
 
             async function handleProfileChange(profileId) {
                 activeProfile = bankProfiles.find(p => p.id === profileId) ?? null;
-                activeProfileColumns = Array.isArray(activeProfile?.columns) ? activeProfile.columns : [];
                 activeProfileMappings = Array.isArray(activeProfile?.expenseFieldMappings) ? activeProfile.expenseFieldMappings : [];
+
 
                 const fileInput = fileInputEl();
                 if (fileInput && !activeProfile) {

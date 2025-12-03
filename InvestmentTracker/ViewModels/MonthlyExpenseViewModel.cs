@@ -10,6 +10,7 @@ namespace InvestmentTracker.ViewModels
         public int Month => SelectedDate.Month;
         public decimal TotalIncome { get; set; }
         public decimal TotalExpenses { get; set; }
+        public decimal TotalTransfers { get; set; }
         public decimal NetBalance => TotalIncome - TotalExpenses;
 
         public List<IncomeViewModel> Incomes { get; set; } = new();

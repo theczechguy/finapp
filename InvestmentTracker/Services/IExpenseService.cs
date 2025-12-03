@@ -18,6 +18,7 @@ namespace InvestmentTracker.Services
         Task UpdateOneTimeIncomeAsync(OneTimeIncome income);
         Task DeleteOneTimeIncomeAsync(int incomeId);
         Task<IEnumerable<OneTimeIncome>> GetOneTimeIncomesForMonthAsync(int year, int month);
+        Task<IEnumerable<OneTimeIncome>> GetOneTimeIncomesForDateRangeAsync(DateTime startDate, DateTime endDate);
         Task<IEnumerable<ExpenseCategory>> GetExpenseCategoriesAsync();
         Task<IEnumerable<IrregularExpense>> GetIrregularExpensesForDateRangeAsync(DateTime startDate, DateTime endDate);
         Task AddExpenseCategoryAsync(ExpenseCategory category);
@@ -41,6 +42,7 @@ namespace InvestmentTracker.Services
         Task AddFamilyMemberAsync(FamilyMember familyMember);
         Task<FamilyMember?> GetFamilyMemberAsync(int id);
         Task UpdateFamilyMemberAsync(FamilyMember familyMember);
+        Task<List<UserAccount>> GetUserAccountsAsync();
 
     // Budgets
     Task<List<CategoryBudget>> GetEffectiveBudgetsAsync(int year, int month);

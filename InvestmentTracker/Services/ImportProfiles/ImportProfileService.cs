@@ -101,6 +101,9 @@ namespace InvestmentTracker.Services.ImportProfiles
             profile.ProfileData = profileData;
             profile.UpdatedAt = DateTime.UtcNow;
 
+            // Force EF Core to recognize the JSON column change
+            _context.Entry(profile).Property(p => p.ProfileData).IsModified = true;
+
             await _context.SaveChangesAsync();
             return profile;
         }
